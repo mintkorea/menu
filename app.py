@@ -1,76 +1,87 @@
 import streamlit as st
-import cv2
 import numpy as np
+import cv2
 from PIL import Image
 
-st.set_page_config(page_title="식단표 자동 분석", layout="wide")
+st.set_page_config(page_title="주간 식단표", layout="wide")
 
-st.title("🍱 식단표 자동 인식")
+st.title("🍱 주간 식단표 자동 분석")
 
-uploaded = st.file_uploader("식단표 이미지 업로드", type=["png","jpg","jpeg"])
+uploaded = st.file_uploader("식단표 이미지를 업로드하세요", type=["png","jpg","jpeg"])
 
 
-def detect_table_cells(image):
+days = ["월","화","수","목","금","토","일"]
+meals = ["조식","중식","일품","석식","야식"]
+
+
+def split_fixed_grid(image):
 
     img = np.array(image)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # 이진화
-    thresh = cv2.adaptiveThreshold(
-        gray,255,
-        cv2.ADAPTIVE_THRESH_MEAN_C,
-        cv2.THRESH_BINARY_INV,
-        15,5
-    )
+    h, w, _ = img.shape
 
-    # 수직선 검출
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(1,40))
-    vertical = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, vertical_kernel)
+    # 식단표 실제 표 영역 (비율 기준)
+    top = int(h * 0.20)
+    bottom = int(h * 0.88)
 
-    # 수평선 검출
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(40,1))
-    horizontal = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, horizontal_kernel)
+    left = int(w * 0.06)
+    right = int(w * 0.97)
 
-    table = cv2.add(vertical,horizontal)
+    table = img[top:bottom, left:right]
 
-    contours,_ = cv2.findContours(
-        table,
-        cv2.RETR_TREE,
-        cv2.CHAIN_APPROX_SIMPLE
-    )
+    th, tw, _ = table.shape
+
+    rows = 5
+    cols = 7
+
+    cell_h = th // rows
+    cell_w = tw // cols
 
     cells = []
 
-    for c in contours:
+    for r in range(rows):
 
-        x,y,w,h = cv2.boundingRect(c)
+        row = []
 
-        if w>120 and h>80:
-            cells.append((x,y,w,h))
+        for c in range(cols):
 
-    cells = sorted(cells,key=lambda b:(b[1],b[0]))
+            y1 = r * cell_h
+            y2 = (r + 1) * cell_h
 
-    return cells,img
+            x1 = c * cell_w
+            x2 = (c + 1) * cell_w
+
+            crop = table[y1:y2, x1:x2]
+
+            row.append(crop)
+
+        cells.append(row)
+
+    return cells
 
 
 if uploaded:
 
     image = Image.open(uploaded)
 
-    st.image(image,caption="업로드된 식단표")
+    st.image(image, caption="업로드된 식단표", use_column_width=True)
 
-    cells,img = detect_table_cells(image)
+    cells = split_fixed_grid(image)
 
-    st.subheader("자동 인식된 메뉴 영역")
+    st.markdown("---")
 
-    cols = st.columns(7)
+    day = st.selectbox("요일 선택", days)
 
-    i=0
+    d = days.index(day)
 
-    for (x,y,w,h) in cells:
+    st.header(f"{day}요일 식단")
 
-        crop = img[y:y+h,x:x+w]
+    cols = st.columns(len(meals))
 
-        cols[i%7].image(crop)
+    for i,meal in enumerate(meals):
 
-        i+=1
+        with cols[i]:
+
+            st.subheader(meal)
+
+            st.image(cells[i][d], use_column_width=True)
