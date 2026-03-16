@@ -1,118 +1,76 @@
 import streamlit as st
-import pytesseract
-from PIL import Image
-import pandas as pd
 import cv2
 import numpy as np
+from PIL import Image
 
-# tesseract 경로 (Windows)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+st.set_page_config(page_title="식단표 자동 분석", layout="wide")
 
-st.set_page_config(page_title="주간 식단표", layout="wide")
+st.title("🍱 식단표 자동 인식")
 
-st.title("🍱 주간 식단표 자동 분석")
+uploaded = st.file_uploader("식단표 이미지 업로드", type=["png","jpg","jpeg"])
 
-uploaded = st.file_uploader("식단표 이미지를 업로드하세요", type=["png","jpg","jpeg"])
 
-def extract_text(image):
+def detect_table_cells(image):
 
     img = np.array(image)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    text = pytesseract.image_to_string(gray, lang="kor+eng")
+    # 이진화
+    thresh = cv2.adaptiveThreshold(
+        gray,255,
+        cv2.ADAPTIVE_THRESH_MEAN_C,
+        cv2.THRESH_BINARY_INV,
+        15,5
+    )
 
-    return text
+    # 수직선 검출
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(1,40))
+    vertical = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, vertical_kernel)
 
+    # 수평선 검출
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(40,1))
+    horizontal = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, horizontal_kernel)
 
-def parse_menu(text):
+    table = cv2.add(vertical,horizontal)
 
-    lines = text.split("\n")
+    contours,_ = cv2.findContours(
+        table,
+        cv2.RETR_TREE,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
 
-    meals = {
-        "조식":[],
-        "중식":[],
-        "석식":[],
-        "간편식":[],
-        "야식":[]
-    }
+    cells = []
 
-    current = None
+    for c in contours:
 
-    for line in lines:
+        x,y,w,h = cv2.boundingRect(c)
 
-        line = line.strip()
+        if w>120 and h>80:
+            cells.append((x,y,w,h))
 
-        if "조식" in line:
-            current = "조식"
-            continue
+    cells = sorted(cells,key=lambda b:(b[1],b[0]))
 
-        if "중식" in line:
-            current = "중식"
-            continue
-
-        if "석식" in line:
-            current = "석식"
-            continue
-
-        if "간편식" in line:
-            current = "간편식"
-            continue
-
-        if "야식" in line:
-            current = "야식"
-            continue
-
-        if current and len(line) > 2:
-            meals[current].append(line)
-
-    return meals
+    return cells,img
 
 
 if uploaded:
 
     image = Image.open(uploaded)
 
-    st.image(image, caption="업로드된 식단표", use_column_width=True)
+    st.image(image,caption="업로드된 식단표")
 
-    with st.spinner("식단 분석 중..."):
+    cells,img = detect_table_cells(image)
 
-        text = extract_text(image)
+    st.subheader("자동 인식된 메뉴 영역")
 
-        meals = parse_menu(text)
+    cols = st.columns(7)
 
-    st.success("분석 완료")
+    i=0
 
-    col1,col2,col3,col4,col5 = st.columns(5)
+    for (x,y,w,h) in cells:
 
-    with col1:
-        st.subheader("🍳 조식")
-        for m in meals["조식"]:
-            st.write(m)
+        crop = img[y:y+h,x:x+w]
 
-    with col2:
-        st.subheader("🍱 중식")
-        for m in meals["중식"]:
-            st.write(m)
+        cols[i%7].image(crop)
 
-    with col3:
-        st.subheader("🍽 석식")
-        for m in meals["석식"]:
-            st.write(m)
-
-    with col4:
-        st.subheader("🥪 간편식")
-        for m in meals["간편식"]:
-            st.write(m)
-
-    with col5:
-        st.subheader("🌙 야식")
-        for m in meals["야식"]:
-            st.write(m)
-
-    df = pd.DataFrame(dict([(k,pd.Series(v)) for k,v in meals.items()]))
-
-    st.download_button(
-        "엑셀 다운로드",
-        df.to_csv(index=False).encode("utf-8-sig"),
-        "menu.csv"
-    )
+        i+=1
