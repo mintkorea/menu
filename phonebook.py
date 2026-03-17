@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
 
-# 1. 25명 전체 명단 데이터 (이미지 기반 추출)
+# 1. 기본 데이터 (25명 명단)
 CONTACT_DATA = [
     {"근무지": "성의교정", "조별": "공통", "직위": "보안소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"근무지": "성의교정", "조별": "공통", "직위": "보안부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -31,42 +31,44 @@ CONTACT_DATA = [
     {"근무지": "옴니버스", "조별": "C조", "직위": "보안조장", "성명": "피재영", "연락처": "010-9359-2569"},
     {"근무지": "옴니버스", "조별": "C조", "직위": "보안조원", "성명": "남형민", "연락처": "010-8767-7073"},
     {"근무지": "옴니버스", "조별": "C조", "직위": "보안조원", "성명": "강경훈", "연락처": "010-3436-6107"},
-    {"근무지": "성의기숙사", "조별": "공통", "직위": "보안조원", "성명": "유시균", "연락처": "010-8737-5770"},
-    {"근무지": "성의기숙사", "조별": "공통", "직위": "보안조원", "성명": "이상헌", "연락처": "010-4285-4231"},
+    {"근무지": "성의기숙사", "조별": "기숙사", "직위": "보안조원", "성명": "유시균", "연락처": "010-8737-5770"},
+    {"근무지": "성의기숙사", "조별": "기숙사", "직위": "보안조원", "성명": "이상헌", "연락처": "010-4285-4231"},
 ]
 
-# 페이지 설정
-st.set_page_config(page_title="보안팀 관리 시스템", layout="wide")
+# 앱 설정
+st.set_page_config(page_title="보안팀 통합 관리", layout="wide")
 
-# 세션 상태 초기화 (연차 데이터 임시 저장)
+# 세션 데이터 (연차 정보)
 if 'leave_db' not in st.session_state:
     st.session_state.leave_db = pd.DataFrame(columns=['날짜', '성명', '맞대근자'])
 
-# --- 스타일 정의 ---
+# CSS 스타일 (마우스 온 효과 및 그리드)
 st.markdown("""
 <style>
-    .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+    .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
     .contact-card {
-        background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px;
-        padding: 15px; text-align: center; transition: 0.3s; cursor: pointer; height: 100px;
-        display: flex; flex-direction: column; justify-content: center;
+        background-color: #ffffff; border: 1px solid #ddd; border-radius: 10px;
+        padding: 15px; text-align: center; transition: 0.3s; height: 100px;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
     }
-    .contact-card:hover { background-color: #2e7d32; color: white; transform: translateY(-3px); }
+    .contact-card:hover { background-color: #2e7d32; color: white; }
     .phone-info { display: none; font-size: 0.8em; font-weight: bold; }
     .contact-card:hover .name-info { display: none; }
     .contact-card:hover .phone-info { display: block; }
-    .call-btn { color: #ffeb3b; text-decoration: none; border: 1px solid #ffeb3b; padding: 2px 5px; border-radius: 5px; margin-top: 5px; display: inline-block; }
+    .call-btn { 
+        color: #ffeb3b !important; text-decoration: none; border: 1px solid #ffeb3b; 
+        padding: 2px 8px; border-radius: 5px; margin-top: 8px; display: inline-block; 
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 메인 메뉴 ---
-tab1, tab2, tab3 = st.tabs(["📱 비상연락망", "📝 연차신청", "📅 연차현황판"])
+# 탭 구성
+tabs = st.tabs(["📱 비상연락망", "📝 연차신청", "📅 연차현황판", "🗓️ C조 근무표"])
 
-with tab1:
-    st.subheader("📱 클릭/호버 시 전화연결")
+# --- TAB 1: 비상연락망 ---
+with tabs[0]:
     df_contacts = pd.DataFrame(CONTACT_DATA)
-    groups = ["전체"] + list(df_contacts['조별'].unique())
-    selected_group = st.selectbox("조별 필터", groups)
+    selected_group = st.selectbox("조별 필터", ["전체"] + list(df_contacts['조별'].unique()))
     
     display_df = df_contacts if selected_group == "전체" else df_contacts[df_contacts['조별'] == selected_group]
     
@@ -77,7 +79,7 @@ with tab1:
         <div class="contact-card">
             <div class="name-info">
                 <div style="font-weight:bold;">{row['성명']}</div>
-                <div style="font-size:0.7em; color:gray;">{row['직위']}</div>
+                <div style="font-size:0.7em;">{row['직위']}</div>
             </div>
             <div class="phone-info">
                 {row['연락처']}<br>
@@ -88,19 +90,20 @@ with tab1:
     grid_html += '</div>'
     st.markdown(grid_html, unsafe_allow_html=True)
 
-with tab2:
-    st.subheader("📝 연차 신청")
-    with st.form("leave_form"):
+# --- TAB 2: 연차신청 ---
+with tabs[1]:
+    st.subheader("연차 등록")
+    with st.form("l_form"):
         name = st.selectbox("신청자", df_contacts['성명'].unique())
-        l_date = st.date_input("날짜")
+        l_date = st.date_input("날짜", datetime.now())
         sub_name = st.text_input("맞대근자")
         if st.form_submit_button("등록"):
-            new_data = pd.DataFrame([[str(l_date), name, sub_name]], columns=['날짜', '성명', '맞대근자'])
-            st.session_state.leave_db = pd.concat([st.session_state.leave_db, new_data]).drop_duplicates()
-            st.success("등록되었습니다.")
+            new_row = pd.DataFrame([[l_date.strftime('%Y-%m-%d'), name, sub_name]], columns=['날짜', '성명', '맞대근자'])
+            st.session_state.leave_db = pd.concat([st.session_state.leave_db, new_row]).drop_duplicates()
+            st.success("등록 완료")
 
-with tab3:
-    st.subheader("📅 월간 연차 현황 (가로)")
+# --- TAB 3: 연차현황판 ---
+with tabs[2]:
     now = datetime.now()
     month = st.selectbox("월 선택", range(1, 13), index=now.month-1)
     
@@ -109,11 +112,43 @@ with tab3:
     matrix = pd.DataFrame("", index=df_contacts['성명'].unique(), columns=days)
     
     for _, r in st.session_state.leave_db.iterrows():
-        try:
-            dt = datetime.strptime(r['날짜'], '%Y-%m-%d')
-            if dt.month == month:
-                d_str = f"{month}/{dt.day:02d}"
-                matrix.at[r['성명'], d_str] = "연차"
-        except: continue
+        dt = datetime.strptime(r['날짜'], '%Y-%m-%d')
+        if dt.month == month:
+            matrix.at[r['성명'], f"{month}/{dt.day:02d}"] = "연차"
+    
+    st.dataframe(matrix.style.applymap(lambda x: 'background-color: #ffcdd2' if x == "연차" else ''))
+
+# --- TAB 4: C조 근무표 (ABC 순환 로직) ---
+with tabs[3]:
+    st.subheader("🗓️ C조 월간 근무편성")
+    start_date = st.date_input("편성 시작일", datetime(2026, 3, 1))
+    period = st.number_input("편성 일수", 30, 90, 31)
+    
+    c_names = ["김태언", "이정석", "이태원"] # 순환 대상자
+    schedule = []
+    
+    for i in range(period):
+        curr = start_date + timedelta(days=i)
+        curr_str = curr.strftime('%Y-%m-%d')
         
-    st.dataframe(matrix.style.applymap(lambda x: 'background-color: #ffcdd2' if x == '연차' else ''))
+        # 기본 순환 (2회씩)
+        base = (i // 2) % 3
+        a_p, b_p, c_p = c_names[base], c_names[(base+1)%3], c_names[(base+2)%3]
+        if i % 2 == 1: b_p, c_p = c_p, b_p # B, C 교대
+            
+        # 연차 반영
+        leave_row = st.session_state.leave_db[st.session_state.leave_db['날짜'] == curr_str]
+        leave_info, sub_info = "", ""
+        if not leave_row.empty:
+            leave_info = leave_row.iloc[0]['성명']
+            sub_info = leave_row.iloc[0]['맞대근자']
+            if leave_info in [a_p, b_p, c_p]: a_p = leave_info # 연차자는 A로 고정
+            
+        schedule.append([curr.strftime('%m/%d(%a)'), "황재업", a_p, b_p, c_p, leave_info, sub_info])
+
+    df_sch = pd.DataFrame(schedule, columns=["일자", "조장", "A(회관)", "B(의산연)", "C(의산연)", "연차", "맞대근"])
+    st.dataframe(df_sch)
+    
+    # 엑셀 다운로드
+    csv = df_sch.to_csv(index=False).encode('utf-8-sig')
+    st.download_button("엑셀 다운로드", csv, "근무표.csv", "text/csv")
