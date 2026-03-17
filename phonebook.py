@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-import calendar
 
-# 1. 28명 전체 명단 (오류 수정 완료)
+# 1. 28명 전체 명단 데이터
 CONTACT_DATA = [
     {"조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"조": "공통", "직위": "부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -42,10 +41,10 @@ if 'leaves' not in st.session_state:
 
 tab1, tab2, tab3, tab4 = st.tabs(["📱 연락망", "📝 연차신청", "📅 현황판", "🗓️ C조 근무표"])
 
-# --- TAB 1: 연락망 (4열 배치) ---
+# --- TAB 1: 연락망 (4열 배치 및 클릭 시 전화연결) ---
 with tab1:
     df = pd.DataFrame(CONTACT_DATA)
-    sel_group = st.selectbox("조 필터", ["전체"] + sorted(list(df['조'].unique())))
+    sel_group = st.selectbox("조별 필터", ["전체"] + sorted(list(df['조'].unique())))
     disp_df = df if sel_group == "전체" else df[df['조'] == sel_group]
     
     cards_html = ""
@@ -63,48 +62,75 @@ with tab1:
     <style>
         .container {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-family: sans-serif; }}
         .card {{ background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 5px 2px; text-align: center; cursor: pointer; }}
-        .name {{ font-weight: bold; font-size: 11px; }}
+        .name {{ font-weight: bold; font-size: 11px; color: #212529; }}
         .rank {{ font-size: 8px; color: #666; margin: 1px 0; }}
-        .phone {{ font-size: 8px; color: #2e7d32; }}
+        .phone {{ font-size: 8px; color: #2e7d32; font-weight: bold; }}
     </style>
     <div class="container">{cards_html}</div>
     """, height=650, scrolling=True)
 
-# --- TAB 4: C조 근무표 (한글 요일, 9px 폰트) ---
+# --- TAB 2, 3: 연차 관련 (생략 가능하나 유지) ---
+with tab2:
+    with st.form("leave_form"):
+        name = st.selectbox("성명", sorted([p['성명'] for p in CONTACT_DATA if p['조'] == "C조"]))
+        date = st.date_input("날짜", datetime.now())
+        sub = st.text_input("맞대근자")
+        if st.form_submit_button("등록"):
+            new_row = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
+            st.session_state.leaves = pd.concat([st.session_state.leaves, new_row]).drop_duplicates()
+            st.success("등록 완료")
+
+# --- TAB 4: C조 근무표 (3일 주기 반영 및 폰트 축소) ---
 with tab4:
     weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
     c_names = ["김태언", "이정석", "이태원"]
-    start_d = datetime(2026, 3, 1) #
     
     res = []
-    for i in range(31):
-        target = start_d + timedelta(days=i)
+    # 3월 1일부터 31일까지 순회
+    for day in range(1, 32):
+        target = datetime(2026, 3, day)
         t_str = target.strftime('%Y-%m-%d')
         w_kr = weekday_kr[target.weekday()]
         
-        # ABC 2회 연속 근무 루틴
-        idx = (i // 2) % 3
-        a, b, c = c_names[idx], c_names[(idx+1)%3], c_names[(idx+2)%3]
-        if i % 2 == 1: b, c = c, b # B/C 교대
-        
-        # 연차 반영 (연차자는 A 배치)
-        l_name = ""
-        lp = st.session_state.leaves[st.session_state.leaves['날짜'] == t_str]
-        if not lp.empty:
-            l_name = lp.iloc[0]['성명']
-            if l_name in [a, b, c]: a = l_name
+        # 3일 주기 필터: 3의 배수일만 근무 (3, 6, 9...)
+        if day % 3 == 0:
+            # 근무 순번 계산 (3월 3일이 첫 순번)
+            cycle_idx = (day // 3) - 1
+            # 이미지 규칙: ABC가 각 2회씩 연속해서 근무 수행
+            idx = (cycle_idx // 2) % 3
+            a, b, c = c_names[idx], c_names[(idx+1)%3], c_names[(idx+2)%3]
             
-        res.append({
-            "일자": f"{target.month}/{target.day}({w_kr})",
-            "조장": "황재업", "A(회관)": a, "B(산연)": b, "C(산연)": c, "연차": l_name
-        })
+            # B와 C는 각 1회씩 전반야와 후반야 근무를 교대
+            if cycle_idx % 2 == 1:
+                b, c = c, b
+            
+            # 연차 반영: 연차자는 무조건 A(성희회관) 근무
+            l_name, s_name = "", ""
+            lp = st.session_state.leaves[st.session_state.leaves['날짜'] == t_str]
+            if not lp.empty:
+                l_name = lp.iloc[0]['성명']
+                s_name = lp.iloc[0]['대근자']
+                if l_name in [a, b, c]: a = l_name
+            
+            res.append({
+                "일자": f"{target.month}/{target.day:02d}({w_kr})",
+                "조장": "황재업", "A(회관)": a, "B(산연)": b, "C(산연)": c, 
+                "연차": l_name, "맞대근": s_name
+            })
+
+    df_res = pd.DataFrame(res)
 
     def style_mini(val):
         color = ''
-        if val == "황재업": color = 'background-color: #D9EAD3' #
-        elif val == "김태언": color = 'background-color: #FFF2CC' #
-        elif val == "이정석": color = 'background-color: #D0E0E3' #
-        elif val == "이태원": color = 'background-color: #F4CCCC' #
+        if val == "황재업": color = 'background-color: #D9EAD3' # 연초록
+        elif val == "김태언": color = 'background-color: #FFF2CC' # 연노랑
+        elif val == "이정석": color = 'background-color: #D0E0E3' # 연두/연파랑
+        elif val == "이태원": color = 'background-color: #F4CCCC' # 연분홍
         return f'{color}; font-size: 9px; padding: 1px; text-align: center;'
 
-    st.dataframe(pd.DataFrame(res).style.applymap(style_mini), use_container_width=True, height=600)
+    st.write("###### 🗓️ C조 근무편성 (3일 주기: 3월 18일 근무 포함)")
+    st.dataframe(
+        df_res.style.applymap(style_mini, subset=["조장", "A(회관)", "B(산연)", "C(산연)"])
+                    .applymap(lambda x: 'font-size: 9px; text-align: center;', subset=["일자", "연차", "맞대근"]),
+        use_container_width=True, height=600
+    )
