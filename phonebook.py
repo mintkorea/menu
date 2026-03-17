@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import calendar
 
-# 1. 명단 데이터 (코드에 직접 내장)
+# 1. 데이터 설정
 CONTACT_DATA = [
     {"조": "공통", "직위": "보안소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"조": "공통", "직위": "보안부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -31,65 +31,42 @@ CONTACT_DATA = [
 
 st.set_page_config(page_title="보안 통합 관리", layout="wide")
 
-# 세션 상태 (연차 데이터 저장용)
 if 'leaves' not in st.session_state:
     st.session_state.leaves = pd.DataFrame(columns=['날짜', '성명', '대근자'])
 
-# --- 디자인 수정 (코드 노출 방지 핵심) ---
-st.markdown("""
-<style>
-    .grid-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 10px;
-    }
-    .card {
-        background: #ffffff; border: 1px solid #ddd; border-radius: 12px;
-        padding: 15px; text-align: center; transition: 0.3s; height: 110px;
-        display: flex; flex-direction: column; justify-content: center;
-    }
-    .card:hover { background: #1b5e20; color: white !important; }
-    .card:hover div { color: white !important; }
-    .card .phone { display: none; font-weight: bold; font-size: 0.9em; }
-    .card:hover .name-tag { display: none; }
-    .card:hover .phone { display: block; }
-    .call-link {
-        color: #ffeb3b !important; text-decoration: none; border: 1px solid #ffeb3b;
-        padding: 2px 8px; border-radius: 6px; margin-top: 8px; display: inline-block;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# 메인 메뉴 탭
 tab_call, tab_apply, tab_calendar, tab_work = st.tabs(["📱 연락망", "📝 연차신청", "📅 현황판", "🗓️ C조 근무표"])
 
-# --- TAB 1: 연락망 ---
+# --- TAB 1: 연락망 (HTML 노출 방지를 위해 컴포넌트 사용) ---
 with tab_call:
     df = pd.DataFrame(CONTACT_DATA)
     sel_group = st.selectbox("조 필터", ["전체"] + sorted(list(df['조'].unique())))
     disp_df = df if sel_group == "전체" else df[df['조'] == sel_group]
     
-    html = '<div class="grid-container">'
+    cards_html = ""
     for _, r in disp_df.iterrows():
         tel = r['연락처'].replace('-', '')
-        html += f'''
-        <div class="card">
-            <div class="name-tag">
-                <div style="font-weight:bold; font-size:1.1em;">{r['성명']}</div>
-                <div style="font-size:0.8em; color:gray;">{r['직위']}</div>
-            </div>
-            <div class="phone">
-                {r['연락처']}<br>
-                <a href="tel:{tel}" class="call-link">📞 통화</a>
-            </div>
+        cards_html += f'''
+        <div class="card" onclick="window.location.href='tel:{tel}'">
+            <div class="name">{r['성명']}</div>
+            <div class="rank">{r['직위']}</div>
+            <div class="phone">{r['연락처']}</div>
         </div>
         '''
-    html += '</div>'
-    st.markdown(html, unsafe_allow_html=True)
+    
+    st.components.v1.html(f"""
+    <style>
+        .container {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; font-family: sans-serif; }}
+        .card {{ background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; }}
+        .card:active {{ background: #e2e6ea; }}
+        .name {{ font-weight: bold; font-size: 14px; color: #212529; }}
+        .rank {{ font-size: 11px; color: #6c757d; margin: 2px 0; }}
+        .phone {{ font-size: 10px; color: #007bff; font-weight: bold; }}
+    </style>
+    <div class="container">{cards_html}</div>
+    """, height=500, scrolling=True)
 
 # --- TAB 2: 연차신청 ---
 with tab_apply:
-    st.subheader("신규 연차 등록")
     with st.form("leave_form"):
         name = st.selectbox("성명", sorted([p['성명'] for p in CONTACT_DATA]))
         date = st.date_input("날짜", datetime.now())
@@ -97,26 +74,24 @@ with tab_apply:
         if st.form_submit_button("신청 완료"):
             new_row = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
             st.session_state.leaves = pd.concat([st.session_state.leaves, new_row]).drop_duplicates()
-            st.success(f"{name}님 등록되었습니다.")
+            st.success(f"{name}님 등록 완료")
 
 # --- TAB 3: 현황판 ---
 with tab_calendar:
     m = st.selectbox("월 선택", range(1, 13), index=datetime.now().month-1)
     last_day = calendar.monthrange(2026, m)[1]
-    cols = [f"{m}/{d:02d}" for d in range(1, last_day+1)]
+    cols = [f"{d:02d}" for d in range(1, last_day+1)]
     names = sorted(list(set([p['성명'] for p in CONTACT_DATA])))
-    
     matrix = pd.DataFrame("", index=names, columns=cols)
     for _, r in st.session_state.leaves.iterrows():
         dt = datetime.strptime(r['날짜'], '%Y-%m-%d')
-        if dt.month == m:
-            matrix.at[r['성명'], f"{m}/{dt.day:02d}"] = "연차"
-    
-    st.dataframe(matrix.style.applymap(lambda x: 'background-color: #ffcdd2' if x == "연차" else ''))
+        if dt.month == m: matrix.at[r['성명'], f"{dt.day:02d}"] = "연차"
+    st.write("##### 월간 연차 현황")
+    st.dataframe(matrix.style.applymap(lambda x: 'background-color: #ffcdd2' if x == "연차" else ''), height=400)
 
-# --- TAB 4: C조 근무표 ---
+# --- TAB 4: C조 근무표 (이미지 컬러 및 폰트 크기 조정) ---
 with tab_work:
-    st.subheader("🗓️ C조 ABC 순환 편성")
+    st.write("##### 🗓️ C조 ABC 순환 편성 (3월 기준)")
     c_list = ["김태언", "이정석", "이태원"]
     start_d = datetime(2026, 3, 1)
     
@@ -124,21 +99,34 @@ with tab_work:
     for i in range(31):
         target_d = start_d + timedelta(days=i)
         t_str = target_d.strftime('%Y-%m-%d')
-        
-        # 기본 루틴 (2일씩 순환)
         idx = (i // 2) % 3
         a, b, c = c_list[idx], c_list[(idx+1)%3], c_list[(idx+2)%3]
-        if i % 2 == 1: b, c = c, b # B,C 교대
+        if i % 2 == 1: b, c = c, b
         
-        # 연차 체크
+        l_name = ""
         leave_p = st.session_state.leaves[st.session_state.leaves['날짜'] == t_str]
-        l_name, s_name = "", ""
         if not leave_p.empty:
             l_name = leave_p.iloc[0]['성명']
-            s_name = leave_p.iloc[0]['대근자']
-            # 규칙: 연차자는 무조건 A자리 배치
             if l_name in [a, b, c]: a = l_name
             
-        results.append([target_d.strftime('%m/%d(%a)'), "황재업", a, b, c, l_name, s_name])
+        results.append({
+            "일자": target_d.strftime('%m/%d(%a)'),
+            "조장": "황재업", "A(회관)": a, "B(의산연)": b, "C(의산연)": c, "연차": l_name
+        })
     
-    st.table(pd.DataFrame(results, columns=["일자", "조장", "A(회관)", "B(의산연)", "C(의산연)", "연차", "맞대근"]))
+    df_res = pd.DataFrame(results)
+
+    # 이미지와 유사한 컬러 설정 및 폰트 크기 축소 함수
+    def color_c_team(val):
+        color = ''
+        if val == "황재업": color = 'background-color: #D9EAD3' # 연초록
+        elif val == "김태언": color = 'background-color: #FFF2CC' # 연노랑
+        elif val == "이정석": color = 'background-color: #D0E0E3' # 연파랑/연두
+        elif val == "이태원": color = 'background-color: #F4CCCC' # 연분홍
+        return f'{color}; font-size: 11px; padding: 2px;'
+
+    st.dataframe(
+        df_res.style.applymap(color_c_team, subset=["조장", "A(회관)", "B(의산연)", "C(의산연)"]),
+        use_container_width=True,
+        height=500
+    )
