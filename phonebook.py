@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import calendar
 
-# 1. 28명 전체 명단 데이터 (이미지 분석 기반 추출)
+# 1. 28명 전체 명단 (오류 수정 완료)
 CONTACT_DATA = [
     {"조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"조": "공통", "직위": "부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -20,7 +20,7 @@ CONTACT_DATA = [
     {"조": "B조", "직위": "조원", "성명": "전준수", "연락처": "010-5687-7107"},
     {"조": "C조", "직위": "조장", "성명": "황재업", "연락처": "010-9278-6622"},
     {"조": "C조", "직위": "조원", "성명": "이태원", "연락처": "010-9265-7881"},
-    {"조": "C조", "직위": "조원", "김태언", "연락처": "010-5386-5386"},
+    {"조": "C조", "직위": "조원", "성명": "김태언", "연락처": "010-5386-5386"},
     {"조": "C조", "직위": "조원", "성명": "이정석", "연락처": "010-2417-1173"},
     {"조": "A조", "직위": "조장", "성명": "손병휘", "연락처": "010-9966-2090"},
     {"조": "A조", "직위": "조원", "성명": "권순호", "연락처": "010-2539-1799"},
@@ -40,13 +40,10 @@ st.set_page_config(page_title="보안 통합 관리", layout="wide")
 if 'leaves' not in st.session_state:
     st.session_state.leaves = pd.DataFrame(columns=['날짜', '성명', '대근자'])
 
-tab_call, tab_apply, tab_calendar, tab_work = st.tabs(["📱 연락망", "📝 연차신청", "📅 현황판", "🗓️ C조 근무표"])
+tab1, tab2, tab3, tab4 = st.tabs(["📱 연락망", "📝 연차신청", "📅 현황판", "🗓️ C조 근무표"])
 
-# --- TAB 1: 연락망 (4x7 또는 3x10 최적화) ---
-with tab_call:
-    col_type = st.radio("배치 선택", ["한 줄에 4명 (추천)", "한 줄에 3명"], horizontal=True)
-    min_width = "80px" if "4명" in col_type else "100px"
-    
+# --- TAB 1: 연락망 (4열 배치) ---
+with tab1:
     df = pd.DataFrame(CONTACT_DATA)
     sel_group = st.selectbox("조 필터", ["전체"] + sorted(list(df['조'].unique())))
     disp_df = df if sel_group == "전체" else df[df['조'] == sel_group]
@@ -64,73 +61,50 @@ with tab_call:
     
     st.components.v1.html(f"""
     <style>
-        .container {{ 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax({min_width}, 1fr)); 
-            gap: 5px; 
-            font-family: sans-serif; 
-        }}
-        .card {{ 
-            background: #ffffff; border: 1px solid #eee; border-radius: 4px; 
-            padding: 6px 2px; text-align: center; cursor: pointer; 
-            box-shadow: 1px 1px 2px rgba(0,0,0,0.05);
-        }}
-        .card:active {{ background: #e8f5e9; }}
-        .name {{ font-weight: bold; font-size: 12px; color: #212529; }}
-        .rank {{ font-size: 9px; color: #777; margin: 1px 0; }}
-        .phone {{ font-size: 9px; color: #2e7d32; }}
+        .container {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-family: sans-serif; }}
+        .card {{ background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 5px 2px; text-align: center; cursor: pointer; }}
+        .name {{ font-weight: bold; font-size: 11px; }}
+        .rank {{ font-size: 8px; color: #666; margin: 1px 0; }}
+        .phone {{ font-size: 8px; color: #2e7d32; }}
     </style>
     <div class="container">{cards_html}</div>
-    """, height=800, scrolling=True)
+    """, height=650, scrolling=True)
 
-# --- TAB 2, 3은 기존과 동일 (생략 가능하나 유지를 위해 포함) ---
-with tab_apply:
-    with st.form("leave_form"):
-        name = st.selectbox("성명", sorted([p['성명'] for p in CONTACT_DATA]))
-        date = st.date_input("날짜", datetime.now())
-        sub = st.text_input("맞대근자")
-        if st.form_submit_button("등록"):
-            new_row = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
-            st.session_state.leaves = pd.concat([st.session_state.leaves, new_row]).drop_duplicates()
-            st.success("등록 완료")
-
-# --- TAB 4: C조 근무표 (폰트 9px로 더 축소, 한글 요일) ---
-with tab_work:
+# --- TAB 4: C조 근무표 (한글 요일, 9px 폰트) ---
+with tab4:
     weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
-    c_list = ["김태언", "이정석", "이태원"]
-    start_d = datetime(2026, 3, 1)
+    c_names = ["김태언", "이정석", "이태원"]
+    start_d = datetime(2026, 3, 1) #
     
-    results = []
+    res = []
     for i in range(31):
-        target_d = start_d + timedelta(days=i)
-        t_str = target_d.strftime('%Y-%m-%d')
-        w_kr = weekday_kr[target_d.weekday()]
-        idx = (i // 2) % 3
-        a, b, c = c_list[idx], c_list[(idx+1)%3], c_list[(idx+2)%3]
-        if i % 2 == 1: b, c = c, b
+        target = start_d + timedelta(days=i)
+        t_str = target.strftime('%Y-%m-%d')
+        w_kr = weekday_kr[target.weekday()]
         
+        # ABC 2회 연속 근무 루틴
+        idx = (i // 2) % 3
+        a, b, c = c_names[idx], c_names[(idx+1)%3], c_names[(idx+2)%3]
+        if i % 2 == 1: b, c = c, b # B/C 교대
+        
+        # 연차 반영 (연차자는 A 배치)
         l_name = ""
-        leave_p = st.session_state.leaves[st.session_state.leaves['날짜'] == t_str]
-        if not leave_p.empty:
-            l_name = leave_p.iloc[0]['성명']
+        lp = st.session_state.leaves[st.session_state.leaves['날짜'] == t_str]
+        if not lp.empty:
+            l_name = lp.iloc[0]['성명']
             if l_name in [a, b, c]: a = l_name
             
-        results.append({
-            "일자": f"{target_d.month}/{target_d.day}({w_kr})",
-            "조장": "황재업", "A(회관)": a, "B(의산연)": b, "C(의산연)": c, "연차": l_name
+        res.append({
+            "일자": f"{target.month}/{target.day}({w_kr})",
+            "조장": "황재업", "A(회관)": a, "B(산연)": b, "C(산연)": c, "연차": l_name
         })
-    
-    df_res = pd.DataFrame(results)
 
     def style_mini(val):
         color = ''
-        if val == "황재업": color = 'background-color: #D9EAD3'
-        elif val == "김태언": color = 'background-color: #FFF2CC'
-        elif val == "이정석": color = 'background-color: #D0E0E3'
-        elif val == "이태원": color = 'background-color: #F4CCCC'
-        return f'{color}; font-size: 9px; padding: 0px; text-align: center;'
+        if val == "황재업": color = 'background-color: #D9EAD3' #
+        elif val == "김태언": color = 'background-color: #FFF2CC' #
+        elif val == "이정석": color = 'background-color: #D0E0E3' #
+        elif val == "이태원": color = 'background-color: #F4CCCC' #
+        return f'{color}; font-size: 9px; padding: 1px; text-align: center;'
 
-    st.dataframe(
-        df_res.style.applymap(style_mini),
-        use_container_width=True, height=700
-    )
+    st.dataframe(pd.DataFrame(res).style.applymap(style_mini), use_container_width=True, height=600)
