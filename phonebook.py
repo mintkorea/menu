@@ -1,82 +1,115 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. 상태 관리 설정
-if 'current_view' not in st.session_state:
-    st.session_state.current_view = "성희회관"
+# 1. 페이지 설정 및 여백 최소화 CSS
+st.set_page_config(page_title="미화 연락망", layout="centered")
 
-# 2. CSS: 상단 여백 및 타이틀 크기 강제 축소
 st.markdown("""
     <style>
-        /* 메인 컨텐츠 영역의 상단 여백 제거 */
-        .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
-        /* 스트림릿 기본 헤더 제거 */
+        /* 상단 여백 및 헤더 제거 */
+        .block-container { padding-top: 0.5rem !important; padding-bottom: 0rem !important; }
         header { visibility: hidden; }
-        /* 버튼 간격 조정 */
+        #MainMenu { visibility: hidden; }
+        
+        /* 버튼 스타일 최적화 */
         div[data-testid="stHorizontalBlock"] { gap: 5px !important; }
-        button { height: 35px !important; padding: 0px !important; font-size: 14px !important; }
+        button { height: 38px !important; font-size: 15px !important; font-weight: bold !important; }
+        
+        /* 타이틀 스타일 */
+        .main-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #333; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 타이틀을 작고 슬림하게 배치
-st.markdown("### 🚨 보안비상연락망 (미화)")
+# 2. 상태 관리 (건물 선택)
+if 'building' not in st.session_state:
+    st.session_state.building = "성희회관"
 
-# 4. 네비게이션 버튼 (슬림형)
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🏢 성희회관", use_container_width=True):
-        st.session_state.current_view = "성희회관"
-with col2:
-    if st.button("🔬 의산연", use_container_width=True):
-        st.session_state.current_view = "의산연"
-
-# 5. 데이터 정의 (안순재 님 오타 수정 및 전체 명단 반영)
-# [의산연 데이터 일부]
+# 3. 전체 데이터 복원 (사진 데이터 100% 반영)
 data_uisan = [
     {"위치": "8층", "성명": "안순재", "연락처": "010-9119-8879"},
-    {"위치": "7층", "성명": "안순재", "연락처": "010-9119-8879"}, # 오타 수정 완료
+    {"위치": "7층", "성명": "안순재", "연락처": "010-9119-8879"}, # 오타 수정
     {"위치": "6층", "성명": "장 성", "연락처": "010-8938-3988"},
     {"위치": "5층", "성명": "조미연", "연락처": "010-2252-2036"},
     {"위치": "4층", "성명": "김정옥", "연락처": "010-9011-0659"},
     {"위치": "3층", "성명": "장 성", "연락처": "010-8938-3988"},
-    {"위치": "2층", "성명": "이연숙", "연락처": "010-9117-3965"}
-    # ... 나머지 명단도 동일한 형식으로 추가 가능
+    {"위치": "2층", "성명": "이연숙", "연락처": "010-9117-3965"},
+    {"위치": "3층(세포)", "성명": "강민례", "연락처": "010-3385-9952"},
+    {"위치": "1층(남)", "성명": "이정숙", "연락처": "010-3722-0765"},
+    {"위치": "1층(북)", "성명": "이명자", "연락처": "010-6274-2355"},
+    {"위치": "B1층", "성명": "이서빈", "연락처": "010-7755-8613"},
+    {"위치": "B2층", "성명": "선양순", "연락처": "010-9967-7301"},
+    {"위치": "본관지원", "성명": "정순식", "연락처": "010-9564-0029"},
+    {"위치": "본관지원", "성명": "조성일", "연락처": "010-3952-2441"},
+    {"위치": "별관 5층", "성명": "이선자", "연락처": "010-8210-7106"},
+    {"위치": "별관 3,4", "성명": "김인숙", "연락처": "010-4120-6055"},
+    {"위치": "별관 1,2", "성명": "정혜숙", "연락처": "010-9130-0652"},
+    {"위치": "별관지원", "성명": "이창남", "연락처": "010-3133-0638"}
 ]
 
-# [성희회관 데이터 일부]
 data_sunghee = [
     {"위치": "14층", "성명": "유순복", "연락처": "010-6370-0845"},
     {"위치": "13층", "성명": "박태연", "연락처": "010-5682-8927"},
     {"위치": "12층", "성명": "기성원", "연락처": "010-2618-9120"},
     {"위치": "11층", "성명": "김성순", "연락처": "010-4604-7608"},
     {"위치": "10층", "성명": "박현순", "연락처": "010-8714-7703"},
+    {"위치": "9층", "성명": "이재숙", "연락처": "010-8762-1178"},
+    {"위치": "9층", "성명": "채예홍", "연락처": "010-5202-4638"},
+    {"위치": "8층", "성명": "이애란", "연락처": "010-3046-8520"},
+    {"위치": "7층", "성명": "박인순", "연락처": "010-5745-1427"},
+    {"위치": "6층", "성명": "김순이", "연락처": "010-6370-6807"},
+    {"위치": "5층", "성명": "최정숙", "연락처": "010-3850-2011"},
+    {"위치": "4,5층", "성명": "신춘옥", "연락처": "010-2305-8914"},
+    {"위치": "4층", "성명": "조계순", "연락처": "010-2211-7864"},
+    {"위치": "3층", "성명": "김옥화", "연락처": "010-8000-9643"},
+    {"위치": "2층", "성명": "임윤숙", "연락처": "010-3283-2799"},
+    {"위치": "1층", "성명": "허봉혜", "연락처": "010-9014-7470"},
+    {"위치": "1층", "성명": "양명선", "연락처": "010-6671-1442"},
+    {"위치": "지원(외곽)", "성명": "김철규", "연락처": "010-6299-0079"},
+    {"위치": "지원(승강기)", "성명": "천제수", "연락처": "010-7537-6059"},
+    {"위치": "지원(주차)", "성명": "박문희", "연락처": "010-8859-9333"},
+    {"위치": "지원(전층)", "성명": "최연주", "연락처": "010-5744-1772"},
+    {"위치": "지원(여)", "성명": "양경순", "연락처": "010-5728-9427"},
     {"위치": "반장", "성명": "허영찬", "연락처": "010-9894-3415"}
 ]
 
-# 6. 표 생성 및 렌더링
-view = st.session_state.current_view
-target_data = data_sunghee if view == "성희회관" else data_uisan
+# 4. 화면 구성
+st.markdown('<p class="main-title">📞 미화 비상연락망</p>', unsafe_allow_html=True)
 
-html_string = f"""
-<div style="font-family: sans-serif;">
-    <p style="margin: 5px 0; font-weight: bold; color: #555;">📍 {view} 명단</p>
-    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-        <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-            <th style="padding: 8px; text-align: center;">위치</th>
-            <th style="padding: 8px; text-align: center;">성명</th>
-            <th style="padding: 8px; text-align: center;">연락처</th>
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🏢 성희회관", use_container_width=True):
+        st.session_state.building = "성희회관"
+with col2:
+    if st.button("🔬 의산연", use_container_width=True):
+        st.session_state.building = "의산연"
+
+# 5. HTML 표 렌더링
+view = st.session_state.building
+target = data_sunghee if view == "성희회관" else data_uisan
+
+html_code = f"""
+<div style="font-family: sans-serif; color: #333;">
+    <p style="margin: 8px 0; font-size: 14px; font-weight: bold;">📍 {view} 담당자</p>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px; border-top: 2px solid #333;">
+        <tr style="background-color: #f1f3f5;">
+            <th style="padding: 10px 5px; border-bottom: 1px solid #ccc; width: 25%;">위치</th>
+            <th style="padding: 10px 5px; border-bottom: 1px solid #ccc; width: 25%;">성명</th>
+            <th style="padding: 10px 5px; border-bottom: 1px solid #ccc; width: 50%;">연락처</th>
         </tr>
 """
-for row in target_data:
-    html_string += f"""
+
+for row in target:
+    html_code += f"""
         <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 8px; text-align: center;"><b>{row['위치']}</b></td>
-            <td style="padding: 8px; text-align: center;">{row['성명']}</td>
-            <td style="padding: 8px; text-align: center;">
-                <a href="tel:{row['연락처']}" style="color: #007bff; text-decoration: none; font-weight: bold;">{row['연락처']}</a>
+            <td style="padding: 10px 5px; text-align: center;"><b>{row['위치']}</b></td>
+            <td style="padding: 10px 5px; text-align: center;">{row['성명']}</td>
+            <td style="padding: 10px 5px; text-align: center;">
+                <a href="tel:{row['연락처']}" style="color: #007bff; text-decoration: none; font-weight: bold; font-size: 15px;">{row['연락처']}</a>
             </td>
         </tr>
     """
-html_string += "</table></div>"
 
-components.html(html_string, height=600, scrolling=True)
+html_code += "</table></div>"
+
+# 높이를 성희회관 명단(23명)에 맞춰 넉넉하게 설정
+components.html(html_code, height=850, scrolling=True)
