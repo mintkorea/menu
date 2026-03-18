@@ -1,76 +1,102 @@
 import streamlit as st
-import pandas as pd
 
-# --- 데이터 (제공해주신 데이터 활용) ---
+st.set_page_config(page_title="통합 비상연락망 (보안팀)", layout="wide")
+
+# 1. 28명 전원 디지털화된 데이터베이스
 CONTACT_DATA = [
-    {"id": 0, "조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
-    # ... (중략) ...
-    {"id": 27, "조": "기숙사", "직위": "조원", "성명": "이상헌", "연락처": "010-4285-4231"}
+    # --- 지휘부 (상단 가로 전체 배치) ---
+    {"id": 0, "조": "공통", "직위": "보안소장", "성명": "이규용", "연락처": "010-8883-6580", "구역": "지휘부"},
+    {"id": 1, "조": "공통", "직위": "보안부소장", "성명": "박상현", "연락처": "010-3193-4603", "구역": "지휘부"},
+    # --- 성의회관 & 의산연 (4명 구성) ---
+    {"id": 2, "조": "공통", "직위": "보안반장", "성명": "유정수", "연락처": "010-5316-8065", "구역": "회관"},
+    {"id": 3, "조": "A조", "직위": "조장(회)", "성명": "배준용", "연락처": "010-4717-7065", "구역": "회관"},
+    {"id": 4, "조": "A조", "직위": "조원(회)", "성명": "이명구", "연락처": "010-8638-5819", "구역": "회관"},
+    {"id": 5, "조": "A조", "직위": "조원(의)", "성명": "김영중", "연락처": "010-7726-5963", "구역": "회관"},
+    {"id": 6, "조": "A조", "직위": "조원(의)", "성명": "김삼동", "연락처": "010-2345-8081", "구역": "회관"},
+    {"id": 7, "조": "B조", "직위": "조장(회)", "성명": "심규천", "연락처": "010-8287-9895", "구역": "회관"},
+    {"id": 8, "조": "B조", "직위": "조원(회)", "성명": "임종현", "연락처": "010-7741-6732", "구역": "회관"},
+    {"id": 9, "조": "B조", "직위": "조원(의)", "성명": "권영국", "연락처": "010-4085-9982", "구역": "회관"},
+    {"id": 10, "조": "B조", "직위": "조원(의)", "성명": "전준수", "연락처": "010-5687-7107", "구역": "회관"},
+    {"id": 11, "조": "C조", "직위": "조장(회)", "성명": "황재업", "연락처": "010-9278-6622", "구역": "회관"},
+    {"id": 12, "조": "C조", "직위": "조원(회)", "성명": "이태원", "연락처": "010-9265-7881", "구역": "회관"},
+    {"id": 13, "조": "C조", "직위": "조원(의)", "성명": "김태언", "연락처": "010-5386-5386", "구역": "회관"},
+    {"id": 14, "조": "C조", "직위": "조원(의)", "성명": "이정석", "연락처": "010-2417-1173", "구역": "회관"},
+    # --- 옴니버스 (3명 구성) ---
+    {"id": 15, "조": "공통", "직위": "보안반장", "성명": "오제준", "연락처": "010-3352-8933", "구역": "옴니"},
+    {"id": 16, "조": "A조", "직위": "조장(옴)", "성명": "손병휘", "연락처": "010-9966-2090", "구역": "옴니"},
+    {"id": 17, "조": "A조", "직위": "조원(옴)", "성명": "권순호", "연락처": "010-2539-1799", "구역": "옴니"},
+    {"id": 18, "조": "A조", "직위": "조원(옴)", "성명": "김진식", "연락처": "010-3277-0808", "구역": "옴니"},
+    {"id": 19, "조": "B조", "직위": "조장(옴)", "성명": "황일범", "연락처": "010-8929-4294", "구역": "옴니"},
+    {"id": 20, "조": "B조", "직위": "조원(옴)", "성명": "이상길", "연락처": "010-9904-0247", "구역": "옴니"},
+    {"id": 21, "조": "B조", "직위": "조원(옴)", "성명": "허용", "연락처": "010-8845-0163", "구역": "옴니"},
+    {"id": 22, "조": "C조", "직위": "조장(옴)", "성명": "피재영", "연락처": "010-9359-2569", "구역": "옴니"},
+    {"id": 23, "조": "C조", "직위": "조원(옴)", "성명": "남형민", "연락처": "010-8767-7073", "구역": "옴니"},
+    {"id": 24, "조": "C조", "직위": "조원(옴)", "성명": "강경훈", "연락처": "010-3436-6107", "구역": "옴니"},
+    # --- 기숙사 ---
+    {"id": 25, "조": "공통", "직위": "보안반장", "성명": "이강택", "연락처": "010-9048-6708", "구역": "기숙사"},
+    {"id": 26, "조": "기숙사", "직위": "조원(기)", "성명": "유시균", "연락처": "010-8737-5770", "구역": "기숙사"},
+    {"id": 27, "조": "기숙사", "직위": "조원(기)", "성명": "이상헌", "연락처": "010-4285-4231", "구역": "기숙사"}
 ]
 
-# --- 스타일 설정 ---
+# --- CSS 최적화 (4열 밀림 방지 및 카드형 디자인) ---
 st.markdown("""
     <style>
-    /* 전체보기 4열 그리드 유지 */
-    .main-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 5px;
-    }
-    /* 버튼 디자인 최적화 (4열에서도 안 깨지게) */
+    /* 전체보기 4열 그리드 고정 */
+    .stHorizontalBlock { gap: 5px; } /* 컬럼 간 간격 축소 */
+    div[data-testid="column"] { width: calc(25% - 5px) !important; flex: 0 1 calc(25% - 5px) !important; min-width: 0 !important; }
+
+    /* 버튼 스타일 (4열 촘촘한 배치용) */
     .stButton > button {
-        width: 100%;
-        padding: 5px 0px;
-        font-size: 11px !important;
-        height: 50px;
-        line-height: 1.2;
+        width: 100% !important; height: 50px !important;
+        font-size: 11px !important; line-height: 1.2 !important;
+        padding: 0 !important; border-radius: 5px; margin-bottom: 3px;
     }
-    /* 확대창 디자인 */
+    /* 확대 상세 정보창 */
     .zoom-box {
-        background-color: #e8f4ff;
-        padding: 15px;
-        border-radius: 10px;
-        border: 2px solid #007bff;
-        text-align: center;
-        margin-bottom: 20px;
+        background-color: #f0f7ff; padding: 15px; border-radius: 12px;
+        border: 2px solid #007bff; text-align: center; margin-bottom: 15px;
+    }
+    .call-btn {
+        display: block; width: 100%; background: #28a745; color: white;
+        text-align: center; padding: 12px; border-radius: 8px;
+        text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 18px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 로직 부분 ---
-if 'sel_id' not in st.session_state:
-    st.session_state.sel_id = None
+# 2. 상태 관리 (선택된 인원)
+if 'target_id' not in st.session_state: st.session_state.target_id = None
 
-# 1. 상단 확대 영역 (선택 시에만 노출)
-if st.session_state.sel_id is not None:
-    target = next(p for p in CONTACT_DATA if p['id'] == st.session_state.sel_id)
+# --- 상단 고정 확대 정보창 ---
+if st.session_state.target_id is not None:
+    target = next(p for p in CONTACT_DATA if p['id'] == st.session_state.target_id)
     st.markdown(f"""
         <div class="zoom-box">
             <h3 style='margin:0;'>👤 {target['성명']} ({target['직위']})</h3>
-            <p style='margin:5px 0; color:#555;'>소속: {target['조']}</p>
-            <a href="tel:{target['연락처'].replace('-','')}" 
-               style="display:block; background:#28a745; color:white; text-decoration:none; 
-                      padding:12px; border-radius:8px; font-weight:bold; font-size:18px;">
+            <p style='margin:5px 0; color:#555;'>📍 소속: {target['구역']} ({target['조']})</p>
+            <a href="tel:{target['연락처'].replace('-','')}" class="call-btn">
                📞 {target['연락처']} 전화걸기
             </a>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("❌ 닫기", use_container_width=True):
-        st.session_state.sel_id = None
+    if st.button("❌ 닫기 (전체보기)", use_container_width=True):
+        st.session_state.target_id = None
         st.rerun()
 
-# 2. 하단 전체 4열 명단 (안 밀리는 구조)
+# --- 하단 4x7 강제 그리드 명단 ---
 st.write("### 📱 비상연락망 (이름 클릭)")
 
-# 4열 구성을 위해 4개씩 묶어서 처리
+# 데이터를 사용자 이미지의 순서(소장, 부소장, 반장3, A/B/C조, 기숙사)대로 4개씩 묶어서 처리
+# 데이터 자체가 이미지 순서대로 정렬되어 있음
 for i in range(0, len(CONTACT_DATA), 4):
-    cols = st.columns(4)
+    cols = st.columns(4) # 반복문 안에서 4열 생성
     for j in range(4):
         idx = i + j
         if idx < len(CONTACT_DATA):
             p = CONTACT_DATA[idx]
-            # 버튼 라벨에 이름과 뒷번호 표시
-            label = f"{p['성명']}\n({p['연락처'][-4:]})"
-            if cols[j].button(label, key=f"btn_{p['id']}"):
-                st.session_state.sel_id = p['id']
+            # 버튼에 이름과 조 표시 (예: 이명구(A))
+            cols[j].button(f"{p['성명']}\n({p['연락처'][-4:]})", key=f"btn_{p['id']}")
+            # Streamlit 버튼 클릭 시 세션 상태 업데이트
+            if st.session_state.get(f"btn_{p['id']}"):
+                st.session_state.target_id = p['id']
                 st.rerun()
