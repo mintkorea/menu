@@ -1,70 +1,89 @@
 import streamlit as st
 
-st.set_page_config(page_title="보안/미화 비상연락망", layout="wide")
+st.set_page_config(page_title="비상연락망", layout="wide")
 
-# 1. 통합 데이터 정리 (보안/미화 전체)
-all_data = {
-    "배준용(장)": {"role": "보안 A조장", "phone": "010-4717-7065", "birth": "1969.12.24", "join": "2022.07.26"},
-    "이명구": {"role": "보안 A조원", "phone": "010-8638-5819", "birth": "1964.09.15", "join": "2025.03.21"},
-    "손병휘(장)": {"role": "보안 A조장(옴니)", "phone": "010-9966-2090", "birth": "1972.05.23", "join": "2016.05.05"},
-    "유순복": {"role": "미화 14층", "phone": "010-6370-0845", "birth": "-", "join": "2026.06~"},
-    "박태연": {"role": "미화 13층", "phone": "010-5682-8927", "birth": "-", "join": "2026.06~"}
+# 1. 사진 데이터를 바탕으로 한 통합 명단 (보안/미화)
+# 보내주신 사진의 데이터를 모두 포함했습니다.
+contact_data = {
+    # 보안팀
+    "이규용": {"role": "보안소장", "phone": "010-8883-6580", "info": "지휘부"},
+    "박상현": {"role": "보안부소장", "phone": "010-3193-4603", "info": "지휘부"},
+    "배준용": {"role": "보안 A조장", "phone": "010-4717-7065", "info": "성의회관"},
+    "손병휘": {"role": "보안 A조장", "phone": "010-9966-2090", "info": "옴니버스"},
+    # 성의회관 미화팀
+    "유순복": {"role": "미화 14층", "phone": "010-6370-0845", "info": "성의회관"},
+    "박태연": {"role": "미화 13층", "phone": "010-5682-8927", "info": "성의회관"},
+    # 의산연 미화팀
+    "안순재": {"role": "미화 8층", "phone": "010-9119-8879", "info": "의산연"},
+    "장성": {"role": "미화 6층", "phone": "010-8938-3988", "info": "의산연"}
 }
 
-# 2. 스타일: 상단 정보창 고정 및 가독성 향상
+# 2. 모바일 강제 2열 및 고정창 디자인
 st.markdown("""
     <style>
-    .info-card {
-        background-color: #f8fbff; padding: 15px; border-radius: 12px;
-        border: 2px solid #3b82f6; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    /* 상단 정보 고정창 */
+    .fixed-header {
+        position: sticky; top: 0; z-index: 1000;
+        background-color: #f0f7ff; padding: 15px;
+        border-bottom: 3px solid #007bff; border-radius: 0 0 15px 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;
     }
-    .call-btn {
-        display: block; width: 100%; background: #2563eb; color: white !important;
+    /* 강제 2열 그리드 */
+    .grid-container {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    /* 버튼 스타일 */
+    .stButton>button {
+        width: 100%; height: 45px; border-radius: 8px;
+        background-color: white; border: 1px solid #ddd; font-size: 14px;
+    }
+    .call-link {
+        display: block; background: #007bff; color: white !important;
         text-align: center; padding: 12px; border-radius: 8px;
-        text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 16px;
+        text-decoration: none; font-weight: bold; margin-top: 10px;
     }
-    div[data-testid="stRadio"] > div { flex-direction: row !important; flex-wrap: wrap; gap: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 상태 관리 및 정보 노출 (화면 흐림 없이 즉시 반영)
-# 세션 스테이트를 사용하여 선택된 값을 상단에 즉시 표시
-if 'choice' not in st.session_state:
-    st.session_state.choice = "미선택"
+# 3. 상태 관리 (선택된 인원)
+if 'target' not in st.session_state:
+    st.session_state.target = None
+
+def update_target(name):
+    st.session_state.target = name
 
 # --- 상단 고정 정보창 ---
-if st.session_state.choice in all_data:
-    m = all_data[st.session_state.choice]
-    st.markdown(f"""
-        <div class="info-card">
-            <h3 style='margin:0; color:#1e40af;'>👤 {st.session_state.choice} <small>({m['role']})</small></h3>
-            <p style='margin:8px 0;'>🎂 생일: {m['birth']} | 📅 입사: {m['join']}</p>
-            <a href="tel:{m['phone'].replace('-','')}" class="call-btn">📞 {m['phone']} 전화걸기</a>
-        </div>
-    """, unsafe_allow_html=True)
-else:
-    st.info("💡 아래 명단에서 이름을 선택하면 즉시 정보가 나타납니다.")
+with st.container():
+    st.markdown('<div class="fixed-header">', unsafe_allow_html=True)
+    if st.session_state.target:
+        name = st.session_state.target
+        person = contact_data[name]
+        st.markdown(f"""
+            <h3 style='margin:0; color:#007bff;'>👤 {name} <small style='color:#666;'>({person['role']})</small></h3>
+            <p style='margin:5px 0; font-size:14px;'>📍 소속: {person['info']}</p>
+            <a href="tel:{person['phone'].replace('-','')}" class="call-link">📞 {person['phone']} 전화걸기</a>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<p style='margin:0; color:#666;'>💡 명단에서 이름을 클릭하세요.</p>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-st.write("---")
+# --- 하단 명단 리스트 (강제 2열) ---
+st.write("### 🏢 시설 비상연락망")
 
-# 4. 명단 배치 (라디오 버튼 - 가로 배치 고정)
-st.subheader("🏥 성의회관/의산연 보안 (A조)")
-# index=0을 '미선택'으로 두어 초기화 상태 유지
-res_a = st.radio("보안_A", ["미선택", "배준용(장)", "이명구", "김영중", "김삼동"], horizontal=True, key="sec_a", label_visibility="collapsed")
-if res_a != "미선택":
-    st.session_state.choice = res_a
+# 그룹별로 버튼 배치
+groups = {
+    "🏥 보안 (회관/의산연)": ["배준용", "이명구", "김영중", "김삼동"],
+    "🏫 보안 (옴니버스)": ["손병휘", "권순호", "김전식"],
+    "🧹 미화 (회관)": ["유순복", "박태연", "기성원", "김성순"]
+}
 
-st.subheader("🏫 옴니버스 보안 (A조)")
-res_o = st.radio("보안_O", ["미선택", "손병휘(장)", "권순호", "김전식"], horizontal=True, key="sec_o", label_visibility="collapsed")
-if res_o != "미선택":
-    st.session_state.choice = res_o
-
-st.subheader("🧹 성의회관 미화팀")
-res_m = st.radio("미화", ["미선택", "유순복", "박태연", "기성원", "김성순"], horizontal=True, key="mihwa", label_visibility="collapsed")
-if res_m != "미선택":
-    st.session_state.choice = res_m
-
-# 5. 화면 갱신 트리거 (선택 시 흐림 현상 최소화)
-if st.button("🔄 정보 초기화"):
-    st.session_state.choice = "미선택"
-    st.rerun()
+for group_name, members in groups.items():
+    st.caption(group_name)
+    # HTML 그리드 안에서 Streamlit 버튼 실행
+    st.markdown('<div class="grid-container">', unsafe_allow_html=True)
+    cols = st.columns(2)
+    for i, name in enumerate(members):
+        with cols[i % 2]:
+            if st.button(name, key=f"btn_{name}"):
+                update_target(name)
+                st.rerun()
