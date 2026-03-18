@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="보안팀 통합 연락망", layout="wide")
+st.set_page_config(page_title="보안팀 연락망", layout="wide")
 
-# [좌1, 좌2, 우1, 우2] 배치를 위한 데이터 구성
+# [좌1(회관), 좌2(회관), 우1(옴니), 우2(옴니)] 순서의 28인 데이터
 security_data = [
     # 1행: 지휘부 (반장-소장-부소장-반장)
     {"g": "top", "p": "반장(회관)", "n": "유정수", "t": "010-5316-8065", "b": "1970.09.25", "e": "2020.09.01"},
@@ -19,7 +19,7 @@ security_data = [
     {"g": "a", "p": "A원(회관)", "n": "김영중", "t": "010-7726-5963", "b": "1959.02.26", "e": "2024.08.21"},
     {"g": "a", "p": "A원(회관)", "n": "김삼동", "t": "010-8081-XXXX", "b": "-", "e": "-"},
     {"g": "a", "p": "A원(옴니)", "n": "김전식", "t": "-", "b": "-", "e": "-"},
-    {"g": "a", "p": "A원(옴니)", "n": "-", "t": "-", "b": "-", "e": "-"},
+    {"g": "a", "p": "A원(옴니)", "n": "보안요원", "t": "-", "b": "-", "e": "-"},
 
     # 4~5행: B조 (회관 4명 / 옴니 4명)
     {"g": "b", "p": "B장(회관)", "n": "심규천", "t": "010-8287-9895", "b": "-", "e": "-"},
@@ -29,7 +29,7 @@ security_data = [
     {"g": "b", "p": "B원(회관)", "n": "요원B1", "t": "-", "b": "-", "e": "-"},
     {"g": "b", "p": "B원(회관)", "n": "요원B2", "t": "-", "b": "-", "e": "-"},
     {"g": "b", "p": "B원(옴니)", "n": "요원B3", "t": "-", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(옴니)", "n": "-", "t": "-", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(옴니)", "n": "보안요원", "t": "-", "b": "-", "e": "-"},
 
     # 6~7행: C조 (회관 4명 / 옴니 4명)
     {"g": "c", "p": "C장(회관)", "n": "김태언", "t": "-", "b": "-", "e": "1순위"},
@@ -39,7 +39,7 @@ security_data = [
     {"g": "c", "p": "C원(회관)", "n": "요원C2", "t": "-", "b": "-", "e": "-"},
     {"g": "c", "p": "C원(회관)", "n": "요원C3", "t": "-", "b": "-", "e": "-"},
     {"g": "c", "p": "C원(옴니)", "n": "요원C4", "t": "-", "b": "-", "e": "-"},
-    {"g": "c", "p": "C원(옴니)", "n": "-", "t": "-", "b": "-", "e": "-"},
+    {"g": "c", "p": "C원(옴니)", "n": "보안요원", "t": "-", "b": "-", "e": "-"},
 
     # 8행: 기숙사
     {"g": "dorm", "p": "기숙사", "n": "요원D1", "t": "-", "b": "-", "e": "-"},
@@ -54,36 +54,41 @@ html_code = f"""
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-    body {{ font-family: sans-serif; margin: 0; padding: 5px; background: #f0f2f5; }}
-    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-bottom: 60px; }}
+    body {{ font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 5px; background: #f8f9fa; }}
+    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-bottom: 20px; }}
     .card {{
-        height: 45px; border-radius: 6px; display: flex; flex-direction: column;
+        height: 46px; border-radius: 6px; display: flex; flex-direction: column;
         align-items: center; justify-content: center; background: white; border: 1px solid #ddd;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer;
     }}
-    /* 센터 구분선 */
-    .card:nth-child(4n-2) {{ border-right: 3px solid #999; }}
+    /* 센터 구분선 강화 */
+    .card:nth-child(4n-2) {{ border-right: 3px solid #666; }}
     
-    .top {{ background: #f8f9fa; color: #333; }}
-    .a {{ background: #e7f5ff; color: #1971c2; }}
-    .b {{ background: #f3f0ff; color: #6f2dbd; }}
-    .c {{ background: #fff4e6; color: #d9480f; }}
-    .dorm {{ background: #ebfbee; color: #2b8a3e; }}
+    .top {{ background: #eee; color: #333; }}
+    .a {{ background: #e7f5ff; color: #1971c2; border-color: #a5d8ff; }}
+    .b {{ background: #f3f0ff; color: #6f2dbd; border-color: #d0bfff; }}
+    .c {{ background: #fff4e6; color: #d9480f; border-color: #ffd8a8; }}
+    .dorm {{ background: #ebfbee; color: #2b8a3e; border-color: #b2f2bb; }}
     
-    .p {{ font-size: 8px; opacity: 0.8; }}
+    .p {{ font-size: 8px; font-weight: bold; margin-bottom: 1px; }}
     .n {{ font-size: 14px; font-weight: bold; }}
 
-    /* 모달 레이어 스타일 */
+    /* 모달 레이어 */
     #modalOverlay {{
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;
+        background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;
     }}
     .modal-content {{
-        background: white; width: 85%; padding: 20px; border-radius: 15px; text-align: center;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        background: white; width: 80%; max-width: 320px; padding: 25px; border-radius: 15px;
+        position: relative; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }}
+    .close-btn {{
+        position: absolute; top: 10px; right: 15px; font-size: 24px; color: #aaa;
+        cursor: pointer; font-weight: bold;
     }}
     .call-btn {{
-        display: block; background: #28a745; color: white; padding: 15px;
-        margin: 15px 0; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 18px;
+        display: block; background: #28a745; color: white; padding: 12px;
+        margin-top: 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;
     }}
 </style>
 </head>
@@ -92,34 +97,32 @@ html_code = f"""
 """
 
 for m in security_data:
-    if m['n'] == "-":
-        html_code += f'<div class="card" style="opacity:0.3; background:#eee;"></div>'
-    else:
-        html_code += f"""
-        <div class="card {m['g']}" onclick="openModal('{m['n']}', '{m['p']}', '{m['t']}', '{m['b']}', '{m['e']}')">
-            <span class="p">{m['p']}</span>
-            <span class="n">{m['n']}</span>
-        </div>
-        """
+    html_code += f"""
+    <div class="card {m['g']}" onclick="openModal('{m['n']}', '{m['p']}', '{m['t']}', '{m['b']}', '{m['e']}')">
+        <span class="p">{m['p']}</span>
+        <span class="n">{m['n']}</span>
+    </div>
+    """
 
 html_code += """
 </div>
 
 <div id="modalOverlay" onclick="closeModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <div id="mName" style="font-size:22px; font-weight:bold;"></div>
-        <div id="mPos" style="color:#666; margin-bottom:10px;"></div>
-        <div style="border-top:1px solid #eee; padding-top:10px; font-size:15px; color:#444;">
-            🎂 생일: <span id="mBirth"></span><br>
-            📅 입사: <span id="mEntry"></span>
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <div id="mName" style="font-size:24px; font-weight:bold; margin-bottom:5px;"></div>
+        <div id="mPos" style="color:#1971c2; font-weight:bold; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;"></div>
+        <div style="font-size:15px; color:#444; line-height:1.6;">
+            🎂 생일: <span id="mBirth" style="font-weight:bold;"></span><br>
+            📅 입사: <span id="mEntry" style="font-weight:bold;"></span>
         </div>
         <a id="mCall" href="" class="call-btn">📞 전화 연결</a>
-        <div style="color:#999; text-decoration:underline;" onclick="closeModal()">닫기</div>
     </div>
 </div>
 
 <script>
     function openModal(n, p, t, b, e) {
+        if(n === '보안요원') return;
         document.getElementById('mName').innerText = n;
         document.getElementById('mPos').innerText = p;
         document.getElementById('mBirth').innerText = b;
@@ -134,4 +137,4 @@ html_code += """
 </body></html>
 """
 
-components.html(html_code, height=850, scrolling=True)
+components.html(html_code, height=900, scrolling=True)
