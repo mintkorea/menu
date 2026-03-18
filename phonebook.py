@@ -6,7 +6,7 @@ import os
 # --- 1. 설정 및 데이터 로드 함수 ---
 st.set_page_config(page_title="보안 통합 관리 시스템", layout="wide")
 
-# 연차 데이터 저장 파일 경로
+# 연차 데이터 저장 파일 경로 (데이터 유실 방지)
 LEAVE_FILE = 'leave_data.csv'
 
 def load_leaves():
@@ -17,7 +17,7 @@ def load_leaves():
 def save_leaves(df):
     df.to_csv(LEAVE_FILE, index=False, encoding='utf-8-sig')
 
-# 28명 전체 명단 (이미지 기반)
+# 28명 전체 명단 (이미지 및 이전 대화 기반)
 CONTACT_DATA = [
     {"조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"조": "공통", "직위": "부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -90,48 +90,56 @@ elif menu == "📝 연차 관리":
     with col1:
         st.write("##### [신청]")
         with st.form("leave_form", clear_on_submit=True):
-            name = st.selectbox("성명", sorted([p['성명'] for p in CONTACT_DATA]))
+            # C조 인원만 선택할 수 있도록 필터링 (필요시 수정 가능)
+            c_members = sorted([p['성명'] for p in CONTACT_DATA if p['조'] == "C조"])
+            name = st.selectbox("성명", c_members)
             date = st.date_input("날짜", datetime.now())
             sub = st.text_input("맞대근자")
             if st.form_submit_button("등록"):
                 new_data = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
                 leaves_df = pd.concat([leaves_df, new_data]).drop_duplicates()
                 save_leaves(leaves_df)
-                st.success("저장되었습니다.")
+                st.success(f"{name}님 연차 등록 완료")
                 st.rerun()
 
     with col2:
         st.write("##### [현황 리스트]")
         if not leaves_df.empty:
-            st.dataframe(leaves_df, use_container_width=True, hide_index=True)
-            if st.button("전체 삭제 (주의)"):
+            st.dataframe(leaves_df.sort_values(by='날짜'), use_container_width=True, hide_index=True)
+            if st.button("전체 삭제"):
                 save_leaves(pd.DataFrame(columns=['날짜', '성명', '대근자']))
                 st.rerun()
         else:
-            st.info("등록된 연차가 없습니다.")
+            st.info("등록된 연차 정보가 없습니다.")
 
 # --- [메뉴 3: C조 근무표] ---
 elif menu == "🗓️ C조 근무표":
-    st.subheader("🗓️ C조 근무표 (3일 주기)")
+    st.subheader("🗓️ C조 근무표 (3일 주기 / 초소형 모드)")
     leaves_df = load_leaves()
-    c_names = ["김태언", "이정석", "이태원"]
+    
+    # 수정된 순서: 이태원, 김태언, 이정석
+    c_names = ["이태원", "김태언", "이정석"]
+    weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
     res = []
     
-    # 요일 설정
-    weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
-    
+    # 3월 1일부터 31일까지 순회
     for day in range(1, 32):
-        target = datetime(2026, 3, day)
         if day % 3 == 0:
-            cycle_idx = (day // 3) - 1
-            idx = (cycle_idx // 2) % 3
-            a, b, c = c_names[idx], c_names[(idx+1)%3], c_names[(idx+2)%3]
-            if cycle_idx % 2 == 1: b, c = c, b
-            
+            target = datetime(2026, 3, day)
             t_str = target.strftime('%Y-%m-%d')
             w_kr = weekday_kr[target.weekday()]
             
-            # 연차 확인
+            # 3일 주기 내 순번 계산 (3월 3일이 첫 번째 근무)
+            cycle_idx = (day // 3) - 1
+            # ABC 연속 2회 근무 규칙
+            idx = (cycle_idx // 2) % 3
+            a, b, c = c_names[idx], c_names[(idx+1)%3], c_names[(idx+2)%3]
+            
+            # B/C 교대 규칙
+            if cycle_idx % 2 == 1:
+                b, c = c, b
+            
+            # 연차 반영
             l_name, s_name = "", ""
             match = leaves_df[leaves_df['날짜'] == t_str]
             if not match.empty:
@@ -149,12 +157,14 @@ elif menu == "🗓️ C조 근무표":
     def style_ultra(val):
         color = ''
         if val == "황재업": color = 'background-color: #D9EAD3'
+        elif val == "이태원": color = 'background-color: #F4CCCC'
         elif val == "김태언": color = 'background-color: #FFF2CC'
         elif val == "이정석": color = 'background-color: #D0E0E3'
-        elif val == "이태원": color = 'background-color: #F4CCCC'
-        return f'{color}; font-size: 8px; text-align: center; padding: 0px;'
+        return f'{color}; font-size: 8px; text-align: center; padding: 1px;'
 
     st.dataframe(
         df_res.style.applymap(style_ultra),
-        use_container_width=True, hide_index=True, height=600
+        use_container_width=True, 
+        hide_index=True, 
+        height=600
     )
