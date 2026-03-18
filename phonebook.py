@@ -1,73 +1,74 @@
 import streamlit as st
 
-st.set_page_config(page_title="보안 비상연락망", layout="wide")
+st.set_page_config(page_title="보안 통합 연락망", layout="wide")
 
-# 1. 통합 데이터 (스케치 및 사진 기반 28인 명단)
-# 데이터를 기반으로 배치
-CONTACT_DATA = [
-    # 지휘부 (첫 줄)
-    {"성명": "유정수", "직위": "반장", "tel": "010-5316-8065"},
-    {"성명": "이규용", "직위": "소장", "tel": "010-8883-6580"},
-    {"성명": "박상현", "직위": "부소장", "tel": "010-3193-4603"},
-    {"성명": "오제준", "직위": "반장", "tel": "010-3352-8933"},
-    # A조 (회관 vs 옴니)
-    {"성명": "배준용", "직위": "조장", "tel": "010-4717-7065"},
-    {"성명": "이명구", "직위": "조원", "tel": "010-8638-5819"},
-    {"성명": "손병휘", "직위": "조장", "tel": "010-9966-2090"},
-    {"성명": "권순호", "직위": "조원", "tel": "010-2539-1799"},
-    # (이하 28명 인원 동일 패턴으로 추가 가능...)
+# 1. 데이터 베이스 (지휘 체계 및 구역별 정렬)
+# 이미지 스케치 순서: 반장/소장/부소장/반장 -> 회관A/옴니A -> 회관B/옴니B ...
+CONTACTS = [
+    {"pos": "반장", "name": "유정수", "tel": "010-5316-8065"},
+    {"pos": "소장", "name": "이규용", "tel": "010-8883-6580"},
+    {"pos": "부소", "name": "박상현", "tel": "010-3193-4603"},
+    {"pos": "반장", "name": "오제준", "tel": "010-3352-8933"},
+    {"pos": "조장", "name": "배준용", "tel": "010-4717-7065"},
+    {"pos": "조원", "name": "이명구", "tel": "010-8638-5819"},
+    {"pos": "조장", "name": "손병휘", "tel": "010-9966-2090"},
+    {"pos": "조원", "name": "권순호", "tel": "010-2539-1799"},
+    # ... 나머지 28명 인원 순차 입력 가능
 ]
 
-# 2. 강제 4열 그리드 CSS 정의
+# 2. 강제 4열 그리드 스타일 (모바일 깨짐 방지 핵심)
 st.markdown("""
     <style>
+    .main-title { font-size: 22px; font-weight: bold; text-align: center; margin-bottom: 15px; }
     .grid-container {
         display: grid;
-        grid-template-columns: repeat(4, 1fr); /* 무조건 4열 고정 */
-        gap: 8px;
-        padding: 10px;
+        grid-template-columns: repeat(4, 1fr); /* 무조건 가로 4칸 */
+        gap: 6px;
+        padding: 5px;
     }
     .grid-item {
-        background-color: #ffffff;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 10px 5px;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 8px 2px;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        cursor: pointer;
         text-decoration: none;
-        color: inherit;
+        color: #333;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 60px;
     }
-    .grid-item:active { background-color: #e9ecef; }
-    .name { font-weight: bold; font-size: 14px; color: #333; display: block; }
-    .pos { font-size: 11px; color: #666; margin-bottom: 5px; display: block; }
-    .call-icon { font-size: 16px; color: #28a745; }
+    .grid-item:active { background: #f8f9fa; border-color: #007bff; }
+    .p-pos { font-size: 10px; color: #007bff; margin-bottom: 2px; }
+    .p-name { font-size: 13px; font-weight: bold; }
+    .area-label { background: #f1f3f5; padding: 5px; font-size: 12px; font-weight: bold; text-align: center; border-radius: 5px; margin: 10px 0; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 화면 구현
-st.subheader("📱 보안팀 비상연락망 (4x7 배치)")
+# 3. 화면 렌더링
+st.markdown('<div class="main-title">📱 보안팀 비상연락망</div>', unsafe_allow_html=True)
 
-# 상단 탭/구역 표시 (스케치 반영)
+# 구역 표시 라벨
 col1, col2 = st.columns(2)
-with col1: st.info("🏢 회관 / 의산연")
-with col2: st.info("🏫 옴니버스")
+with col1: st.markdown('<div class="area-label">🏢 성의회관 / 의산연</div>', unsafe_allow_html=True)
+with col2: st.markdown('<div class="area-label">🏫 옴니버스</div>', unsafe_allow_html=True)
 
-# 4x7 그리드 생성
-grid_html = '<div class="grid-container">'
-for person in CONTACT_DATA:
-    tel_link = f"tel:{person['tel'].replace('-', '')}"
-    grid_html += f'''
-        <a href="{tel_link}" class="grid-item">
-            <span class="pos">{person['직위']}</span>
-            <span class="name">{person['성명']}</span>
-            <span class="call-icon">📞</span>
+# 전체 4x7 그리드 생성 (HTML 방식)
+grid_content = '<div class="grid-container">'
+for person in CONTACTS:
+    link = f"tel:{person['tel'].replace('-', '')}"
+    grid_content += f'''
+        <a href="{link}" class="grid-item">
+            <span class="p-pos">{person['pos']}</span>
+            <span class="p-name">{person['name']}</span>
         </a>
     '''
-grid_html += '</div>'
+grid_content += '</div>'
 
-# HTML 출력
-st.markdown(grid_html, unsafe_allow_html=True)
+# 최종 출력 (코드가 노출되지 않게 한 번에 렌더링)
+st.markdown(grid_content, unsafe_allow_html=True)
 
 st.write("---")
-st.caption("💡 각 카드를 누르면 즉시 전화로 연결됩니다.")
+st.caption("💡 각 이름을 누르면 해당 인원에게 즉시 전화를 겁니다.")
