@@ -4,29 +4,32 @@ import streamlit as st
 if 'current_building' not in st.session_state:
     st.session_state.current_building = "성희회관"
 
-# 성희회관 데이터 (보내주신 사진 기반 일부)
+# 성희회관 데이터 (사진 기반)
 data_sunghee = [
     {"위치": "14층", "성명": "유순복", "연락처": "010-6370-0845", "조": "B조(1직)"},
     {"위치": "13층", "성명": "박태연", "연락처": "010-5682-8927", "조": "B조(1직)"},
     {"위치": "12층", "성명": "기성원", "연락처": "010-2618-9120", "조": "A조(2직)"},
     {"위치": "11층", "성명": "김성순", "연락처": "010-4604-7608", "조": "A조(3직)"},
-    {"위치": "반장", "성명": "허영찬", "연락처": "010-9894-3415", "조": "A조"}
+    {"위치": "10층", "성명": "박현순", "연락처": "010-8714-7703", "조": "B조(1직)"},
+    {"위치": "지원(외곽)", "성명": "김철규", "연락처": "010-6299-0079", "조": "A조(4직)"},
+    {"위치": "반장", "성명": "허영찬", "연락처": "010-9894-3415", "조": "A조 총괄"}
 ]
 
-# 의산연 데이터 (보내주신 사진 기반 일부)
+# 의산연 데이터 (사진 기반)
 data_uisan = [
     {"위치": "8층", "성명": "안순재", "연락처": "010-9119-8879", "조": "A조"},
     {"위치": "7층", "성명": "안순재", "연락처": "010-9119-8880", "조": "A조"},
     {"위치": "6층", "성명": "장 성", "연락처": "010-8938-3988", "조": "B조"},
+    {"위치": "5층", "성명": "조미연", "연락처": "010-2252-2036", "조": "A조"},
     {"위치": "별관 5층", "성명": "이선자", "연락처": "010-8210-7106", "조": "A조"},
-    {"위치": "별관 1,2층", "성명": "정혜숙", "연락처": "010-9130-0652", "조": "B조"}
+    {"위치": "별관 지원", "성명": "이창남", "연락처": "010-3133-0638", "조": "A조 조장"}
 ]
 
 # 2. 모바일 최적화 및 표 스타일 CSS
 st.markdown("""
 <style>
     .block-container { padding: 1rem 0.5rem !important; }
-    /* 네비게이션 버튼 가로 정렬 */
+    /* 네비게이션 버튼 가로 정렬 고정 */
     div[data-testid="stHorizontalBlock"] { display: flex !important; flex-wrap: nowrap !important; gap: 5px !important; }
     div[data-testid="column"] { min-width: 0px !important; flex: 1 !important; }
     
@@ -40,7 +43,7 @@ st.markdown("""
 
 st.title("🚨 보안비상연락망")
 
-# 3. 네비게이션 버튼 (보안 연락망 하부 배치)
+# 3. 네비게이션 버튼
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🏢 성희회관", use_container_width=True):
@@ -49,7 +52,7 @@ with col2:
     if st.button("🔬 의산연", use_container_width=True):
         st.session_state.current_building = "의산연"
 
-# 4. 선택된 건물의 표 렌더링 (핵심 해결책)
+# 4. 선택된 건물의 표 렌더링
 current = st.session_state.current_building
 target_data = data_sunghee if current == "성희회관" else data_uisan
 
@@ -69,11 +72,11 @@ for item in target_data:
         <tr>
             <td><b>{item['위치']}</b></td>
             <td>{item['성명']}</td>
-            <td><a href="tel:{item['연락처']}" class="tel-link">{item['연락처']}</a></td>
+            <td><a href="tel:{item['연락처']}" class="tel-link">{item['連絡처'] if '連絡처' in item else item['연락처']}</a></td>
         </tr>
     """
 
 html_code += "</tbody></table>"
 
-# [중요] unsafe_allow_html=True를 설정해야 표가 정상적으로 보입니다.
+# [핵심] unsafe_allow_html=True를 넣어줘야 표가 그려집니다.
 st.markdown(html_code, unsafe_allow_html=True)
