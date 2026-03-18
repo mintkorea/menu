@@ -3,10 +3,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 
-# --- 1. 설정 및 데이터 로드 함수 ---
+# --- 1. 설정 및 데이터 관리 ---
 st.set_page_config(page_title="보안 통합 관리 시스템", layout="wide")
-
-# 연차 데이터 저장 파일 경로 (데이터 유실 방지)
 LEAVE_FILE = 'leave_data.csv'
 
 def load_leaves():
@@ -17,7 +15,7 @@ def load_leaves():
 def save_leaves(df):
     df.to_csv(LEAVE_FILE, index=False, encoding='utf-8-sig')
 
-# 28명 전체 명단 (이미지 및 이전 대화 기반)
+# 28명 전체 명단
 CONTACT_DATA = [
     {"조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"조": "공통", "직위": "부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -49,26 +47,23 @@ CONTACT_DATA = [
     {"조": "기숙사", "직위": "조원", "성명": "이상헌", "연락처": "010-4285-4231"}
 ]
 
-# --- 2. 메뉴 선택 (사이드바) ---
+# --- 2. 사이드바 메뉴 ---
 menu = st.sidebar.selectbox("메뉴 선택", ["📱 비상연락망", "📝 연차 관리", "🗓️ C조 근무표"])
 
-# --- [메뉴 1: 비상연락망] ---
 if menu == "📱 비상연락망":
-    st.subheader("📱 비상연락망 (클릭 시 전화연결)")
+    st.subheader("📱 비상연락망 (4열 배치)")
     df = pd.DataFrame(CONTACT_DATA)
     sel_group = st.selectbox("조 필터", ["전체", "A조", "B조", "C조", "공통", "기숙사"])
     disp_df = df if sel_group == "전체" else df[df['조'] == sel_group]
     
-    cards_html = ""
-    for _, r in disp_df.iterrows():
-        tel = r['연락처'].replace('-', '')
-        cards_html += f'''
-        <div class="card" onclick="window.location.href='tel:{tel}'">
+    cards_html = "".join([f'''
+        <div class="card" onclick="window.location.href='tel:{r['연락처'].replace('-', '')}'">
             <div class="name">{r['성명']}</div>
             <div class="rank">{r['직위']}</div>
             <div class="phone">{r['연락처'][-4:]}</div>
         </div>
-        '''
+    ''' for _, r in disp_df.iterrows()])
+    
     st.components.v1.html(f"""
     <style>
         .container {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-family: sans-serif; }}
@@ -80,91 +75,78 @@ if menu == "📱 비상연락망":
     <div class="container">{cards_html}</div>
     """, height=600, scrolling=True)
 
-# --- [메뉴 2: 연차 관리] ---
 elif menu == "📝 연차 관리":
-    st.subheader("📝 연차 신청 및 현황")
+    st.subheader("📝 연차 신청 및 저장")
     leaves_df = load_leaves()
+    c_members = sorted([p['성명'] for p in CONTACT_DATA if p['조'] == "C조"])
     
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.write("##### [신청]")
-        with st.form("leave_form", clear_on_submit=True):
-            # C조 인원만 선택할 수 있도록 필터링 (필요시 수정 가능)
-            c_members = sorted([p['성명'] for p in CONTACT_DATA if p['조'] == "C조"])
-            name = st.selectbox("성명", c_members)
-            date = st.date_input("날짜", datetime.now())
-            sub = st.text_input("맞대근자")
-            if st.form_submit_button("등록"):
-                new_data = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
-                leaves_df = pd.concat([leaves_df, new_data]).drop_duplicates()
-                save_leaves(leaves_df)
-                st.success(f"{name}님 연차 등록 완료")
-                st.rerun()
+    with st.form("leave_form", clear_on_submit=True):
+        col1, col2, col3 = st.columns(3)
+        name = col1.selectbox("성명", c_members)
+        date = col2.date_input("날짜", datetime.now())
+        sub = col3.text_input("맞대근자")
+        if st.form_submit_button("등록"):
+            new_data = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
+            leaves_df = pd.concat([leaves_df, new_data]).drop_duplicates()
+            save_leaves(leaves_df)
+            st.success("데이터가 안전하게 저장되었습니다.")
+            st.rerun()
 
-    with col2:
-        st.write("##### [현황 리스트]")
-        if not leaves_df.empty:
-            st.dataframe(leaves_df.sort_values(by='날짜'), use_container_width=True, hide_index=True)
-            if st.button("전체 삭제"):
-                save_leaves(pd.DataFrame(columns=['날짜', '성명', '대근자']))
-                st.rerun()
-        else:
-            st.info("등록된 연차 정보가 없습니다.")
+    st.write("---")
+    st.dataframe(leaves_df.sort_values(by='날짜'), use_container_width=True, hide_index=True)
+    if st.button("전체 데이터 삭제"):
+        save_leaves(pd.DataFrame(columns=['날짜', '성명', '대근자']))
+        st.rerun()
 
-# --- [메뉴 3: C조 근무표] ---
 elif menu == "🗓️ C조 근무표":
-    st.subheader("🗓️ C조 근무표 (3일 주기 / 초소형 모드)")
+    st.subheader("🗓️ C조 근무표 (9일 김태언 시작 기준)")
     leaves_df = load_leaves()
     
-    # 수정된 순서: 이태원, 김태언, 이정석
-    c_names = ["이태원", "김태언", "이정석"]
+    # 설정값: 입사순위(김태언 > 이태원 > 이정석) 및 회관순번
+    staff_rank = {"김태언": 1, "이태원": 2, "이정석": 3}
+    a_rotation = ["김태언", "이정석", "이태원"]
     weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
+    
     res = []
-    
-    # 3월 1일부터 31일까지 순회
-    for day in range(1, 32):
-        if day % 3 == 0:
-            target = datetime(2026, 3, day)
-            t_str = target.strftime('%Y-%m-%d')
-            w_kr = weekday_kr[target.weekday()]
+    # 3월 3일(화)부터 3월 31일(화)까지 3일 주기 근무
+    for day in range(3, 32, 3):
+        target = datetime(2026, 3, day)
+        t_str = target.strftime('%Y-%m-%d')
+        
+        # 3월 9일이 로직의 '3회차' 근무임 (3, 6, 9...)
+        # 회차 인덱스 (0부터 시작)
+        count_idx = (day // 3) - 1
+        
+        # 1. 회관(A) 근무자 결정: 2회씩 연속 근무
+        a_idx = (count_idx // 2) % 3
+        a_worker = a_rotation[a_idx]
+        
+        # 2. 의산연(B, C) 근무자 결정: 나머지 2명 중 선임이 B
+        others = [name for name in staff_rank.keys() if name != a_worker]
+        # 선임 순으로 정렬
+        others_sorted = sorted(others, key=lambda x: staff_rank[x])
+        b_worker, c_worker = others_sorted[0], others_sorted[1]
+        
+        # 3. 교대 규칙: 동일 A 근무자의 2번째 날에는 B/C 교대
+        if count_idx % 2 == 1:
+            b_worker, c_worker = c_worker, b_worker
             
-            # 3일 주기 내 순번 계산 (3월 3일이 첫 번째 근무)
-            cycle_idx = (day // 3) - 1
-            # ABC 연속 2회 근무 규칙
-            idx = (cycle_idx // 2) % 3
-            a, b, c = c_names[idx], c_names[(idx+1)%3], c_names[(idx+2)%3]
+        # 4. 연차 반영
+        l_name = ""
+        match = leaves_df[leaves_df['날짜'] == t_str]
+        if not match.empty:
+            l_name = match.iloc[0]['성명']
+            if l_name == a_worker: pass # 이미 A면 유지
+            elif l_name in [b_worker, c_worker]: a_worker = l_name # 연차자가 A로 이동
             
-            # B/C 교대 규칙
-            if cycle_idx % 2 == 1:
-                b, c = c, b
-            
-            # 연차 반영
-            l_name, s_name = "", ""
-            match = leaves_df[leaves_df['날짜'] == t_str]
-            if not match.empty:
-                l_name = match.iloc[0]['성명']
-                s_name = match.iloc[0]['대근자']
-                if l_name in [a, b, c]: a = l_name
-            
-            res.append({
-                "일자": f"{target.month}/{target.day:02d}({w_kr})",
-                "조장": "황재업", "A(회관)": a, "B(산연)": b, "C(산연)": c, "연차": l_name
-            })
-            
-    df_res = pd.DataFrame(res)
-    
-    def style_ultra(val):
-        color = ''
-        if val == "황재업": color = 'background-color: #D9EAD3'
-        elif val == "이태원": color = 'background-color: #F4CCCC'
-        elif val == "김태언": color = 'background-color: #FFF2CC'
-        elif val == "이정석": color = 'background-color: #D0E0E3'
-        return f'{color}; font-size: 8px; text-align: center; padding: 1px;'
+        res.append({
+            "일자": f"{target.month}/{target.day:02d}({weekday_kr[target.weekday()]})",
+            "조장": "황재업", "A(회관)": a_worker, "B(산연)": b_worker, "C(산연)": c_worker, "연차": l_name
+        })
 
-    st.dataframe(
-        df_res.style.applymap(style_ultra),
-        use_container_width=True, 
-        hide_index=True, 
-        height=600
-    )
+    def style_final(val):
+        colors = {"황재업": "#D9EAD3", "김태언": "#FFF2CC", "이정석": "#D0E0E3", "이태원": "#F4CCCC"}
+        bg = colors.get(val, "")
+        return f'background-color: {bg}; font-size: 8px; text-align: center; padding: 0px;'
+
+    st.dataframe(pd.DataFrame(res).style.applymap(style_final), use_container_width=True, hide_index=True, height=600)
