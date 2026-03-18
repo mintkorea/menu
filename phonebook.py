@@ -3,15 +3,15 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="보안 통합 연락망", layout="wide")
 
-# 명찰 이미지(1773785171515.jpg) 기반 28인 전수 실데이터
+# 명찰 이미지(1773785171515.jpg) 기반 28인 전수 실데이터 적용
 security_data = [
-    # 1행: 지휘부 (수기 도면 배치: 반장-소장-부소장-반장)
+    # 1행: 지휘부
     {"g": "top", "p": "보안반장", "n": "유정수", "t": "010-5316-8065", "b": "1970.09.25", "e": "2020.09.01"},
     {"g": "top", "p": "보안소장", "n": "이규용", "t": "010-8883-6580", "b": "1972.03.01", "e": "-"},
     {"g": "top", "p": "보안부소장", "n": "박상현", "t": "010-3193-4603", "b": "1988.07.31", "e": "-"},
     {"g": "top", "p": "보안반장", "n": "오제준", "t": "010-3352-8933", "b": "1970.03.29", "e": "2022.05.18"},
     
-    # 2~3행: A조 (회관/의산연 vs 옴니버스)
+    # 2~3행: A조
     {"g": "a", "p": "보안조장", "n": "배준용", "t": "010-4717-7065", "b": "1969.12.24", "e": "2022.07.26"},
     {"g": "a", "p": "보안조원", "n": "이명구", "t": "010-8638-5819", "b": "1964.09.15", "e": "2025.03.21"},
     {"g": "a", "p": "보안조장", "n": "손병휘", "t": "010-9966-2090", "b": "1972.05.23", "e": "2016.05.05"},
@@ -54,42 +54,42 @@ html_code = f"""
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-    body {{ font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 10px; background: #f0f2f5; }}
-    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }}
+    body {{ font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 5px; background: #f8f9fa; }}
+    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }}
     .card {{
-        height: 55px; border-radius: 6px; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; background: white; border: 1px solid #c8ced3;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;
+        height: 48px; border-radius: 5px; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; background: white; border: 1px solid #dee2e6;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;
     }}
-    .card:nth-child(4n-2) {{ border-right: 3px solid #343a40; }} /* 센터라인 */
+    .card:nth-child(4n-2) {{ border-right: 3px solid #343a40; }}
     
-    .top {{ background: #e2e3e5; }}
-    .a {{ background: #cfe2ff; }}
-    .b {{ background: #f8d7da; }}
-    .c {{ background: #fff3cd; }}
-    .dorm {{ background: #d1e7dd; }}
+    .top {{ background: #f1f3f5; }}
+    .a {{ background: #e7f5ff; }}
+    .b {{ background: #fff5f5; }}
+    .c {{ background: #fff9db; }}
+    .dorm {{ background: #f3fcf3; }}
     
-    .p {{ font-size: 8px; font-weight: bold; color: #666; }}
-    .n {{ font-size: 14px; font-weight: bold; color: #000; }}
+    .p {{ font-size: 8px; font-weight: bold; color: #868e96; margin-bottom: 1px; }}
+    .n {{ font-size: 13px; font-weight: bold; color: #212529; }}
 
-    /* 모달 UI - 전화버튼 중앙 고정 */
+    /* 초슬림 모달 디자인 - 전화버튼 노출 보장 */
     #modalOverlay {{
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;
+        background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;
     }}
     .modal-content {{
-        background: white; width: 85%; max-width: 280px; padding: 20px; border-radius: 15px;
-        text-align: center; position: relative;
+        background: white; width: 80%; max-width: 260px; padding: 15px; border-radius: 12px;
+        text-align: center; position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     }}
     .close-x {{
-        position: absolute; top: 10px; right: 15px; font-size: 24px; color: #999; cursor: pointer;
+        position: absolute; top: 8px; right: 12px; font-size: 20px; color: #adb5bd; cursor: pointer;
     }}
-    .m-title {{ font-size: 24px; font-weight: bold; margin-bottom: 5px; }}
-    .m-sub {{ color: #007bff; font-weight: bold; margin-bottom: 15px; }}
-    .m-info {{ font-size: 14px; color: #555; line-height: 1.5; }}
+    .m-title {{ font-size: 22px; font-weight: bold; margin-bottom: 2px; }}
+    .m-sub {{ font-size: 14px; color: #1971c2; font-weight: bold; margin-bottom: 10px; }}
+    .m-info {{ font-size: 13px; color: #495057; line-height: 1.4; margin-bottom: 15px; }}
     .call-btn {{
-        display: block; background: #28a745; color: white; padding: 15px;
-        margin-top: 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 18px;
+        display: block; background: #2f9e44; color: white; padding: 12px;
+        border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 17px;
     }}
 </style>
 </head>
@@ -98,9 +98,17 @@ html_code = f"""
 """
 
 for m in security_data:
+    # 직위 앞에 조 이름 추가 (A조 보안조장 등)
+    prefix = ""
+    if m['g'] == 'a': prefix = "A조 "
+    elif m['g'] == 'b': prefix = "B조 "
+    elif m['g'] == 'c': prefix = "C조 "
+    
+    display_p = prefix + m['p']
+    
     html_code += f"""
-    <div class="card {m['g']}" onclick="openModal('{m['n']}', '{m['p']}', '{m['t']}', '{m['b']}', '{m['e']}')">
-        <span class="p">{m['p']}</span>
+    <div class="card {m['g']}" onclick="openModal('{m['n']}', '{display_p}', '{m['t']}', '{m['b']}', '{m['e']}')">
+        <span class="p">{display_p}</span>
         <span class="n">{m['n']}</span>
     </div>
     """
@@ -114,10 +122,10 @@ html_code += """
         <div id="mName" class="m-title"></div>
         <div id="mPos" class="m-sub"></div>
         <div class="m-info">
-            생일: <span id="mBirth"></span><br>
-            입사: <span id="mEntry"></span>
+            🎂 생일: <span id="mBirth"></span><br>
+            📅 입사: <span id="mEntry"></span>
         </div>
-        <a id="mCall" href="" class="call-btn">전화 걸기</a>
+        <a id="mCall" href="" class="call-btn">📞 전화 연결</a>
     </div>
 </div>
 
@@ -138,4 +146,4 @@ html_code += """
 </body></html>
 """
 
-components.html(html_code, height=900)
+components.html(html_code, height=650, scrolling=False)
