@@ -1,48 +1,51 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="보안 통합 연락망", layout="wide")
+st.set_page_config(page_title="보안팀 통합 연락망", layout="wide")
 
-# 데이터 구성 (수기 도면의 좌우 배치 로직 적용)
-# 순서: [왼쪽1, 왼쪽2, 오른쪽1, 오른쪽2] 순으로 한 행이 구성됨
+# [좌1, 좌2, 우1, 우2] 배치를 위한 데이터 구성
 security_data = [
-    # 1행: 지휘부 (반장-소장-부소장-반장 배치)
-    {"group": "top", "pos": "반장(회관)", "name": "유정수", "tel": "010-5316-8065", "birth": "1970.09.25", "entry": "2020.09.01"},
-    {"group": "top", "pos": "소장", "name": "이규용", "tel": "010-8883-6580", "birth": "1972.03.01", "entry": "-"},
-    {"group": "top", "pos": "부소장", "name": "박상현", "tel": "010-3193-4603", "birth": "1988.07.31", "entry": "-"},
-    {"group": "top", "pos": "반장(옴니)", "name": "오제준", "tel": "010-3352-8933", "birth": "-", "entry": "-"},
+    # 1행: 지휘부 (반장-소장-부소장-반장)
+    {"g": "top", "p": "반장(회관)", "n": "유정수", "t": "010-5316-8065", "b": "1970.09.25", "e": "2020.09.01"},
+    {"g": "top", "p": "소장", "n": "이규용", "t": "010-8883-6580", "b": "1972.03.01", "e": "-"},
+    {"g": "top", "p": "부소장", "n": "박상현", "t": "010-3193-4603", "b": "1988.07.31", "e": "-"},
+    {"g": "top", "p": "반장(옴니)", "n": "오제준", "t": "010-3352-8933", "b": "-", "e": "-"},
     
-    # 2~3행: A조 (좌: 회관A / 우: 옴니A)
-    {"group": "a", "pos": "A장(회관)", "name": "배준용", "tel": "010-4717-7065", "birth": "1969.12.24", "entry": "2022.07.26"},
-    {"group": "a", "pos": "A원(회관)", "name": "이명구", "tel": "010-8638-5819", "birth": "1964.09.15", "entry": "2025.03.21"},
-    {"group": "a", "pos": "A장(옴니)", "name": "손병휘", "tel": "010-9966-2090", "birth": "-", "entry": "-"},
-    {"group": "a", "pos": "A원(옴니)", "name": "권순호", "tel": "010-2539-1799", "birth": "-", "entry": "-"},
-    {"group": "a", "pos": "A원(회관)", "name": "김영중", "tel": "010-7726-5963", "birth": "1959.02.26", "entry": "2024.08.21"},
-    {"group": "a", "pos": "A원(회관)", "name": "김삼동", "tel": "010-8081-XXXX", "birth": "-", "entry": "-"},
-    {"group": "a", "pos": "A원(옴니)", "name": "김전식", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "a", "pos": "A원(옴니)", "name": "-", "tel": "-", "birth": "-", "entry": "-"},
+    # 2~3행: A조 (회관 4명 / 옴니 4명)
+    {"g": "a", "p": "A장(회관)", "n": "배준용", "t": "010-4717-7065", "b": "1969.12.24", "e": "2022.07.26"},
+    {"g": "a", "p": "A원(회관)", "n": "이명구", "t": "010-8638-5819", "b": "1964.09.15", "e": "2025.03.21"},
+    {"g": "a", "p": "A장(옴니)", "n": "손병휘", "t": "010-9966-2090", "b": "-", "e": "-"},
+    {"g": "a", "p": "A원(옴니)", "n": "권순호", "t": "010-2539-1799", "b": "-", "e": "-"},
+    {"g": "a", "p": "A원(회관)", "n": "김영중", "t": "010-7726-5963", "b": "1959.02.26", "e": "2024.08.21"},
+    {"g": "a", "p": "A원(회관)", "n": "김삼동", "t": "010-8081-XXXX", "b": "-", "e": "-"},
+    {"g": "a", "p": "A원(옴니)", "n": "김전식", "t": "-", "b": "-", "e": "-"},
+    {"g": "a", "p": "A원(옴니)", "n": "-", "t": "-", "b": "-", "e": "-"},
 
-    # 4~5행: B조 (좌: 회관B / 우: 옴니B)
-    {"group": "b", "pos": "B장(회관)", "name": "심규천", "tel": "010-8287-9895", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B원(회관)", "name": "임종현", "tel": "010-7741-6732", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B장(옴니)", "name": "황일범", "tel": "010-8929-4294", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B원(옴니)", "name": "이상길", "tel": "010-9904-0247", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B원(회관)", "name": "요원1", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B원(회관)", "name": "요원2", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B원(옴니)", "name": "요원3", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "b", "pos": "B원(옴니)", "name": "-", "tel": "-", "birth": "-", "entry": "-"},
+    # 4~5행: B조 (회관 4명 / 옴니 4명)
+    {"g": "b", "p": "B장(회관)", "n": "심규천", "t": "010-8287-9895", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(회관)", "n": "임종현", "t": "010-7741-6732", "b": "-", "e": "-"},
+    {"g": "b", "p": "B장(옴니)", "n": "황일범", "t": "010-8929-4294", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(옴니)", "n": "이상길", "t": "010-9904-0247", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(회관)", "n": "요원B1", "t": "-", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(회관)", "n": "요원B2", "t": "-", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(옴니)", "n": "요원B3", "t": "-", "b": "-", "e": "-"},
+    {"g": "b", "p": "B원(옴니)", "n": "-", "t": "-", "b": "-", "e": "-"},
 
-    # 6행: C조 (좌: 회관C / 우: 옴니C)
-    {"group": "c", "pos": "C장(회관)", "name": "김태언", "tel": "-", "birth": "-", "entry": "1순위"},
-    {"group": "c", "pos": "C원(회관)", "name": "이태원", "tel": "-", "birth": "-", "entry": "2순위"},
-    {"group": "c", "pos": "C원(옴니)", "name": "이정석", "tel": "-", "birth": "-", "entry": "3순위"},
-    {"group": "c", "pos": "C원(옴니)", "name": "-", "tel": "-", "birth": "-", "entry": "-"},
+    # 6~7행: C조 (회관 4명 / 옴니 4명)
+    {"g": "c", "p": "C장(회관)", "n": "김태언", "t": "-", "b": "-", "e": "1순위"},
+    {"g": "c", "p": "C원(회관)", "n": "이태원", "t": "-", "b": "-", "e": "2순위"},
+    {"g": "c", "p": "C원(옴니)", "n": "이정석", "t": "-", "b": "-", "e": "3순위"},
+    {"g": "c", "p": "C원(옴니)", "n": "요원C1", "t": "-", "b": "-", "e": "-"},
+    {"g": "c", "p": "C원(회관)", "n": "요원C2", "t": "-", "b": "-", "e": "-"},
+    {"g": "c", "p": "C원(회관)", "n": "요원C3", "t": "-", "b": "-", "e": "-"},
+    {"g": "c", "p": "C원(옴니)", "n": "요원C4", "t": "-", "b": "-", "e": "-"},
+    {"g": "c", "p": "C원(옴니)", "n": "-", "t": "-", "b": "-", "e": "-"},
 
-    # 7행: 기숙사
-    {"group": "dorm", "pos": "기숙사", "name": "요원A", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "dorm", "pos": "기숙사", "name": "요원B", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "dorm", "pos": "기숙사", "name": "요원C", "tel": "-", "birth": "-", "entry": "-"},
-    {"group": "dorm", "pos": "기숙사", "name": "요원D", "tel": "-", "birth": "-", "entry": "-"},
+    # 8행: 기숙사
+    {"g": "dorm", "p": "기숙사", "n": "요원D1", "t": "-", "b": "-", "e": "-"},
+    {"g": "dorm", "p": "기숙사", "n": "요원D2", "t": "-", "b": "-", "e": "-"},
+    {"g": "dorm", "p": "기숙사", "n": "요원D3", "t": "-", "b": "-", "e": "-"},
+    {"g": "dorm", "p": "기숙사", "n": "요원D4", "t": "-", "b": "-", "e": "-"},
 ]
 
 html_code = f"""
@@ -51,65 +54,84 @@ html_code = f"""
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-    body {{ font-family: sans-serif; margin: 0; padding: 5px; }}
-    .main-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-bottom: 60px; }}
-    .node {{
-        height: 42px; border-radius: 5px; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; border: 1px solid #ddd;
+    body {{ font-family: sans-serif; margin: 0; padding: 5px; background: #f0f2f5; }}
+    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding-bottom: 60px; }}
+    .card {{
+        height: 45px; border-radius: 6px; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; background: white; border: 1px solid #ddd;
     }}
-    /* 구역 구분선 (가운데 세로선 효과) */
-    .node:nth-child(4n-2) {{ border-right: 2px solid #aaa; }} 
+    /* 센터 구분선 */
+    .card:nth-child(4n-2) {{ border-right: 3px solid #999; }}
     
-    .top {{ background-color: #f1f3f5; color: #333; }}
-    .a   {{ background-color: #e7f5ff; color: #007bff; }}
-    .b   {{ background-color: #f3f0ff; color: #845ef7; }}
-    .c   {{ background-color: #fff4e6; color: #fd7e14; }}
-    .dorm {{ background-color: #ebfbee; color: #2b8a3e; }}
+    .top {{ background: #f8f9fa; color: #333; }}
+    .a {{ background: #e7f5ff; color: #1971c2; }}
+    .b {{ background: #f3f0ff; color: #6f2dbd; }}
+    .c {{ background: #fff4e6; color: #d9480f; }}
+    .dorm {{ background: #ebfbee; color: #2b8a3e; }}
     
-    .pos {{ font-size: 8px; opacity: 0.7; }}
-    .name {{ font-size: 13px; font-weight: bold; }}
+    .p {{ font-size: 8px; opacity: 0.8; }}
+    .n {{ font-size: 14px; font-weight: bold; }}
 
-    .info-panel {{
-        grid-column: span 4; display: none; background: #fff; border: 2px solid #28a745;
-        border-radius: 10px; padding: 10px; margin: 5px 0; text-align: center;
+    /* 모달 레이어 스타일 */
+    #modalOverlay {{
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;
     }}
-    .footer-bar {{
-        position: fixed; bottom: 0; left: 0; width: 100%; background: #eee;
-        display: flex; height: 50px; border-top: 1px solid #ccc;
+    .modal-content {{
+        background: white; width: 85%; padding: 20px; border-radius: 15px; text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }}
-    .footer-item {{ flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; border-right: 1px solid #ddd; }}
+    .call-btn {{
+        display: block; background: #28a745; color: white; padding: 15px;
+        margin: 15px 0; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 18px;
+    }}
 </style>
 </head>
 <body>
-<div class="main-grid">
+<div class="grid">
 """
 
-for i, m in enumerate(security_data):
-    html_code += f"""
-    <div class="node {m['group']}" onclick="show('p{i//4}', '{m['name']}', '{m['pos']}', '{m['tel']}', '{m['birth']}', '{m['entry']}')">
-        <span class="pos">{m['pos']}</span>
-        <span class="name">{m['name']}</span>
-    </div>
-    """
-    if (i + 1) % 4 == 0:
-        html_code += f'<div id="p{i//4}" class="info-panel"></div>'
+for m in security_data:
+    if m['n'] == "-":
+        html_code += f'<div class="card" style="opacity:0.3; background:#eee;"></div>'
+    else:
+        html_code += f"""
+        <div class="card {m['g']}" onclick="openModal('{m['n']}', '{m['p']}', '{m['t']}', '{m['b']}', '{m['e']}')">
+            <span class="p">{m['p']}</span>
+            <span class="n">{m['n']}</span>
+        </div>
+        """
 
 html_code += """
 </div>
-<div class="footer-bar">
-    <div class="footer-item">회관</div><div class="footer-item">의산연</div>
-    <div class="footer-item">옴니</div><div class="footer-item">기숙사</div>
+
+<div id="modalOverlay" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div id="mName" style="font-size:22px; font-weight:bold;"></div>
+        <div id="mPos" style="color:#666; margin-bottom:10px;"></div>
+        <div style="border-top:1px solid #eee; padding-top:10px; font-size:15px; color:#444;">
+            🎂 생일: <span id="mBirth"></span><br>
+            📅 입사: <span id="mEntry"></span>
+        </div>
+        <a id="mCall" href="" class="call-btn">📞 전화 연결</a>
+        <div style="color:#999; text-decoration:underline;" onclick="closeModal()">닫기</div>
+    </div>
 </div>
+
 <script>
-    function show(id, n, p, t, b, e) {
-        const el = document.getElementById(id);
-        if(n === '-') return;
-        el.innerHTML = `<b>${n}</b> (${p})<br>🎂 ${b} | 📅 ${e}<br>
-                        <a href="tel:${t}" style="display:block; background:#28a745; color:#fff; padding:8px; margin-top:5px; border-radius:5px; text-decoration:none;">📞 전화걸기</a>`;
-        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    function openModal(n, p, t, b, e) {
+        document.getElementById('mName').innerText = n;
+        document.getElementById('mPos').innerText = p;
+        document.getElementById('mBirth').innerText = b;
+        document.getElementById('mEntry').innerText = e;
+        document.getElementById('mCall').href = "tel:" + t.replace(/-/g,'');
+        document.getElementById('modalOverlay').style.display = 'flex';
+    }
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
     }
 </script>
 </body></html>
 """
 
-components.html(html_code, height=900, scrolling=True)
+components.html(html_code, height=850, scrolling=True)
