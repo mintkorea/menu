@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="보안 통합 연락망", layout="wide")
 
-# 명찰 이미지 기반 28인 실데이터
+# 명찰 이미지 기반 28인 실데이터 (공석 포함)
 security_data = [
     {"g": "top", "p": "보안반장", "n": "유정수", "t": "010-5316-8065", "b": "1970.09.25", "e": "2020.09.01"},
     {"g": "top", "p": "보안소장", "n": "이규용", "t": "010-8883-6580", "b": "1972.03.01", "e": "-"},
@@ -48,10 +48,13 @@ html_code = f"""
     body {{ font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 5px; background: #ffffff; }}
     .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }}
     .card {{
-        height: 42px; border-radius: 4px; display: flex; flex-direction: column;
+        height: 40px; border-radius: 4px; display: flex; flex-direction: column;
         align-items: center; justify-content: center; background: white; border: 1px solid #eeeeee;
         box-shadow: 0 1px 1px rgba(0,0,0,0.05); cursor: pointer;
     }}
+    /* 공석 카드 투명 처리 */
+    .empty {{ visibility: hidden; pointer-events: none; border: none; background: transparent; box-shadow: none; }}
+    
     .card:nth-child(4n-2) {{ border-right: 2px solid #444444; }}
     
     .top {{ background: #f8f9fa; }}
@@ -63,28 +66,25 @@ html_code = f"""
     .p {{ font-size: 7px; font-weight: bold; color: #888888; margin-bottom: 1px; }}
     .n {{ font-size: 13px; font-weight: bold; color: #333333; }}
 
-    /* 투명도가 높은 화이트 레이어 */
     #modalOverlay {{
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(255, 255, 255, 0.2); /* 투명도 0.2로 대폭 상향 */
-        backdrop-filter: blur(1px);
+        background: rgba(255, 255, 255, 0.25); 
+        backdrop-filter: blur(1.5px);
         z-index: 9999; justify-content: center; align-items: center;
     }}
     .modal-content {{
-        background: white; width: 85%; max-width: 240px; padding: 12px; border-radius: 12px;
+        background: white; width: 85%; max-width: 240px; padding: 15px; border-radius: 12px;
         text-align: center; position: relative; border: 1px solid #dddddd;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }}
-    .close-x {{
-        position: absolute; top: 5px; right: 10px; font-size: 18px; color: #cccccc; cursor: pointer;
-    }}
+    .close-x {{ position: absolute; top: 5px; right: 10px; font-size: 20px; color: #cccccc; cursor: pointer; }}
     .m-title {{ font-size: 20px; font-weight: bold; margin-bottom: 2px; color: #000; }}
-    .m-sub {{ font-size: 13px; color: #1c7ed6; font-weight: bold; margin-bottom: 6px; }}
-    .m-info {{ font-size: 12px; color: #444444; line-height: 1.4; margin-bottom: 12px; }}
-    .m-tel {{ font-size: 15px; font-weight: bold; color: #d9480f; margin-bottom: 12px; display: block; }}
+    .m-sub {{ font-size: 13px; color: #1c7ed6; font-weight: bold; margin-bottom: 8px; }}
+    .m-info {{ font-size: 12px; color: #666666; line-height: 1.4; margin-bottom: 10px; }}
+    .m-tel {{ font-size: 16px; font-weight: bold; color: #e8590c; margin-bottom: 15px; display: block; }}
     .call-btn {{
-        display: block; background: #40c057; color: white; padding: 10px;
-        border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+        display: block; background: #40c057; color: white; padding: 12px;
+        border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 17px;
     }}
 </style>
 </head>
@@ -93,6 +93,7 @@ html_code = f"""
 """
 
 for m in security_data:
+    is_empty = "empty" if m['n'] == "공석" else ""
     prefix = ""
     if m['g'] == 'a': prefix = "A조 "
     elif m['g'] == 'b': prefix = "B조 "
@@ -100,44 +101,4 @@ for m in security_data:
     display_p = prefix + m['p']
     
     html_code += f"""
-    <div class="card {m['g']}" onclick="openModal('{m['n']}', '{display_p}', '{m['t']}', '{m['b']}', '{m['e']}')">
-        <span class="p">{display_p}</span>
-        <span class="n">{m['n']}</span>
-    </div>
-    """
-
-html_code += """
-</div>
-
-<div id="modalOverlay" onclick="closeModal()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <span class="close-x" onclick="closeModal()">&times;</span>
-        <div id="mName" class="m-title"></div>
-        <div id="mPos" class="m-sub"></div>
-        <div class="m-info">
-            생일: <span id="mBirth"></span> | 입사: <span id="mEntry"></span>
-        </div>
-        <div id="mTelDisplay" class="m-tel"></div>
-        <a id="mCall" href="" class="call-btn">📞 바로 전화걸기</a>
-    </div>
-</div>
-
-<script>
-    function openModal(n, p, t, b, e) {
-        if(n === '공석') return;
-        document.getElementById('mName').innerText = n;
-        document.getElementById('mPos').innerText = p;
-        document.getElementById('mBirth').innerText = b;
-        document.getElementById('mEntry').innerText = e;
-        document.getElementById('mTelDisplay').innerText = t; // 전화번호 텍스트 표출
-        document.getElementById('mCall').href = "tel:" + t;
-        document.getElementById('modalOverlay').style.display = 'flex';
-    }
-    function closeModal() {
-        document.getElementById('modalOverlay').style.display = 'none';
-    }
-</script>
-</body></html>
-"""
-
-components.html(html_code, height=550, scrolling=False)
+    <div class="card {m['g']} {is_empty}" onclick="openModal
