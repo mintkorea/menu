@@ -134,3 +134,4 @@ with tab4:
                     .applymap(lambda x: 'font-size: 9px; text-align: center;', subset=["일자", "연차", "맞대근"]),
         use_container_width=True, height=600
     )
+
