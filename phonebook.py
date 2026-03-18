@@ -3,49 +3,49 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="보안 통합 연락망", layout="wide")
 
-# [회관1, 회관2, 옴니1, 옴니2] 배치 로직
+# 명찰 이미지(1773785171515.jpg) 기반 28인 전수 실데이터
 security_data = [
-    # 1행: 지휘부 (도면대로 반장-소장-부소장-반장)
-    {"g": "top", "p": "반장(회관)", "n": "유정수", "t": "010-5316-8065", "b": "1970.09.25", "e": "2020.09.01"},
-    {"g": "top", "p": "소장", "n": "이규용", "t": "010-8883-6580", "b": "1972.03.01", "e": "-"},
-    {"g": "top", "p": "부소장", "n": "박상현", "t": "010-3193-4603", "b": "1988.07.31", "e": "-"},
-    {"g": "top", "p": "반장(옴니)", "n": "오제준", "t": "010-3352-8933", "b": "-", "e": "-"},
+    # 1행: 지휘부 (수기 도면 배치: 반장-소장-부소장-반장)
+    {"g": "top", "p": "보안반장", "n": "유정수", "t": "010-5316-8065", "b": "1970.09.25", "e": "2020.09.01"},
+    {"g": "top", "p": "보안소장", "n": "이규용", "t": "010-8883-6580", "b": "1972.03.01", "e": "-"},
+    {"g": "top", "p": "보안부소장", "n": "박상현", "t": "010-3193-4603", "b": "1988.07.31", "e": "-"},
+    {"g": "top", "p": "보안반장", "n": "오제준", "t": "010-3352-8933", "b": "1970.03.29", "e": "2022.05.18"},
     
-    # 2~3행: A조 (조장 우선 배치)
-    {"g": "a", "p": "A조장(회관)", "n": "배준용", "t": "010-4717-7065", "b": "1969.12.24", "e": "2022.07.26"},
-    {"g": "a", "p": "A원(회관)", "n": "이명구", "t": "010-8638-5819", "b": "1964.09.15", "e": "2025.03.21"},
-    {"g": "a", "p": "A조장(옴니)", "n": "손병휘", "t": "010-9966-2090", "b": "-", "e": "-"},
-    {"g": "a", "p": "A원(옴니)", "n": "권순호", "t": "010-2539-1799", "b": "-", "e": "-"},
-    {"g": "a", "p": "A원(회관)", "n": "김영중", "t": "010-7726-5963", "b": "1959.02.26", "e": "2024.08.21"},
-    {"g": "a", "p": "A원(회관)", "n": "김삼동", "t": "010-8081-XXXX", "b": "-", "e": "-"},
-    {"g": "a", "p": "A원(옴니)", "n": "김전식", "t": "-", "b": "-", "e": "-"},
-    {"g": "a", "p": "A원(옴니)", "n": "보안요원", "t": "-", "b": "-", "e": "-"},
+    # 2~3행: A조 (회관/의산연 vs 옴니버스)
+    {"g": "a", "p": "보안조장", "n": "배준용", "t": "010-4717-7065", "b": "1969.12.24", "e": "2022.07.26"},
+    {"g": "a", "p": "보안조원", "n": "이명구", "t": "010-8638-5819", "b": "1964.09.15", "e": "2025.03.21"},
+    {"g": "a", "p": "보안조장", "n": "손병휘", "t": "010-9966-2090", "b": "1972.05.23", "e": "2016.05.05"},
+    {"g": "a", "p": "보안조원", "n": "권순호", "t": "010-2539-1799", "b": "1980.12.14", "e": "2026.02.11"},
+    {"g": "a", "p": "보안조원", "n": "김영중", "t": "010-7726-5963", "b": "1959.02.26", "e": "2024.08.21"},
+    {"g": "a", "p": "보안조원", "n": "김삼동", "t": "010-2345-8081", "b": "1967.02.01", "e": "2025.05.02"},
+    {"g": "a", "p": "보안조원", "n": "김전식", "t": "010-3277-0808", "b": "1966.07.23", "e": "2025.02.10"},
+    {"g": "a", "p": "보안요원", "n": "공석", "t": "", "b": "-", "e": "-"},
 
-    # 4~5행: B조 (조장 우선 배치)
-    {"g": "b", "p": "B조장(회관)", "n": "심규천", "t": "010-8287-9895", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(회관)", "n": "임종현", "t": "010-7741-6732", "b": "-", "e": "-"},
-    {"g": "b", "p": "B조장(옴니)", "n": "황일범", "t": "010-8929-4294", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(옴니)", "n": "이상길", "t": "010-9904-0247", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(회관)", "n": "요원B1", "t": "-", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(회관)", "n": "요원B2", "t": "-", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(옴니)", "n": "요원B3", "t": "-", "b": "-", "e": "-"},
-    {"g": "b", "p": "B원(옴니)", "n": "보안요원", "t": "-", "b": "-", "e": "-"},
+    # 4~5행: B조
+    {"g": "b", "p": "보안조장", "n": "심규천", "t": "010-8287-9895", "b": "1967.04.10", "e": "2024.11.11"},
+    {"g": "b", "p": "보안조원", "n": "임종현", "t": "010-7741-6732", "b": "1968.01.18", "e": "2021.08.10"},
+    {"g": "b", "p": "보안조장", "n": "황일범", "t": "010-8929-4294", "b": "1969.05.30", "e": "2022.04.01"},
+    {"g": "b", "p": "보안조원", "n": "이상길", "t": "010-9904-0247", "b": "1978.07.13", "e": "2024.09.11"},
+    {"g": "b", "p": "보안조원", "n": "권영국", "t": "010-4085-9982", "b": "1969.07.20", "e": "2025.01.21"},
+    {"g": "b", "p": "보안조원", "n": "전준수", "t": "010-5687-7107", "b": "1971.07.17", "e": "2025.04.03"},
+    {"g": "b", "p": "보안조원", "n": "허용", "t": "010-8845-0163", "b": "1968.08.01", "e": "2026.01.16"},
+    {"g": "b", "p": "보안요원", "n": "공석", "t": "", "b": "-", "e": "-"},
 
-    # 6~7행: C조 (조장 우선 배치)
-    {"g": "c", "p": "C조장(회관)", "n": "김태언", "t": "-", "b": "-", "e": "1순위"},
-    {"g": "c", "p": "C원(회관)", "n": "이태원", "t": "-", "b": "-", "e": "2순위"},
-    {"g": "c", "p": "C조장(옴니)", "n": "이정석", "t": "-", "b": "-", "e": "3순위"},
-    {"g": "c", "p": "C원(옴니)", "n": "요원C1", "t": "-", "b": "-", "e": "-"},
-    {"g": "c", "p": "C원(회관)", "n": "요원C2", "t": "-", "b": "-", "e": "-"},
-    {"g": "c", "p": "C원(회관)", "n": "요원C3", "t": "-", "b": "-", "e": "-"},
-    {"g": "c", "p": "C원(옴니)", "n": "요원C4", "t": "-", "b": "-", "e": "-"},
-    {"g": "c", "p": "C원(옴니)", "n": "보안요원", "t": "-", "b": "-", "e": "-"},
+    # 6~7행: C조
+    {"g": "c", "p": "보안조장", "n": "황재업", "t": "010-9278-6622", "b": "1980.03.12", "e": "2023.05.26"},
+    {"g": "c", "p": "보안조원", "n": "이태원", "t": "010-9265-7881", "b": "1963.11.23", "e": "2025.04.01"},
+    {"g": "c", "p": "보안조장", "n": "피재영", "t": "010-9359-2569", "b": "1972.08.07", "e": "2022.04.19"},
+    {"g": "c", "p": "보안조원", "n": "남형민", "t": "010-8767-7073", "b": "1977.11.24", "e": "2018.02.27"},
+    {"g": "c", "p": "보안조원", "n": "김태언", "t": "010-5386-5386", "b": "1971.03.04", "e": "2024.10.12"},
+    {"g": "c", "p": "보안조원", "n": "이정석", "t": "010-2417-1173", "b": "1972.09.01", "e": "2025.07.21"},
+    {"g": "c", "p": "보안조원", "n": "강경훈", "t": "010-3436-6107", "b": "1981.05.04", "e": "2024.11.29"},
+    {"g": "c", "p": "보안요원", "n": "공석", "t": "", "b": "-", "e": "-"},
 
     # 8행: 기숙사
-    {"g": "dorm", "p": "기숙사", "n": "요원D1", "t": "-", "b": "-", "e": "-"},
-    {"g": "dorm", "p": "기숙사", "n": "요원D2", "t": "-", "b": "-", "e": "-"},
-    {"g": "dorm", "p": "기숙사", "n": "요원D3", "t": "-", "b": "-", "e": "-"},
-    {"g": "dorm", "p": "기숙사", "n": "요원D4", "t": "-", "b": "-", "e": "-"},
+    {"g": "dorm", "p": "보안반장", "n": "이강택", "t": "010-9048-6708", "b": "1965.08.13", "e": "2023.08.03"},
+    {"g": "dorm", "p": "보안조원", "n": "유시균", "t": "010-8737-5770", "b": "1962.02.21", "e": "2008.10.15"},
+    {"g": "dorm", "p": "보안조원", "n": "이상헌", "t": "010-4285-4231", "b": "1965.10.09", "e": "2022.04.01"},
+    {"g": "dorm", "p": "보안요원", "n": "공석", "t": "", "b": "-", "e": "-"},
 ]
 
 html_code = f"""
@@ -54,42 +54,43 @@ html_code = f"""
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-    body {{ font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 10px; background: #f4f7f9; }}
-    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 30px; }}
+    body {{ font-family: 'Malgun Gothic', sans-serif; margin: 0; padding: 10px; background: #f0f2f5; }}
+    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }}
     .card {{
-        height: 50px; border-radius: 8px; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; background: white; border: 1px solid #ced4da;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer;
+        height: 55px; border-radius: 6px; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; background: white; border: 1px solid #c8ced3;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;
     }}
-    /* 센터 라인 강조 */
-    .card:nth-child(4n-2) {{ border-right: 3px solid #495057; }}
+    .card:nth-child(4n-2) {{ border-right: 3px solid #343a40; }} /* 센터라인 */
     
-    .top {{ background: #e9ecef; color: #212529; }}
-    .a {{ background: #e7f5ff; color: #1971c2; border-color: #a5d8ff; }}
-    .b {{ background: #f3f0ff; color: #6f2dbd; border-color: #d0bfff; }}
-    .c {{ background: #fff4e6; color: #d9480f; border-color: #ffd8a8; }}
-    .dorm {{ background: #ebfbee; color: #2b8a3e; border-color: #b2f2bb; }}
+    .top {{ background: #e2e3e5; }}
+    .a {{ background: #cfe2ff; }}
+    .b {{ background: #f8d7da; }}
+    .c {{ background: #fff3cd; }}
+    .dorm {{ background: #d1e7dd; }}
     
-    .p {{ font-size: 8px; font-weight: bold; margin-bottom: 2px; }}
-    .n {{ font-size: 14px; font-weight: bold; }}
+    .p {{ font-size: 8px; font-weight: bold; color: #666; }}
+    .n {{ font-size: 14px; font-weight: bold; color: #000; }}
 
-    /* 모달 레이어 정중앙 배치 */
+    /* 모달 UI - 전화버튼 중앙 고정 */
     #modalOverlay {{
         display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;
+        background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;
     }}
     .modal-content {{
-        background: white; width: 85%; max-width: 300px; padding: 20px; border-radius: 20px;
-        position: relative; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        background: white; width: 85%; max-width: 280px; padding: 20px; border-radius: 15px;
+        text-align: center; position: relative;
     }}
-    .close-icon {{
-        position: absolute; top: 12px; right: 18px; font-size: 26px; color: #adb5bd; cursor: pointer;
+    .close-x {{
+        position: absolute; top: 10px; right: 15px; font-size: 24px; color: #999; cursor: pointer;
     }}
+    .m-title {{ font-size: 24px; font-weight: bold; margin-bottom: 5px; }}
+    .m-sub {{ color: #007bff; font-weight: bold; margin-bottom: 15px; }}
+    .m-info {{ font-size: 14px; color: #555; line-height: 1.5; }}
     .call-btn {{
-        display: block; background: #2b8a3e; color: white; padding: 14px;
-        margin: 20px 0 10px 0; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 18px;
+        display: block; background: #28a745; color: white; padding: 15px;
+        margin-top: 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 18px;
     }}
-    .sub-info {{ font-size: 14px; color: #495057; line-height: 1.6; margin-top: 10px; }}
 </style>
 </head>
 <body>
@@ -109,26 +110,25 @@ html_code += """
 
 <div id="modalOverlay" onclick="closeModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <span class="close-icon" onclick="closeModal()">&times;</span>
-        <div id="mName" style="font-size:26px; font-weight:bold; color:#212529;"></div>
-        <div id="mPos" style="font-size:16px; color:#1971c2; font-weight:bold; margin-bottom:15px;"></div>
-        <div class="sub-info">
-            🎂 생일: <span id="mBirth"></span><br>
-            📅 입사: <span id="mEntry"></span>
+        <span class="close-x" onclick="closeModal()">&times;</span>
+        <div id="mName" class="m-title"></div>
+        <div id="mPos" class="m-sub"></div>
+        <div class="m-info">
+            생일: <span id="mBirth"></span><br>
+            입사: <span id="mEntry"></span>
         </div>
-        <a id="mCall" href="" class="call-btn">📞 전화 연결</a>
-        <div style="color:#adb5bd; font-size:12px; margin-top:5px;" onclick="closeModal()">터치하여 닫기</div>
+        <a id="mCall" href="" class="call-btn">전화 걸기</a>
     </div>
 </div>
 
 <script>
     function openModal(n, p, t, b, e) {
-        if(n === '보안요원') return;
+        if(n === '공석') return;
         document.getElementById('mName').innerText = n;
         document.getElementById('mPos').innerText = p;
         document.getElementById('mBirth').innerText = b;
         document.getElementById('mEntry').innerText = e;
-        document.getElementById('mCall').href = "tel:" + t.replace(/-/g,'');
+        document.getElementById('mCall').href = "tel:" + t;
         document.getElementById('modalOverlay').style.display = 'flex';
     }
     function closeModal() {
@@ -138,4 +138,4 @@ html_code += """
 </body></html>
 """
 
-components.html(html_code, height=850, scrolling=False)
+components.html(html_code, height=900)
