@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -16,7 +15,7 @@ def load_leaves():
 def save_leaves(df):
     df.to_csv(LEAVE_FILE, index=False, encoding='utf-8-sig')
 
-# 28명 전체 명단
+# 28명 전체 명단 데이터
 CONTACT_DATA = [
     {"조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
     {"조": "공통", "직위": "부소장", "성명": "박상현", "연락처": "010-3193-4603"},
@@ -52,9 +51,9 @@ CONTACT_DATA = [
 menu = st.sidebar.selectbox("메뉴 선택", ["📱 비상연락망", "📝 연차 관리", "🗓️ C조 근무표"])
 
 if menu == "📱 비상연락망":
-    st.subheader("📱 비상연락망 (4열 배치)")
+    st.subheader("📱 비상연락망")
     df = pd.DataFrame(CONTACT_DATA)
-    sel_group = st.selectbox("조 필터", ["전체", "A조", "B조", "C조", "공통", "기숙사"])
+    sel_group = st.sidebar.selectbox("조 필터", ["전체", "A조", "B조", "C조", "공통", "기숙사"])
     disp_df = df if sel_group == "전체" else df[df['조'] == sel_group]
     
     cards_html = "".join([f'''
@@ -77,7 +76,7 @@ if menu == "📱 비상연락망":
     """, height=600, scrolling=True)
 
 elif menu == "📝 연차 관리":
-    st.subheader("📝 연차 신청 및 저장")
+    st.subheader("📝 연차 신청 및 관리")
     leaves_df = load_leaves()
     c_members = sorted([p['성명'] for p in CONTACT_DATA if p['조'] == "C조"])
     
@@ -90,64 +89,67 @@ elif menu == "📝 연차 관리":
             new_data = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
             leaves_df = pd.concat([leaves_df, new_data]).drop_duplicates()
             save_leaves(leaves_df)
-            st.success("데이터가 안전하게 저장되었습니다.")
+            st.success("연차 정보가 저장되었습니다.")
             st.rerun()
-
-    st.write("---")
-    st.dataframe(leaves_df.sort_values(by='날짜'), use_container_width=True, hide_index=True)
-    if st.button("전체 데이터 삭제"):
-        save_leaves(pd.DataFrame(columns=['날짜', '성명', '대근자']))
-        st.rerun()
+    st.dataframe(leaves_df.sort_values(by='날짜', ascending=False), use_container_width=True, hide_index=True)
 
 elif menu == "🗓️ C조 근무표":
-    st.subheader("🗓️ C조 근무표 (9일 김태언 시작 기준)")
+    st.subheader("🗓️ C조 근무표 (1개월 조회)")
     leaves_df = load_leaves()
     
-    # 설정값: 입사순위(김태언 > 이태원 > 이정석) 및 회관순번
+    # --- 날짜 선택 로직 ---
+    today = datetime.now().date()
+    start_date = st.sidebar.date_input("조회 시작 날짜", today)
+    end_date = start_date + timedelta(days=30)
+    st.sidebar.info(f"조회 기간: {start_date} ~ {end_date}")
+
+    # 로직 설정: 선임순 및 회관순번
     staff_rank = {"김태언": 1, "이태원": 2, "이정석": 3}
-    a_rotation = ["김태언", "이정석", "이태원"]
+    a_rotation = ["이태원", "김태언", "이정석"]
     weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
     
+    # 기준점: 3월 3일(화)이 로직의 0번째 근무(이태원 A)
+    base_date = datetime(2026, 3, 3).date()
+    
     res = []
-    # 3월 3일(화)부터 3월 31일(화)까지 3일 주기 근무
-    for day in range(3, 32, 3):
-        target = datetime(2026, 3, day)
-        t_str = target.strftime('%Y-%m-%d')
-        
-        # 3월 9일이 로직의 '3회차' 근무임 (3, 6, 9...)
-        # 회차 인덱스 (0부터 시작)
-        count_idx = (day // 3) - 1
-        
-        # 1. 회관(A) 근무자 결정: 2회씩 연속 근무
-        a_idx = (count_idx // 2) % 3
-        a_worker = a_rotation[a_idx]
-        
-        # 2. 의산연(B, C) 근무자 결정: 나머지 2명 중 선임이 B
-        others = [name for name in staff_rank.keys() if name != a_worker]
-        # 선임 순으로 정렬
-        others_sorted = sorted(others, key=lambda x: staff_rank[x])
-        b_worker, c_worker = others_sorted[0], others_sorted[1]
-        
-        # 3. 교대 규칙: 동일 A 근무자의 2번째 날에는 B/C 교대
-        if count_idx % 2 == 1:
-            b_worker, c_worker = c_worker, b_worker
+    # 선택한 시작 날짜부터 30일간 계산
+    current = start_date
+    while current <= end_date:
+        # 3일 주기 근무일인지 확인 (3/3 기준 3일마다)
+        days_diff = (current - base_date).days
+        if days_diff >= 0 and days_diff % 3 == 0:
+            count_idx = days_diff // 3
             
-        # 4. 연차 반영
-        l_name = ""
-        match = leaves_df[leaves_df['날짜'] == t_str]
-        if not match.empty:
-            l_name = match.iloc[0]['성명']
-            if l_name == a_worker: pass # 이미 A면 유지
-            elif l_name in [b_worker, c_worker]: a_worker = l_name # 연차자가 A로 이동
+            # 1. 회관(A) 결정: 2회 연속 교대
+            a_worker = a_rotation[(count_idx // 2) % 3]
             
-        res.append({
-            "일자": f"{target.month}/{target.day:02d}({weekday_kr[target.weekday()]})",
-            "조장": "황재업", "A(회관)": a_worker, "B(산연)": b_worker, "C(산연)": c_worker, "연차": l_name
-        })
+            # 2. 의산연(B, C) 결정: 나머지 중 선임이 B
+            others = sorted([n for n in staff_rank.keys() if n != a_worker], key=lambda x: staff_rank[x])
+            b_worker, c_worker = others[0], others[1]
+            
+            # 3. 교대: 연속 근무 2일차(짝수 인덱스일 때의 다음인 홀수 인덱스)에 B/C 교대
+            if count_idx % 2 == 1:
+                b_worker, c_worker = c_worker, b_worker
+                
+            # 4. 연차 반영
+            t_str = current.strftime('%Y-%m-%d')
+            l_name = ""
+            match = leaves_df[leaves_df['날짜'] == t_str]
+            if not match.empty:
+                l_name = match.iloc[0]['성명']
+                if l_name in [b_worker, c_worker]: a_worker = l_name
+            
+            res.append({
+                "일자": f"{current.month}/{current.day:02d}({weekday_kr[current.weekday()]})",
+                "조장": "황재업", "A(회관)": a_worker, "B(산연)": b_worker, "C(산연)": c_worker, "연차": l_name
+            })
+        current += timedelta(days=1)
 
     def style_final(val):
         colors = {"황재업": "#D9EAD3", "김태언": "#FFF2CC", "이정석": "#D0E0E3", "이태원": "#F4CCCC"}
-        bg = colors.get(val, "")
-        return f'background-color: {bg}; font-size: 8px; text-align: center; padding: 0px;'
+        return f'background-color: {colors.get(val, "")}; font-size: 8px; text-align: center; padding: 0px;'
 
-    st.dataframe(pd.DataFrame(res).style.applymap(style_final), use_container_width=True, hide_index=True, height=600)
+    if res:
+        st.dataframe(pd.DataFrame(res).style.applymap(style_final), use_container_width=True, hide_index=True, height=650)
+    else:
+        st.warning("선택한 기간 내에 해당하는 근무일이 없습니다.")
