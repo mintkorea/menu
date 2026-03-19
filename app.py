@@ -87,7 +87,7 @@ st.markdown(f"""
     /* 카드 높이 고정 및 레이아웃 */
     .menu-card {{
         border: 2px solid {sel_c}; border-top: 5px solid {sel_c}; border-radius: 0 0 20px 20px;
-        height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+        height: 240px; display: flex; flex-direction: column; justify-content: center; align-items: center;
         padding: 20px; background: white; margin-top: -1px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); text-align: center;
     }}
     .main-menu {{ font-size: 21px; font-weight: 900; color: #111; line-height: 1.4; margin-bottom: 15px; word-break: keep-all; }}
