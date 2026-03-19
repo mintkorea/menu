@@ -18,143 +18,113 @@ def load_data(url):
         for _, r in df.iterrows():
             d = str(r['date']).strip()
             m = str(r['meal_type']).strip()
-            result.setdefault(d, {})[m] = {
-                "menu": str(r['menu']),
-                "side": str(r['side'])
-            }
+            result.setdefault(d, {})[m] = {"menu": str(r['menu']), "side": str(r['side'])}
         return result
     except: return {}
 
 URL = "https://docs.google.com/spreadsheets/d/1l07s4rubmeB5ld8oJayYrstL34UPKtxQwYptIocgKV0/export?format=csv"
 data = load_data(URL)
 
-# 3. 상태 관리 (URL 파라미터 기반)
-params = st.query_params
-today = get_now().date()
-
-try:
-    d = datetime.strptime(params.get("d", str(today)), "%Y-%m-%d").date()
-except:
-    d = today
-
-# 기본 식사 자동 선택 로직 (시간대별)
-def get_default_meal():
-    t = get_now().time()
-    if t < time(9, 0): return "조식"
-    if t < time(14, 0): return "중식"
-    if t < time(19, 20): return "석식"
-    return "중식"
-
-selected = params.get("meal", get_default_meal())
+# 3. 세션 상태 관리 (★ 새 창 방지의 핵심: st.session_state 사용)
+now_dt = get_now()
+if 'd' not in st.session_state: st.session_state.d = now_dt.date()
+if 'meal' not in st.session_state:
+    t = now_dt.time()
+    if t < time(9, 0): st.session_state.meal = "조식"
+    elif t < time(14, 0): st.session_state.meal = "중식"
+    elif t < time(19, 20): st.session_state.meal = "석식"
+    else: st.session_state.meal = "중식"
 
 # 4. 근무조 계산
-def get_shift(d):
+def get_shift(target_d):
     anchor = datetime(2026, 3, 13).date()
-    arr = [
-        {"n": "A조", "bg": "#FF9800"},
-        {"n": "B조", "bg": "#E91E63"},
-        {"n": "C조", "bg": "#2196F3"}
-    ]
-    return arr[(d - anchor).days % 3]
+    arr = [{"n":"A조","bg":"#FF9800"}, {"n":"B조","bg":"#E91E63"}, {"n":"C조","bg":"#2196F3"}]
+    return arr[(target_d - anchor).days % 3]
 
-s = get_shift(d)
+# 5. CSS 스타일 (모바일 가로 배열 강제 및 버튼 색상 커스텀)
 colors = {"조식": "#E95444", "간편식": "#F1A33B", "중식": "#8BC34A", "석식": "#4A90E2", "야식": "#673AB7"}
-sel_c = colors.get(selected, "#8BC34A")
+sel_c = colors.get(st.session_state.meal, "#8BC34A")
 
-# 5. 스타일 정의 (디자인 업그레이드)
+# 탭 버튼 색상 동적 생성
+tab_css = ""
+for i, (m, c) in enumerate(colors.items()):
+    is_active = (st.session_state.meal == m)
+    tab_css += f"""
+        div[data-testid="column"]:nth-of-type({i+1}) button {{
+            background-color: {c if is_active else "#f0f2f6"} !important;
+            color: {"white" if is_active else "#666"} !important;
+            border: 1px solid {c if is_active else "#D1D9E6"} !important;
+            border-radius: 12px 12px 0 0 !important;
+            height: 48px !important;
+            font-weight: 800 !important;
+            opacity: {1 if is_active else 0.4} !important;
+        }}
+    """
+
 st.markdown(f"""
 <style>
     .block-container {{ max-width: 480px; padding: 1rem 0.5rem; }}
     header {{ visibility: hidden; }}
+    
+    /* [모바일 가로 고정] */
+    div[data-testid="column"] {{ min-width: 0px !important; flex: 1 1 0% !important; }}
+    div[data-testid="stHorizontalBlock"] {{ display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: flex-end !important; }}
 
-    /* 날짜 박스 */
-    .date-box {{
+    {tab_css}
+
+    .date-box {{ 
         text-align: center; background: #F4F7FF; padding: 18px; 
         border-radius: 15px; font-weight: 800; font-size: 19px; 
         border: 1px solid #D6DCEC; color: #1E3A5F;
     }}
-    
-    /* 네비게이션 */
-    .nav {{ display: flex; margin: 12px 0; background: white; border-radius: 10px; border: 1px solid #EEE; }}
-    .nav a {{ 
-        flex: 1; text-align: center; padding: 10px; text-decoration: none; 
-        font-weight: 700; color: #555; font-size: 14px;
-    }}
-    .nav a:hover {{ background: #F8F9FA; }}
-
-    /* 인덱스 탭 스타일 */
-    .tab-wrap {{ 
-        display: flex; justify-content: space-between; 
-        margin-top: 20px; gap: 2px;
-    }}
-    .tab {{ 
-        flex: 1; text-align: center; padding: 12px 0; font-size: 13px; 
-        font-weight: 800; color: white; text-decoration: none; 
-        opacity: 0.3; border-radius: 10px 10px 0 0; 
-        transition: all 0.2s ease;
-    }}
-    .tab.active {{ 
-        opacity: 1; transform: translateY(-2px); /* 활성화 시 위로 살짝 올라옴 */
-        box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
-    }}
-
-    /* 메뉴 카드 (탭과 결합) */
     .card {{ 
-        border-radius: 0 0 20px 20px; padding: 40px 20px; 
-        margin-top: -1px; text-align: center; background: white; 
-        border: 2px solid {sel_c}; border-top: 5px solid {sel_c};
-        box-shadow: 0 12px 25px rgba(0,0,0,0.08);
-        word-break: keep-all;
-    }}
-    .menu-title {{ font-size: 24px; font-weight: 900; color: #111; line-height: 1.4; }}
-    .menu-sub {{ margin-top: 18px; color: #555; line-height: 1.7; font-size: 15px; }}
-
-    /* 상태 메시지 */
-    .status-box {{
-        text-align: center; margin-top: 20px; padding: 12px;
-        background: #F8F9FA; border-radius: 12px; font-size: 13px;
-        font-weight: 700; color: #666; border: 1px solid #EEE;
+        border-radius: 0 0 20px 20px; padding: 40px 20px; margin-top: -1px; 
+        text-align: center; background: white; border: 2px solid {sel_c}; border-top: 5px solid {sel_c};
+        box-shadow: 0 12px 25px rgba(0,0,0,0.08); word-break: keep-all;
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# 6. UI 렌더링
+# 6. UI: 날짜 정보
+curr_d = st.session_state.d
+s = get_shift(curr_d)
+
 st.markdown(f"""
 <div class="date-box">
-    {d.strftime("%Y.%m.%d")}
+    {curr_d.strftime("%Y.%m.%d")}
     <span style="background:{s['bg']}; color:white; padding:3px 10px; border-radius:12px; font-size:12px; margin-left:5px;">
         {s['n']}
     </span>
 </div>
-<div class="nav">
-    <a href="?d={(d-timedelta(1)).strftime('%Y-%m-%d')}&meal={selected}">◀ 이전</a>
-    <a href="?d={today}&meal={selected}">오늘</a>
-    <a href="?d={(d+timedelta(1)).strftime('%Y-%m-%d')}&meal={selected}">다음 ▶</a>
-</div>
 """, unsafe_allow_html=True)
 
-# 7. 탭 메뉴 생성
-tabs_html = '<div class="tab-wrap">'
-for m, c in colors.items():
-    active_class = "active" if m == selected else ""
-    tabs_html += f'<a href="?d={d}&meal={m}" class="tab {active_class}" style="background:{c}">{m}</a>'
-tabs_html += '</div>'
-st.markdown(tabs_html, unsafe_allow_html=True)
+# 날짜 네비게이션 (버튼 클릭 시 리런)
+c1, c2, c3 = st.columns(3)
+if c1.button("◀ 이전", use_container_width=True): 
+    st.session_state.d -= timedelta(1); st.rerun()
+if c2.button("오늘", use_container_width=True): 
+    st.session_state.d = now_dt.date(); st.rerun()
+if c3.button("다음 ▶", use_container_width=True): 
+    st.session_state.d += timedelta(1); st.rerun()
+
+# 7. 식단 인덱스 탭 (★ 버튼 방식 - 새 창 절대 안 뜸)
+st.write("") 
+t_cols = st.columns(len(colors))
+for i, m in enumerate(colors.keys()):
+    if t_cols[i].button(m, use_container_width=True, key=f"btn_{m}"):
+        st.session_state.meal = m
+        st.rerun()
 
 # 8. 메뉴 카드 출력
-meal_info = data.get(d.strftime("%Y-%m-%d"), {}).get(selected, {
-    "menu": "정보 없음",
-    "side": "식단 정보가 등록되지 않았습니다."
+meal_info = data.get(curr_d.strftime("%Y-%m-%d"), {}).get(st.session_state.meal, {
+    "menu": "정보 없음", "side": "등록된 식단이 없습니다."
 })
 
 st.markdown(f"""
 <div class="card">
-    <div style="font-size: 13px; font-weight: bold; color: {sel_c}; margin-bottom: 10px;">{selected}</div>
-    <div class="menu-title">{meal_info['menu']}</div>
+    <div style="font-size: 13px; font-weight: bold; color: {sel_c}; margin-bottom: 10px;">{st.session_state.meal}</div>
+    <div style="font-size: 23px; font-weight: 900; color: #111; line-height: 1.4;">{meal_info['menu']}</div>
     <div style="width:40%; height:1.5px; background:#F0F0F0; margin:15px auto;"></div>
-    <div class="menu-sub">{meal_info['side']}</div>
+    <div style="color: #555; font-size: 15px; line-height: 1.7;">{meal_info['side']}</div>
 </div>
 """, unsafe_allow_html=True)
-
-# 9. 실시간 상태 메시지 (추가)
-st.markdown(f'<div class="status-box">💡 즐거운 식사 시간 되세요!</div>', unsafe_allow_html=True)
