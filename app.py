@@ -1,95 +1,151 @@
 import streamlit as st
-from datetime import datetime
+import pandas as pd
+from datetime import datetime, timedelta, time
+from zoneinfo import ZoneInfo
 
-# 1. 데이터 업데이트의 편의성을 위해 딕셔너리 구조로 데이터화
-# 나중에는 이 부분을 Google Sheets나 JSON 파일로 대체하면 편리합니다.
-menu_data = {
-    "2026-03-16(월)": {
-        "조식": ["두유스프", "단호박에그마요샌드", "맛살마요범벅", "오리엔탈샐러드"],
-        "간편식": ["정보 없음"],
-        "중식": ["차돌해물짬뽕밥", "김말이튀김", "그린샐러드", "매실주스"],
-        "석식": ["어항가지돈육덮밥", "사골파국", "감자채햄볶음", "망고샐러드"],
-        "야식": ["날치알볶음밥", "후랑크소시지", "연근조림", "요구르트"]
-    },
-    "2026-03-17(화)": {
-        "조식": ["제철미나리쭈꾸미연포탕", "매운두부찜", "모둠장아찌", "누룽지"],
-        "간편식": ["고로케양배추샌드위치", "삶은계란", "플레인요거트"],
-        "중식": ["버섯불고기", "우엉채레몬튀김", "수수기장밥", "얼큰어묵탕", "수정과"],
-        "석식": ["양배추멘치카츠", "가쓰오장국", "시저드레싱샐러드", "열무김치"],
-        "야식": ["소고기미역죽", "돈육장조림", "블루베리요플레"]
-    },
-    "2026-03-18(수)": {
-        "조식": ["감자수제비", "돈채가지볶음", "양념고추지", "깍두기"],
-        "간편식": ["닭가슴살샐러드", "바나나"],
-        "중식": ["뼈없는닭볶음탕", "혼합잡곡밥", "유부겨자냉채", "복분자주스"],
-        "석식": ["하이디라오마라탕", "탕수육", "짜사이무침", "열무김치"],
-        "야식": ["돈사태떡찜", "유채된장국", "멸치볶음", "요구르트"]
-    }
+# 1. 기본 설정
+KST = ZoneInfo("Asia/Seoul")
+def get_now(): return datetime.now(KST)
+
+st.set_page_config(page_title="성의교정 식단 가이드", page_icon="🍴", layout="centered")
+
+# 데이터 로딩
+@st.cache_data(ttl=600)
+def load_meal_data(url):
+    df = pd.read_csv(url)
+    structured = {}
+    for _, row in df.iterrows():
+        d = str(row['date']).strip()
+        m = str(row['meal_type']).strip()
+        structured.setdefault(d, {})[m] = {
+            "menu": row['menu'],
+            "side": row['side']
+        }
+    return structured
+
+def get_work_shift(target_date):
+    anchor = datetime(2026, 3, 13).date()
+    shifts = [{"n": "A조", "bg": "#FF9800"}, {"n": "B조", "bg": "#E91E63"}, {"n": "C조", "bg": "#2196F3"}]
+    return shifts[(target_date - anchor).days % 3]
+
+CSV_URL = "https://docs.google.com/spreadsheets/d/1l07s4rubmeB5ld8oJayYrstL34UPKtxQwYptIocgKV0/export?format=csv"
+meal_data = load_meal_data(CSV_URL)
+
+now = get_now()
+curr_date = now.date()
+
+# 상태
+params = st.query_params
+d = datetime.strptime(params.get("d", str(curr_date)), "%Y-%m-%d").date()
+selected_meal = params.get("meal", "중식")
+
+# 스타일
+st.markdown("""
+<style>
+.block-container { max-width: 500px !important; padding: 1rem; }
+
+/* 탭 */
+.tab-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding: 8px 4px;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    color: white;
+    opacity: 0.4;
+}
+.tab-item.active {
+    opacity: 1;
+    transform: scale(1.05);
 }
 
-# 2. 현재 시간 기반 초기값 설정 (로직)
-now = datetime.now()
-curr_date_str = "2026-03-17(화)" # 테스트용 (실제로는 now.strftime 활용)
-curr_hour = now.hour
+/* 카드 */
+.menu-card {
+    border-radius: 20px;
+    padding: 25px 15px;
+    text-align: center;
+    background: white;
+    border: 3px solid var(--c);
+    margin-top: 10px;
+}
 
-if curr_hour < 9: initial_meal = "조식"
-elif 9 <= curr_hour < 11: initial_meal = "간편식"
-elif 11 <= curr_hour < 14: initial_meal = "중식"
-elif 14 <= curr_hour < 19: initial_meal = "석식"
-else: initial_meal = "야식"
-
-# 3. 사이드바 및 레이아웃 설정
-st.set_page_config(page_title="스마트 식단 카드", layout="centered")
-
-# CSS를 활용해 카드 형태의 가독성 극대화
-st.markdown("""
-    <style>
-    .meal-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #e1e4e8;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 10px;
-    }
-    .main-menu { color: #d32f2f; font-weight: bold; font-size: 1.2em; }
-    .side-menu { color: #555555; font-size: 0.9em; }
-    .badge { background-color: #ff4b4b; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7em; }
-    </style>
+/* 네비 */
+.nav-bar {
+    display: flex;
+    margin: 10px 0;
+}
+.nav-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    text-decoration: none;
+    color: #1E3A5F;
+    font-weight: bold;
+}
+</style>
 """, unsafe_allow_html=True)
 
-st.title("🍱 Daily Menu Card")
+# 색상
+color_theme = {
+    "조식": "#E95444",
+    "간편식": "#F1A33B",
+    "중식": "#8BC34A",
+    "석식": "#4A90E2",
+    "야식": "#673AB7"
+}
 
-# 상단 인터페이스: 날짜와 식사 시간 선택
-col1, col2 = st.columns([1, 1])
-with col1:
-    selected_date = st.selectbox("📅 날짜 선택", list(menu_data.keys()), index=1)
-with col2:
-    selected_meal = st.radio("⏰ 식사 구분", ["조식", "간편식", "중식", "석식", "야식"], 
-                             index=["조식", "간편식", "중식", "석식", "야식"].index(initial_meal), 
-                             horizontal=True)
+# 날짜 표시
+shift = get_work_shift(d)
 
-st.divider()
-
-# 4. 카드 렌더링 (선택된 식단이 무조건 가장 위에 노출됨)
-meal_list = ["조식", "간편식", "중식", "석식", "야식"]
-
-# 선택된 메뉴 먼저 출력 (가장 큰 카드)
-target_menu = menu_data[selected_date].get(selected_meal, ["정보가 없습니다."])
 st.markdown(f"""
-    <div class="meal-card" style="border-left: 8px solid #ff4b4b;">
-        <span class="badge">NOW SELECT</span>
-        <h3>{selected_meal}</h3>
-        <p class="main-menu">🍲 {target_menu[0]}</p>
-        <p class="side-menu">{', '.join(target_menu[1:])}</p>
-    </div>
+<div style="text-align:center; font-size:20px; font-weight:800;">
+{d} <span style="background:{shift['bg']}; color:white; padding:2px 8px; border-radius:10px;">
+{shift['n']}
+</span>
+</div>
 """, unsafe_allow_html=True)
 
-# 나머지 메뉴들을 아래에 배치
-st.subheader("나머지 식단")
-for meal in meal_list:
-    if meal != selected_meal:
-        other_menu = menu_data[selected_date].get(meal, ["정보가 없습니다."])
-        with st.expander(f"{meal} 식단 확인"):
-            st.markdown(f"**{other_menu[0]}**")
-            st.caption(", ".join(other_menu[1:]))
+# 날짜 이동
+st.markdown(f"""
+<div class="nav-bar">
+<a href="?d={(d-timedelta(1)).strftime('%Y-%m-%d')}&meal={selected_meal}" class="nav-btn">◀</a>
+<a href="?d={curr_date}&meal={selected_meal}" class="nav-btn">오늘</a>
+<a href="?d={(d+timedelta(1)).strftime('%Y-%m-%d')}&meal={selected_meal}" class="nav-btn">▶</a>
+</div>
+""", unsafe_allow_html=True)
+
+# ✅ 탭 (핵심)
+tabs_html = '<div class="tab-bar">'
+for m, c in color_theme.items():
+    active = "active" if m == selected_meal else ""
+    tabs_html += f"""
+    <a href="?d={d}&meal={m}" class="tab-item {active}" style="background:{c}">
+        {m}
+    </a>
+    """
+tabs_html += "</div>"
+
+st.markdown(tabs_html, unsafe_allow_html=True)
+
+# 데이터 표시
+date_key = d.strftime("%Y-%m-%d")
+meal = meal_data.get(date_key, {}).get(selected_meal, {"menu": "없음", "side": ""})
+c = color_theme[selected_meal]
+
+st.markdown(f"""
+<div class="menu-card" style="--c:{c}">
+    <div style="font-size:24px; font-weight:800;">{meal['menu']}</div>
+    <div style="margin-top:10px; color:#555;">{meal['side']}</div>
+</div>
+""", unsafe_allow_html=True)
