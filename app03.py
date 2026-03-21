@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
+import tempfile
+
+# ✅ reportlab (PDF)
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-import tempfile
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 # -----------------------------
 # 1. 기본 설정
@@ -18,7 +22,7 @@ SHEET_ID = "1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0"
 SHEET_NAME = "Sheet1"
 
 # -----------------------------
-# 3. 데이터 로드 (수정 완료 버전)
+# 3. 데이터 로드
 # -----------------------------
 @st.cache_data(ttl=60)
 def load_data():
@@ -79,7 +83,7 @@ if "fav" not in st.session_state:
     st.session_state.fav = set()
 
 # -----------------------------
-# 7. 스타일 (모바일 + PDF 느낌)
+# 7. 스타일
 # -----------------------------
 st.markdown("""
 <style>
@@ -133,27 +137,46 @@ for i, row in filtered_df.iterrows():
                 st.session_state.fav.add(i)
 
 # -----------------------------
-# 9. PDF 생성
+# 9. PDF 생성 (한글 완벽 지원)
 # -----------------------------
 st.divider()
 st.markdown("### 📄 PDF 다운로드")
 
 if st.button("📄 PDF 생성"):
+
+    try:
+        # ✅ 폰트 등록 (파일명 맞춰주세요)
+        pdfmetrics.registerFont(TTFont('KoreanFont', 'NanumGothic.ttf'))
+    except:
+        st.error("❌ 폰트 파일(NanumGothic.ttf)을 앱 폴더에 넣어주세요")
+        st.stop()
+
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
 
     doc = SimpleDocTemplate(tmp.name)
     styles = getSampleStyleSheet()
 
+    # ✅ 폰트 적용
+    styles["Normal"].fontName = 'KoreanFont'
+    styles["Normal"].fontSize = 10
+
     content = []
 
-    for _, row in filtered_df.iterrows():
-        text = f"""
-        {row['이름']} ({row['직급']})<br/>
-        {row['부서']} | {row['업무']}<br/>
-        {row['전화']} / {row['휴대폰']}
-        """
-        content.append(Paragraph(text, styles["Normal"]))
-        content.append(Spacer(1, 10))
+    # 👉 부서별 정렬 (가독성 향상)
+    groups = filtered_df.groupby("부서")
+
+    for dept, group in groups:
+        content.append(Paragraph(f"<b>{dept}</b>", styles["Normal"]))
+        content.append(Spacer(1, 6))
+
+        for _, row in group.iterrows():
+            text = f"""
+            {row['이름']} ({row['직급']})<br/>
+            {row['업무']}<br/>
+            {row['전화']} / {row['휴대폰']}
+            """
+            content.append(Paragraph(text, styles["Normal"]))
+            content.append(Spacer(1, 10))
 
     doc.build(content)
 
@@ -165,7 +188,7 @@ if st.button("📄 PDF 생성"):
         )
 
 # -----------------------------
-# 10. 새로고침 버튼 (중요)
+# 10. 새로고침
 # -----------------------------
 st.divider()
 
