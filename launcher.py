@@ -9,9 +9,9 @@ APPS = [
         "color": "#1E3A5F"
     },
     {
-        "title": "💻 대관/입주 관리 (PC)",
+        "title": "💻 대관 관리 (PC)",
         "url": "https://rental-2q7nwue9hmapek9nuir6vh.streamlit.app/",
-        "desc": "엑셀 다운로드 및 상세 행정 관리",
+        "desc": "엑셀 다운로드 및 상세 조회",
         "color": "#1E3A5F"
     },
     {
