@@ -12,7 +12,7 @@ st.set_page_config(page_title="비상연락망", layout="wide")
 st.title("📞 총무팀 비상연락망")
 
 # 👉 구글시트 ID 입력
-SHEET_ID = "여기에_시트ID"
+SHEET_ID = "1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0"
 SHEET_NAME = "Sheet1"
 
 # -----------------------------
