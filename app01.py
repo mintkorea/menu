@@ -20,7 +20,7 @@ SHEET_NAME = "Sheet1"
 # -----------------------------
 @st.cache_data(ttl=60)
 def load_data():
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
+    url = f"https://docs.google.com/spreadsheets/d/1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0/edit?usp=sharing"
     df = pd.read_csv(url)
     return df
 
