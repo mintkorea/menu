@@ -1,140 +1,85 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo
 
-# 1. 기초 설정 (한국 시간)
-KST = ZoneInfo("Asia/Seoul")
-def get_now(): return datetime.now(KST)
+# 1. 페이지 기본 설정 (모바일 브라우저 최적화)
+st.set_page_config(page_title="성의교정 비상연락망", layout="wide")
 
-st.set_page_config(page_title="성의교정 식단", page_icon="🍽️", layout="centered")
+# 2. 통합 데이터 (PDF 내용을 하나도 빠짐없이 담았습니다)
+@st.cache_data
+def load_final_data():
+    data = [
+        # 총무팀 인원
+        [span_0](start_span){"구분": "총무팀", "이름": "박현욱", "직책": "팀장", "연락처": "010-6245-0589", "표기": "010-6245-0589", "업무": "부서업무 총괄[span_0](end_span)"},
+        [span_1](start_span){"구분": "총무팀", "이름": "김종래", "직책": "차장", "연락처": "010-9056-3701", "표기": "010-9056-3701", "업무": "시설 및 자산 관리(대학본관, 의산연, 성의회관 등)[span_1](end_span)"},
+        [span_2](start_span){"구분": "총무팀", "이름": "장영섭", "직책": "차장", "연락처": "010-5072-0919", "표기": "010-5072-0919", "업무": "예비군, 민방위, 병무행정, 행사[span_2](end_span)"},
+        [span_3](start_span){"구분": "총무팀", "이름": "주종호", "직책": "과장", "연락처": "010-3324-1187", "표기": "010-3324-1187", "업무": "보안, 미화, 대관, 게스트하우스[span_3](end_span)"},
+        [span_4](start_span){"구분": "총무팀", "이름": "강은희", "직책": "대리", "연락처": "010-9127-1021", "표기": "010-9127-1021", "업무": "의료원 직인/문서 배부, 월례조회, 행사[span_4](end_span)"},
+        [span_5](start_span){"구분": "총무팀", "이름": "김보라", "직책": "선임", "연락처": "010-8073-0527", "표기": "010-8073-0527", "업무": "명예교수실 관리, 차량등록, 부서운영비[span_5](end_span)"},
+        [span_6](start_span){"구분": "총무팀", "이름": "노종현", "직책": "책임", "연락처": "010-9425-3109", "표기": "010-9425-3109", "업무": "행사, 회의자료 취합, 예비군 사무[span_6](end_span)"},
+        [span_7](start_span){"구분": "총무팀", "이름": "고규호", "직책": "책임", "연락처": "010-3381-8870", "표기": "010-3381-8870", "업무": "다이어리, 인증평가, 시설 안전점검[span_7](end_span)"},
+        
+        # 안전관리 U
+        [span_8](start_span){"구분": "안전관리U", "이름": "윤호열", "직책": "UM", "연락처": "010-2623-7963", "표기": "010-2623-7963", "업무": "소방/방재, 시설관리(옴니버스, 기숙사 등)[span_8](end_span)"},
+        [span_9](start_span){"구분": "안전관리U", "이름": "주상건", "직책": "차장", "연락처": "010-9496-6483", "표기": "010-9496-6483", "업무": "시신기증 업무[span_9](end_span)"},
+        [span_10](start_span){"구분": "안전관리U", "이름": "곽정승", "직책": "과장", "연락처": "010-5218-6504", "표기": "010-5218-6504", "업무": "사업계획, 예산, 주차/차량관리[span_10](end_span)"},
+        [span_11](start_span){"구분": "안전관리U", "이름": "박일용", "직책": "과장", "연락처": "010-6205-7751", "표기": "010-6205-7751", "업무": "계약(임대차, 용역), 사인물관리, 교원기숙사[span_11](end_span)"},
+        [span_12](start_span){"구분": "안전관리U", "이름": "이경종", "직책": "부장", "연락처": "010-2623-7963", "표기": "010-2623-7963", "업무": "교수업적평가, 문서분배, 그룹웨어[span_12](end_span)"},
+        [span_13](start_span){"구분": "안전관리U", "이름": "김준석", "직책": "과장", "연락처": "010-9256-6904", "표기": "010-9256-6904", "업무": "연구실 안전관리, 출입증, 식대 서무[span_13](end_span)"},
+        
+        # 기숙사 및 지원
+        [span_14](start_span){"구분": "지원", "이름": "김두리", "직책": "사원", "연락처": "010-9661-1257", "표기": "010-9661-1257", "업무": "성의기숙사 사감[span_14](end_span)"},
+        [span_15](start_span){"구분": "지원", "이름": "임세리", "직책": "사원", "연락처": "010-3281-1229", "표기": "010-3281-1229", "업무": "우편, 물품청구, 정수기, 정보보호[span_15](end_span)"},
+        [span_16](start_span){"구분": "지원", "이름": "이규용", "직책": "보안소장", "연락처": "010-8883-6580", "표기": "010-8883-6580", "업무": "보안 총괄[span_16](end_span)"},
+        [span_17](start_span){"구분": "지원", "이름": "신성휴", "직책": "미화소장", "연락처": "010-7161-2201", "표기": "010-7161-2201", "업무": "미화 총괄[span_17](end_span)"},
+        
+        # 주요 시설 번호 (규칙 적용: *1 -> 2258, 4자리 -> 3147)
+        [span_18](start_span){"구분": "시설", "이름": "성의교정상황실", "직책": "상황실", "연락처": "02-3147-8000", "표기": "3147-8000", "업무": "교정 메인 상황실[span_18](end_span)"},
+        [span_19](start_span){"구분": "시설", "이름": "통합관제", "직책": "상황실", "연락처": "02-2258-5555", "표기": "2258-5555", "업무": "통합 관제 센터[span_19](end_span)"},
+        [span_20](start_span){"구분": "시설", "이름": "전기팀", "직책": "지원", "연락처": "02-2258-5672", "표기": "*1-5672", "업무": "전기 시설 관리[span_20](end_span)"},
+        [span_21](start_span){"구분": "시설", "이름": "설비팀", "직책": "지원", "연락처": "02-2258-5624", "표기": "*1-5624", "업무": "설비 시설 관리[span_21](end_span)"},
+        [span_22](start_span){"구분": "시설", "이름": "영선팀", "직책": "지원", "연락처": "02-2258-5605", "표기": "*1-5605", "업무": "영선 시설 관리[span_22](end_span)"},
+        [span_23](start_span){"구분": "시설", "이름": "옴니버스파크", "직책": "안내", "연락처": "02-3147-8500", "표기": "8500/8600", "업무": "건물 안내[span_23](end_span)"},
+        [span_24](start_span){"구분": "시설", "이름": "의산연본관", "직책": "안내", "연락처": "02-3147-8200", "표기": "8200", "업무": "의산연본관 안내[span_24](end_span)"},
+    ]
+    return pd.DataFrame(data)
 
-# 2. 데이터 로드
-@st.cache_data(ttl=600)
-def load_data(url):
-    try:
-        df = pd.read_csv(url)
-        result = {}
-        for _, r in df.iterrows():
-            d = str(r['date']).strip()
-            m = str(r['meal_type']).strip()
-            result.setdefault(d, {})[m] = {"menu": str(r['menu']), "side": str(r['side'])}
-        return result
-    except: return {}
+df = load_final_data()
 
-URL = "https://docs.google.com/spreadsheets/d/1l07s4rubmeB5ld8oJayYrstL34UPKtxQwYptIocgKV0/export?format=csv"
-data = load_data(URL)
+# 3. UI 레이아웃
+st.title("📱 성의교정 비상연락망")
+search = st.text_input("🔍 이름이나 업무 키워드를 입력하세요", placeholder="예: 보안, 전기, 박현욱, 상황실")
 
-# 3. 파라미터 및 상태 관리
-params = st.query_params
-today = get_now().date()
-try:
-    d = datetime.strptime(params.get("d", str(today)), "%Y-%m-%d").date()
-except:
-    d = today
-
-# 식사 시간 정의 및 남은 시간 계산
-meal_times = {"조식": time(8, 0), "간편식": time(10, 0), "중식": time(13, 30), "석식": time(19, 0), "야식": time(23, 59)}
-
-def get_status_msg():
-    now = get_now()
-    now_t = now.time()
-    next_meal = None
-    for m, t in meal_times.items():
-        if now_t < t:
-            next_meal = (m, t)
-            break
-    if next_meal:
-        target_dt = datetime.combine(now.date(), next_meal[1], tzinfo=KST)
-        diff = target_dt - now
-        mins = int(diff.total_seconds() // 60)
-        h, m = divmod(mins, 60)
-        t_str = f"{h}시간 {m}분" if h > 0 else f"{m}분"
-        return f"💡 {next_meal[0]} 시간까지 <span style='color:#E95444;'>{t_str}</span> 남았습니다."
-    return "🌙 오늘 모든 배식이 종료되었습니다."
-
-selected = params.get("meal", "중식")
-
-# 4. 근무조 및 요일 설정
-def get_shift(target_d):
-    anchor = datetime(2026, 3, 13).date()
-    arr = [{"n":"A조","bg":"#FF9800"}, {"n":"B조","bg":"#E91E63"}, {"n":"C조","bg":"#2196F3"}]
-    return arr[(target_d - anchor).days % 3]
-
-# 요일 색상 결정
-weekday_names = ["월", "화", "수", "목", "금", "토", "일"]
-wd = d.weekday() # 5:토, 6:일
-wd_name = weekday_names[wd]
-wd_color = "#2196F3" if wd == 5 else "#E91E63" if wd == 6 else "#1E3A5F"
-
-s = get_shift(d)
-colors = {"조식": "#E95444", "간편식": "#F1A33B", "중식": "#8BC34A", "석식": "#4A90E2", "야식": "#673AB7"}
-sel_c = colors.get(selected, "#8BC34A")
-
-# 5. CSS 스타일
-st.markdown(f"""
-<style>
-    [data-testid="stAppViewBlockContainer"] {{ max-width: 400px !important; margin: 0 auto !important; padding: 1rem 10px !important; }}
-    header {{ visibility: hidden; }}
-    .date-box {{ text-align: center; background: #F4F7FF; padding: 15px; border-radius: 15px; font-weight: 800; border: 1px solid #D6DCEC; font-size: 18px; }}
-    .status-msg {{ text-align: center; font-size: 13px; font-weight: 700; color: #666; margin: 10px 0; }}
-    .nav-row {{ display: flex; justify-content: space-between; margin-bottom: 10px; gap: 5px; }}
-    .nav-btn {{ flex: 1; text-align: center; padding: 10px; background: white; border: 1px solid #EEE; border-radius: 8px; text-decoration: none; color: #1E3A5F; font-size: 13px; font-weight: 700; }}
-    .tab-container {{ display: flex; width: 100%; margin-top: 15px; gap: 2px; }}
-    .tab-item {{ flex: 1; text-align: center; padding: 12px 0; font-size: 12px; font-weight: 800; color: #333 !important; text-decoration: none; border-radius: 10px 10px 0 0; opacity: 0.7; transition: 0.2s; }}
-    .tab-item.active {{ opacity: 1; color: white !important; transform: translateY(-2px); }}
-    
-    /* 카드 높이 고정 및 레이아웃 */
-    .menu-card {{
-        border: 2px solid {sel_c}; border-top: 5px solid {sel_c}; border-radius: 0 0 20px 20px;
-        height: 240px; display: flex; flex-direction: column; justify-content: center; align-items: center;
-        padding: 20px; background: white; margin-top: -1px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); text-align: center;
-    }}
-    .main-menu {{ font-size: 21px; font-weight: 900; color: #111; line-height: 1.4; margin-bottom: 15px; word-break: keep-all; }}
-    .side-menu {{ color: #666; font-size: 15px; line-height: 1.6; word-break: keep-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }}
-</style>
-""", unsafe_allow_html=True)
-
-# 6. UI 렌더링
-st.markdown(f"""
-<div class="date-box">
-    {d.strftime("%Y.%m.%d")} (<span style="color:{wd_color}">{wd_name}</span>)
-    <span style="background:{s['bg']}; color:white; padding:2px 8px; border-radius:10px; font-size:12px; margin-left:5px; vertical-align:middle;">{s['n']}</span>
-</div>
-<div class="status-msg">{get_status_msg()}</div>
-<div class="nav-row">
-    <a href="?d={(d-timedelta(1)).strftime('%Y-%m-%d')}&meal={selected}" class="nav-btn" target="_self">◀ 이전</a>
-    <a href="?d={today}&meal={selected}" class="nav-btn" target="_self">오늘</a>
-    <a href="?d={(d+timedelta(1)).strftime('%Y-%m-%d')}&meal={selected}" class="nav-btn" target="_self">다음 ▶</a>
-</div>
-""", unsafe_allow_html=True)
-
-# 7. 탭 메뉴
-tabs_html = '<div class="tab-container">'
-for m, c in colors.items():
-    is_active = "active" if m == selected else ""
-    tabs_html += f'<a href="?d={d}&meal={m}" class="tab-item {is_active}" style="background:{c}" target="_self">{m}</a>'
-tabs_html += '</div>'
-st.markdown(tabs_html, unsafe_allow_html=True)
-
-# 8. 식단 출력 및 예외 처리
-meal_info = data.get(d.strftime("%Y-%m-%d"), {}).get(selected)
-
-if meal_info and str(meal_info['menu']).strip() not in ["", "nan", "None"]:
-    main_m = meal_info['menu']
-    side_m = meal_info['side']
+# 4. 검색 로직 (이름, 업무, 구분 전체 검색)
+if search:
+    q = search.strip()
+    mask = (
+        df['이름'].str.contains(q, na=False) | 
+        df['업무'].str.contains(q, na=False) |
+        df['구분'].str.contains(q, na=False)
+    )
+    display_df = df[mask]
 else:
-    if selected == "간편식":
-        main_m = "오늘은 간편식을<br>제공하지 않습니다."
-        side_m = ""
-    else:
-        main_m = "식단 정보 없음"
-        side_m = "해당 일자의 식단이 등록되지 않았습니다."
+    display_df = df
 
-st.markdown(f"""
-<div class="menu-card">
-    <div class="main-menu">{main_m}</div>
-    <div style="width:30%; height:1.5px; background:#F0F0F0; margin:15px auto;"></div>
-    <div class="side-menu">{side_m}</div>
-</div>
-""", unsafe_allow_html=True)
+# 5. 리스트 출력
+if display_df.empty:
+    st.info("검색 결과가 없습니다.")
+else:
+    for _, row in display_df.iterrows():
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"### {row['이름']} <small>{row['직책']}</small>", unsafe_allow_html=True)
+                st.write(f"📍 {row['구분']} | 📞 {row['표기']}")
+                st.caption(f"💡 {row['업무']}")
+            with col2:
+                # 하이픈 제거 후 전화연결
+                clean_phone = row['연락처'].replace("-", "")
+                st.markdown(f"""
+                    <a href="tel:{clean_phone}" style="text-decoration:none;">
+                        <div style="background-color:#28a745; color:white; text-align:center; padding:12px; border-radius:8px; font-weight:bold; margin-top:15px;">
+                            📞 연결
+                        </div>
+                    </a>
+                """, unsafe_allow_html=True)
+            st.divider()
