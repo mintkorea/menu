@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import tempfile
 
-# PDF
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Frame, PageTemplate
+# ✅ reportlab (PDF)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -12,6 +12,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 # 1. 기본 설정
 # -----------------------------
 st.set_page_config(page_title="비상연락망", layout="wide")
+
 st.title("📞 총무팀 비상연락망")
 
 # -----------------------------
@@ -27,20 +28,23 @@ SHEET_NAME = "Sheet1"
 def load_data():
     try:
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
-        return pd.read_csv(url)
+        df = pd.read_csv(url)
+        return df
     except:
-        st.error("❌ 구글시트 불러오기 실패")
+        st.error("❌ 구글시트 불러오기 실패 (공유 설정 확인)")
         return pd.DataFrame()
 
 df = load_data()
+
 if df.empty:
     st.stop()
 
 # -----------------------------
-# 4. 전화 변환
+# 4. 전화번호 변환
 # -----------------------------
 def format_phone(ext):
     ext = str(ext).strip()
+
     if ext.startswith("*1"):
         number = ext.replace("*1", "").replace("-", "")
         return f"02-2258-{number}"
@@ -50,83 +54,144 @@ def format_phone(ext):
 df["전화"] = df["내선"].apply(format_phone)
 
 # -----------------------------
-# 5. 검색
+# 5. 검색 / 필터
 # -----------------------------
-keyword = st.text_input("🔍 검색")
+col1, col2 = st.columns([2,1])
+
+with col1:
+    keyword = st.text_input("🔍 검색 (이름/업무)")
+
+with col2:
+    dept_list = ["전체"] + sorted(df["부서"].dropna().unique().tolist())
+    selected_dept = st.selectbox("부서 선택", dept_list)
+
+filtered_df = df.copy()
 
 if keyword:
-    df = df[
+    filtered_df = filtered_df[
         df["이름"].astype(str).str.contains(keyword, case=False, na=False) |
         df["업무"].astype(str).str.contains(keyword, case=False, na=False)
     ]
 
-# -----------------------------
-# 6. 출력
-# -----------------------------
-for _, row in df.iterrows():
-    st.write(f"{row['이름']} ({row['직급']}) | {row['부서']} | {row['전화']}")
+if selected_dept != "전체":
+    filtered_df = filtered_df[filtered_df["부서"] == selected_dept]
 
 # -----------------------------
-# 7. PDF (2단 컬럼)
+# 6. 즐겨찾기
+# -----------------------------
+if "fav" not in st.session_state:
+    st.session_state.fav = set()
+
+# -----------------------------
+# 7. 스타일
+# -----------------------------
+st.markdown("""
+<style>
+.card {
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
+}
+.name {
+    font-weight: bold;
+    font-size: 18px;
+}
+.meta {
+    color: #666;
+    font-size: 13px;
+}
+.phone {
+    margin-top: 5px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------
+# 8. 출력
+# -----------------------------
+st.markdown("### 📋 연락처 목록")
+
+for i, row in filtered_df.iterrows():
+
+    is_fav = i in st.session_state.fav
+    star = "⭐" if is_fav else "☆"
+
+    col1, col2 = st.columns([10,1])
+
+    with col1:
+        st.markdown(f"""
+        <div class="card">
+            <div class="name">{row['이름']} ({row['직급']})</div>
+            <div class="meta">{row['부서']} | {row['업무']}</div>
+            <div class="phone">
+                📞 <a href="tel:{row['전화']}">{row['전화']}</a> /
+                📱 <a href="tel:{row['휴대폰']}">{row['휴대폰']}</a>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        if st.button(star, key=f"fav_{i}"):
+            if is_fav:
+                st.session_state.fav.remove(i)
+            else:
+                st.session_state.fav.add(i)
+
+# -----------------------------
+# 9. PDF 생성 (한글 완벽 지원)
 # -----------------------------
 st.divider()
-st.markdown("### 📄 PDF 다운로드 (2단 보고서)")
+st.markdown("### 📄 PDF 다운로드")
 
 if st.button("📄 PDF 생성"):
 
     try:
+        # ✅ 폰트 등록 (파일명 맞춰주세요)
         pdfmetrics.registerFont(TTFont('KoreanFont', 'NanumGothic.ttf'))
     except:
-        st.error("❌ NanumGothic.ttf 필요")
+        st.error("❌ 폰트 파일(NanumGothic.ttf)을 앱 폴더에 넣어주세요")
         st.stop()
 
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
 
-    doc = SimpleDocTemplate(
-        tmp.name,
-        leftMargin=20,
-        rightMargin=20,
-        topMargin=20,
-        bottomMargin=20
-    )
-
+    doc = SimpleDocTemplate(tmp.name)
     styles = getSampleStyleSheet()
+
+    # ✅ 폰트 적용
     styles["Normal"].fontName = 'KoreanFont'
-    styles["Normal"].fontSize = 8.5
-    styles["Normal"].leading = 10
-
-    # -----------------------------
-    # 2단 컬럼 설정
-    # -----------------------------
-    frame1 = Frame(doc.leftMargin, doc.bottomMargin, (doc.width/2)-5, doc.height, id='col1')
-    frame2 = Frame(doc.leftMargin + (doc.width/2)+5, doc.bottomMargin, (doc.width/2)-5, doc.height, id='col2')
-
-    template = PageTemplate(id='TwoCol', frames=[frame1, frame2])
-    doc.addPageTemplates([template])
+    styles["Normal"].fontSize = 10
 
     content = []
 
-    # 제목
-    content.append(Paragraph("<b>총무팀 비상연락망</b>", styles["Normal"]))
-    content.append(Spacer(1, 8))
-
-    df_sorted = df.sort_values(by=["부서", "이름"])
-    groups = df_sorted.groupby("부서")
+    # 👉 부서별 정렬 (가독성 향상)
+    groups = filtered_df.groupby("부서")
 
     for dept, group in groups:
         content.append(Paragraph(f"<b>{dept}</b>", styles["Normal"]))
-        content.append(Spacer(1, 4))
+        content.append(Spacer(1, 6))
 
         for _, row in group.iterrows():
             text = f"""
-            <b>{row['이름']} ({row['직급']})</b><br/>
+            {row['이름']} ({row['직급']})<br/>
             {row['업무']}<br/>
             {row['전화']} / {row['휴대폰']}
             """
             content.append(Paragraph(text, styles["Normal"]))
-            content.append(Spacer(1, 6))
+            content.append(Spacer(1, 10))
 
     doc.build(content)
 
     with open(tmp.name, "rb") as f:
-        st.download_button("📥 PDF 다운로드", f, file_name="비상연락망_2단보고.pdf")
+        st.download_button(
+            "📥 PDF 다운로드",
+            f,
+            file_name="총무팀_비상연락망.pdf"
+        )
+
+# -----------------------------
+# 10. 새로고침
+# -----------------------------
+st.divider()
+
+if st.button("🔄 데이터 새로고침"):
+    st.cache_data.clear()
+    st.rerun()
