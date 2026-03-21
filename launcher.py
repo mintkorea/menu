@@ -26,6 +26,14 @@ APPS = [
         "desc": "보안/미화 파트별 긴급 연락처",
         "color": "#F44336"
     }
+
+{
+        "title": "미화 비상연락망",
+        "url": "https://mintkorea-evsteam.streamlit.app/",
+        "desc": "미화 파트 비상연락처",
+        "color": "#F44336"
+    }
+
 ]
 
 # 2. 페이지 설정
