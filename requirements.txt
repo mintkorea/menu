@@ -1,8 +1,5 @@
-streamlit==1.32.0
-pillow
-numpy
-opencv-python-headless
-pandas==2.2.0
-openpyxl
-reportlab
-pdfplumber
+streamlit
+requests
+pandas
+xlsxwriter
+fpdf
