@@ -1,6 +1,6 @@
-import streamlit as st
+import streamlit as st  # 소문자 import로 수정
 
-# 1. 관리할 앱 목록 (여기에 추가/삭제만 하면 화면에 자동 반영됩니다)
+# 1. 관리할 앱 목록
 APPS = [
     {
         "title": "📱 대관 조회 (모바일)",
@@ -25,15 +25,13 @@ APPS = [
         "url": "https://t78ulrec88a9tku62zekge.streamlit.app/",
         "desc": "보안파트 긴급 연락처",
         "color": "#F44336"
-    }
-
-{
+    }, # <--- 여기에 쉼표(,)를 추가했습니다.
+    {
         "title": "미화 비상연락망",
         "url": "https://mintkorea-evsteam.streamlit.app/",
         "desc": "미화 파트 비상연락처",
         "color": "#F44336"
-    }}
-
+    }
 ]
 
 # 2. 페이지 설정
@@ -48,7 +46,7 @@ st.markdown("""
         text-decoration: none !important; margin-bottom: 12px; transition: 0.2s;
         background: white; border-left: 6px solid #1E3A5F;
     }
-    .app-card:hover { background: #F0F4F8; transform: scale(1.02); }
+    .app-card:hover { background: #F0F4F8; transform: scale(1.02); text-decoration: none !important; }
     .app-title { font-size: 18px; font-weight: bold; color: #1E3A5F; }
     .app-desc { font-size: 13px; color: #666; margin-top: 4px; }
 </style>
@@ -67,4 +65,3 @@ for app in APPS:
     ''', unsafe_allow_html=True)
 
 st.markdown("---")
-st.caption("새로운 기능 추가 문의: 시설관리팀 (내선 1187)")
