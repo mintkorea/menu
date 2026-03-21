@@ -1,91 +1,80 @@
 import streamlit as st
-import pandas as pd
 
-# 1. 페이지 설정 (제목 및 모바일 최적화 레이아웃)
+# 1. 페이지 설정 (모바일 최적화)
 st.set_page_config(page_title="성의교정 비상연락망", layout="wide")
 
-# 2. 스타일 설정 (화면 낭비 최소화 및 리스트 디자인)
+# 2. 고정 데이터 (PDF 원본 내용을 하나도 빠짐없이 담았습니다)
+def get_contacts():
+    return [
+        [span_7](start_span)# 총무팀
+        {"g": "총무", "n": "박현욱", "p": "팀장", "t": "010-6245-0589", "ext": "8190", "w": "부서업무 총괄"},
+        {"g": "총무", "n": "김종래", "p": "차장", "t": "010-9056-3701", "ext": "8191", "w": "시설/자산관리(본관,의산연,성의회관)"},
+        {"g": "총무", "n": "장영섭", "p": "차장", "t": "010-5072-0919", "ext": "8193", "w": "예비군대대장, 민방위, 행사"},
+        {"g": "총무", "n": "주종호", "p": "과장", "t": "010-3324-1187", "ext": "8202", "w": "보안, 미화, 대관, 게스트하우스"},
+        {"g": "총무", "n": "강은희", "p": "대리", "t": "010-9127-1021", "ext": "8206", "w": "의료원 직인/문서 배부, 행사"},
+        {"g": "총무", "n": "김보라", "p": "선임", "t": "010-8073-0527", "ext": "8192", "w": "명예교수실 관리, 차량등록"},
+        {"g": "총무", "n": "노종현", "p": "책임", "t": "010-9425-3109", "ext": "8195", "w": "행사, 회의자료취합, 예비군사무"},
+        {"g": "총무", "n": "고규호", "p": "책임", "t": "010-3381-8870", "ext": "8196", "w": "다이어리, 인증평가, 시설안전점검"},
+        #[span_7](end_span) 기숙사 및 지원
+        {"g": "지원", "n": "김두리", "p": "사원", "t": "010-9661-1257", "ext": "8204", "w": "성의기숙사 사감 (581-7523)"},
+        {"g": "지원", "n": "임세리", "p": "사원", "t": "010-3281-1229", "ext": "8197", "w": "우편, 물품청구, 정수기, 정보보호"},
+        [span_8](start_span)[span_9](start_span)# 안전관리U
+        {"g": "안전", "n": "윤호열", "p": "UM", "t": "010-2623-7963", "ext": "8199", "w": "소방/방재, 시설관리(옴니버스 등)"},
+        {"g": "안전", "n": "주상건", "p": "차장", "t": "010-9496-6483", "ext": "7135", "w": "시신기증 업무"},
+        {"g": "안전", "n": "곽정승", "p": "과장", "t": "010-5218-6504", "ext": "8194", "w": "사업계획, 예산, 주차관리"},
+        {"g": "안전", "n": "박일용", "p": "과장", "t": "010-6205-7751", "ext": "8201", "w": "계약(임대차, 용역), 교원기숙사"},
+        {"g": "안전", "n": "이경종", "p": "부장", "t": "010-2623-7963", "ext": "8203", "w": "교수업적평가, 문서분배"},
+        {"g": "안전", "n": "김준석", "p": "과장", "t": "010-9256-6904", "ext": "8205", "w": "연구실 안전관리, 출입증, 식대"},
+        #[span_8](end_span)[span_9](end_span) 보안/미화
+        {"g": "협력", "n": "이규용", "p": "소장", "t": "010-8883-6580", "ext": "8300", "w": "보안 총괄 (에스텍)"},
+        {"g": "협력", "n": "신성휴", "p": "소장", "t": "010-7161-2201", "ext": "9102", "w": "미화 총괄 (세안)"},
+        {"g": "협력", "n": "주용덕", "p": "보안", "t": "010-2021-9541", "ext": "별관", "w": "의산연 별관 보안"},
+        {"g": "협력", "n": "김승배", "p": "보안", "t": "010-8704-2591", "ext": "별관", "w": "의산연 별관 보안"},
+        [span_10](start_span)# 비서실
+        {"g": "비서", "n": "이경자", "p": "부장", "t": "010-6306-3652", "ext": "8071", "w": "의무부총장 비서"},
+        {"g": "비서", "n": "이상희", "p": "과장", "t": "010-3445-0623", "ext": "8068", "w": "사무처장 비서"},
+        {"g": "비서", "n": "박은영", "p": "과장", "t": "010-5348-6849", "ext": "8069", "w": "의과대학장 비서"},
+        #[span_10](end_span) 주요 시설
+        {"g": "시설", "n": "성의상황실", "p": "지원", "t": "02-3147-8000", "ext": "8000", "w": "메인 상황실"},
+        {"g": "시설", "n": "통합관제", "p": "지원", "t": "02-2258-5555", "ext": "5555", "w": "통합 관제 센터"},
+        {"g": "시설", "n": "전기팀", "p": "지원", "t": "02-2258-5672", "ext": "*1-5672", "w": "전기 시설 관리"},
+        {"g": "시설", "n": "설비팀", "p": "지원", "t": "02-2258-5624", "ext": "*1-5624", "w": "설비 시설 관리"},
+        {"g": "시설", "n": "영선팀", "p": "지원", "t": "02-2258-5605", "ext": "*1-5605", "w": "영선 시설 관리"},
+    ]
+
+# 3. 스타일 설정 (화면 낭비 최소화)
 st.markdown("""
     <style>
-    /* 상단 여백 제거 */
-    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
-    /* 리스트 행 디자인: 간격 좁게 */
+    .block-container { padding-top: 1rem; }
     .contact-row {
-        padding: 8px 5px;
-        border-bottom: 1px solid #f0f0f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        text-decoration: none;
-        color: inherit !important;
+        padding: 10px 5px; border-bottom: 1px solid #eee;
+        display: flex; justify-content: space-between; align-items: center;
+        text-decoration: none; color: inherit !important;
     }
-    .contact-row:active { background-color: #f8f9fa; }
-    .name-tag { font-size: 1.05rem; font-weight: bold; color: #111; }
-    .info-tag { font-size: 0.8rem; color: #666; margin-top: 2px; }
-    .right-section { text-align: right; }
-    .ext-tag { font-size: 0.95rem; font-weight: bold; color: #007bff; }
-    .phone-tag { font-size: 0.75rem; color: #aaa; }
+    .name-tag { font-size: 1.1rem; font-weight: bold; }
+    .info-tag { font-size: 0.85rem; color: #666; margin-top: 2px; }
+    .ext-tag { font-size: 1rem; font-weight: bold; color: #007bff; text-align: right; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📞 성의교정 비상연락망")
+st.title("📞 성의교정 연락망")
 
-# 3. 데이터 로드 (구글 시트 연동)
-SHEET_ID = "1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0"
-SHEET_NAME = "Sheet1"
+# 4. 검색 및 출력
+contacts = get_contacts()
+search = st.text_input("🔍 검색 (이름, 부서, 업무)", placeholder="예: 보안, 박현욱")
 
-@st.cache_data(ttl=60)
-def load_data():
-    try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
-        df = pd.read_csv(url)
-        # 컬럼명 공백 제거
-        df.columns = [c.strip() for c in df.columns]
-        return df
-    except:
-        return pd.DataFrame()
-
-df = load_data()
-
-# 4. 검색 기능
-keyword = st.text_input("🔍 검색 (이름, 부서, 업무)", placeholder="예: 보안, 박현욱, 전기")
-
-# 5. 결과 출력
-if not df.empty:
-    # 검색 필터링
-    if keyword:
-        # 모든 열에서 키워드 포함 여부 확인
-        mask = df.apply(lambda row: row.astype(str).str.contains(keyword, case=False).any(), axis=1)
-        display_df = df[mask]
-    else:
-        display_df = df
-
-    # 슬림 리스트 출력
-    for _, row in display_df.iterrows():
-        # 연락처에서 하이픈 제거 (전화 걸기용)
-        tel_val = str(row.get('휴대폰', ''))
-        tel_link = tel_val.replace("-", "")
-        
-        # 이름/직급/부서/업무 및 내선번호 배치
+for c in contacts:
+    if not search or any(search.lower() in str(v).lower() for v in c.values()):
+        tel_link = c['t'].replace("-", "")
         st.markdown(f"""
             <a href="tel:{tel_link}" class="contact-row">
                 <div style="flex: 1;">
-                    <div class="name-tag">{row.get('이름','')} <span style="font-size:0.8rem; font-weight:normal;">{row.get('직급','')}</span></div>
-                    <div class="info-tag">{row.get('부서','')} | {row.get('업무','')}</div>
+                    <div class="name-tag">{c['n']} <small style="font-weight:normal; color:#888;">{c['p']}</small></div>
+                    <div class="info-tag">{c['g']} | {c['w']}</div>
                 </div>
-                <div class="right-section">
-                    <div class="ext-tag">{row.get('내선','')}</div>
-                    <div class="phone-tag">{tel_val}</div>
+                <div style="min-width: 80px;">
+                    <div class="ext-tag">{c['ext']}</div>
+                    <div style="font-size:0.75rem; color:#aaa; text-align:right;">{c['t']}</div>
                 </div>
             </a>
         """, unsafe_allow_html=True)
-
-    if display_df.empty:
-        st.info("검색 결과가 없습니다.")
-else:
-    st.error("❌ 데이터를 불러올 수 없습니다. 구글 시트 설정을 확인해 주세요.")
-
-# 6. 새로고침 버튼
-if st.button("🔄 데이터 새로고침"):
-    st.cache_data.clear()
-    st.rerun()
