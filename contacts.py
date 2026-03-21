@@ -40,3 +40,4 @@ for _, row in df.iterrows():
                 </a>
             """, unsafe_allow_html=True)
         st.divider()
+
