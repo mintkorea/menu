@@ -23,7 +23,7 @@ APPS = [
     {
         "title": "🚨 보안 비상연락망",
         "url": "https://t78ulrec88a9tku62zekge.streamlit.app/",
-        "desc": "보안/미화 파트별 긴급 연락처",
+        "desc": "보안파트 긴급 연락처",
         "color": "#F44336"
     }
 
@@ -32,7 +32,7 @@ APPS = [
         "url": "https://mintkorea-evsteam.streamlit.app/",
         "desc": "미화 파트 비상연락처",
         "color": "#F44336"
-    }
+    }}
 
 ]
 
