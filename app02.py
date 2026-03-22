@@ -3,19 +3,17 @@ import pandas as pd
 import re
 from collections import Counter
 
-st.set_page_config(page_title="카톡 요약 게시판", layout="wide")
+st.set_page_config(page_title="카톡 게시판 시스템", layout="wide")
 
 # ---------------------------
-# 1. 카톡 TXT 파싱 (안정 버전)
+# 1. 카톡 TXT 파싱
 # ---------------------------
 def parse_kakao(text):
     lines = text.split("\n")
-
     data = []
     current = None
 
     for line in lines:
-        # 카톡 기본 패턴 감지 (날짜 + , 포함)
         if "," in line and ":" in line:
             try:
                 date_part, rest = line.split(",", 1)
@@ -27,32 +25,26 @@ def parse_kakao(text):
                     "message": message.strip()
                 }
                 data.append(current)
-
             except:
                 continue
         else:
-            # 줄바꿈 메시지 이어붙이기
             if current:
                 current["message"] += " " + line.strip()
 
     return pd.DataFrame(data)
 
-
 # ---------------------------
-# 2. 요약 + 키워드
+# 2. 요약
 # ---------------------------
 def summarize(messages):
     text = " ".join(messages)
-
     words = re.findall(r'\w+', text)
     keywords = Counter(words)
 
     top_keywords = [k for k, v in keywords.most_common(5)]
-
     summary = " / ".join(top_keywords) if top_keywords else "요약 없음"
 
     return summary, top_keywords
-
 
 # ---------------------------
 # 3. 토픽 분류
@@ -69,68 +61,78 @@ def classify(msg):
     else:
         return "일반"
 
-
 # ---------------------------
-# UI
+# UI 시작
 # ---------------------------
-st.title("📊 카카오톡 요약 게시판")
+st.title("📊 카카오톡 게시판 시스템")
 
-uploaded = st.file_uploader("📂 카톡 TXT 파일 업로드", type="txt")
+uploaded = st.file_uploader("📂 카톡 TXT 업로드", type="txt")
 
 if uploaded:
     text = uploaded.read().decode("utf-8")
-
     df = parse_kakao(text)
 
-    # ✅ 방어 코드 (핵심)
+    # 방어
     if df.empty or "message" not in df.columns:
-        st.error("❌ 카톡 TXT 형식을 인식하지 못했습니다.\n\n👉 대화 내보내기 파일인지 확인해주세요.")
+        st.error("❌ 파일 형식 인식 실패")
         st.stop()
 
-    # 토픽 분류
-    df["topic"] = df["message"].apply(classify)
+    # 세션 상태 저장 (이동 기능용)
+    if "df" not in st.session_state:
+        df["topic"] = df["message"].apply(classify)
+        df["date"] = df["datetime"].apply(lambda x: x.split(",")[0] if "," in x else x)
+        st.session_state.df = df
 
-    # 날짜 추출
-    df["date"] = df["datetime"].apply(lambda x: x.split(",")[0] if "," in x else x)
-
-    # ---------------------------
-    # 사이드바 필터
-    # ---------------------------
-    st.sidebar.title("🔍 필터")
-
-    topics = df["topic"].unique().tolist()
-    selected_topics = st.sidebar.multiselect("토픽 선택", topics, default=topics)
-
-    df = df[df["topic"].isin(selected_topics)]
+    df = st.session_state.df
 
     # ---------------------------
-    # 게시판 출력
+    # 탭 (게시판)
     # ---------------------------
-    grouped = df.groupby("date")
+    topics = ["전체"] + sorted(df["topic"].unique().tolist())
+    tabs = st.tabs(topics)
 
-    for date, group in grouped:
-        st.markdown(f"## 📅 {date}")
+    for i, topic in enumerate(topics):
+        with tabs[i]:
+            if topic == "전체":
+                filtered = df
+            else:
+                filtered = df[df["topic"] == topic]
 
-        # 요약
-        summary, keywords = summarize(group["message"].tolist())
+            if filtered.empty:
+                st.write("데이터 없음")
+                continue
 
-        st.markdown("### 🧠 요약")
-        st.info(summary)
+            grouped = filtered.groupby("date")
 
-        # 키워드
-        st.markdown("### 🏷 키워드")
-        if keywords:
-            st.write(", ".join(keywords))
-        else:
-            st.write("없음")
+            for date, group in grouped:
+                st.markdown(f"## 📅 {date}")
 
-        # 토픽 표시
-        st.markdown("### 📁 포함 토픽")
-        st.write(", ".join(group["topic"].unique()))
+                summary, keywords = summarize(group["message"].tolist())
 
-        # 원본보기
-        with st.expander("📄 원본보기"):
-            for _, row in group.iterrows():
-                st.write(f"**[{row['topic']}] {row['user']}**: {row['message']}")
+                st.markdown("### 🧠 요약")
+                st.info(summary)
 
-        st.divider()
+                st.markdown("### 🏷 키워드")
+                st.write(", ".join(keywords) if keywords else "없음")
+
+                # 원본보기 + 이동기능
+                with st.expander("📄 원본보기"):
+                    for idx, row in group.iterrows():
+                        col1, col2 = st.columns([4,1])
+
+                        with col1:
+                            st.write(f"**[{row['topic']}] {row['user']}**: {row['message']}")
+
+                        with col2:
+                            new_topic = st.selectbox(
+                                "이동",
+                                ["회의", "공지", "업무", "일정", "일반"],
+                                key=f"{idx}"
+                            )
+
+                            if st.button("변경", key=f"btn_{idx}"):
+                                st.session_state.df.at[idx, "topic"] = new_topic
+                                st.success("이동 완료")
+                                st.rerun()
+
+                st.divider()
