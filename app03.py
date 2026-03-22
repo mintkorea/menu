@@ -15,52 +15,57 @@ st.set_page_config(page_title="비상연락망", layout="wide")
 
 st.markdown("""
 <style>
-    /* 1. 모바일에서 컬럼이 아래로 떨어지는 현상 절대 방지 */
+    /* 1. 모바일에서 컬럼이 상하로 쌓이는 현상 방지 */
     [data-testid="column"] {
         width: fit-content !important;
         flex: unset !important;
         min-width: unset !important;
     }
     
-    /* 컬럼 간의 간격(gap) 제거하여 공간 확보 */
+    /* 컬럼 간의 기본 간격 제거 */
     [data-testid="stHorizontalBlock"] {
         gap: 0px !important;
     }
 
-    /* 2. 별표 버튼 스타일 */
+    /* 2. 별표 버튼 스타일 (텍스트처럼 투명하게) */
     div[data-testid="stButton"] > button {
         border: none !important;
         background: transparent !important;
         padding: 0px !important;
-        margin: 0px 5px 0px 0px !important;
+        margin: 0px !important;
         line-height: 1 !important;
         color: #ffc107 !important;
-        font-size: 20px !important;
+        font-size: 22px !important; /* 별 크기 */
         box-shadow: none !important;
     }
 
-    /* 3. 이름 영역 (잘리지 않게) */
-    .name-label {
+    /* 3. 이름 및 직급 스타일 */
+    .name-container {
+        display: inline-block;
+        margin-left: -12px; /* 별표와 이름 사이의 간격을 강제로 좁힘 */
+        margin-top: 2px;
+    }
+    
+    .name-text {
         font-weight: bold;
-        font-size: 17px;
+        font-size: 18px;
         color: #333;
-        white-space: nowrap; /* 이름은 한 줄 고정 */
+        white-space: nowrap;
     }
 
-    /* 4. 정보 텍스트 (줄바꿈 허용하여 잘림 방지) */
-    .info-container {
+    /* 4. 카드 하단 정보 (잘림 방지 및 줄바꿈 허용) */
+    .info-box {
         border-bottom: 1px solid #f0f0f0;
-        padding: 5px 0 15px 5px;
+        padding: 5px 0 15px 28px; /* 별표 위치만큼 왼쪽 여백 확보 */
         margin-bottom: 10px;
     }
 
-    .meta-text {
+    .meta-info {
         color: #666;
         font-size: 14px;
-        margin: 4px 0;
+        line-height: 1.5;
         word-break: keep-all; /* 단어 단위 줄바꿈 */
-        white-space: normal;  /* 줄바꿈 허용 */
-        line-height: 1.4;
+        white-space: normal;
     }
 
     .phone-link {
@@ -69,7 +74,7 @@ st.markdown("""
         color: #007bff;
         font-weight: 500;
         display: inline-block;
-        margin-top: 5px;
+        margin-top: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -113,10 +118,10 @@ df["전화"] = df["내선"].apply(format_phone)
 # -----------------------------
 col_search, col_dept = st.columns([1.5, 1])
 with col_search:
-    keyword = st.text_input("🔍 검색")
+    keyword = st.text_input("🔍 검색 (이름/업무)")
 with col_dept:
     dept_list = ["전체"] + sorted(df["부서"].dropna().unique().tolist())
-    selected_dept = st.selectbox("부서 필터", dept_list)
+    selected_dept = st.selectbox("부서 선택", dept_list)
 
 filtered_df = df.copy()
 if keyword:
@@ -140,7 +145,7 @@ if show_fav:
     filtered_df = filtered_df[filtered_df.index.isin(st.session_state.fav)]
 
 # -----------------------------
-# 6. 연락처 목록 출력 (모바일 최적화 버전)
+# 6. 연락처 목록 출력 (최종 최적화)
 # -----------------------------
 st.write(f"총 {len(filtered_df)}명의 연락처")
 st.divider()
@@ -149,8 +154,8 @@ for i, row in filtered_df.iterrows():
     is_fav = i in st.session_state.fav
     star_icon = "★" if is_fav else "☆"
     
-    # [수정] 별표 컬럼을 아주 작게(0.05) 설정하여 이름과 밀착시킴
-    c1, c2 = st.columns([0.05, 0.95])
+    # 별표와 이름 한 줄 배치 (컬럼 비율 극단적 조정)
+    c1, c2 = st.columns([0.01, 0.99])
     
     with c1:
         if st.button(star_icon, key=f"fav_{i}"):
@@ -159,18 +164,16 @@ for i, row in filtered_df.iterrows():
             st.rerun()
 
     with c2:
-        # 이름과 직급
-        st.markdown(f'<div class="name-label">{row["이름"]} ({row["직급"]})</div>', unsafe_allow_html=True)
+        # 이름을 별표 옆으로 당김
+        st.markdown(f'<div class="name-container"><span class="name-text">{row["이름"]} ({row["직급"]})</span></div>', unsafe_allow_html=True)
     
-    # [수정] 업무 내용이 잘리지 않도록 줄바꿈을 허용한 컨테이너
+    # 상세 정보 (부서, 업무, 전화번호)
     tel = row['전화']
     mobile = row['휴대폰']
     st.markdown(f"""
-    <div class="info-container">
-        <div class="meta-text">
-            <b>{row['부서']}</b> | {row['업무']}
-        </div>
-        <div style="margin-top: 8px;">
+    <div class="info-box">
+        <div class="meta-info"><b>{row['부서']}</b> | {row['업무']}</div>
+        <div>
             <a class="phone-link" href="tel:{tel}">📞 {tel}</a> &nbsp;&nbsp; 
             <a class="phone-link" href="tel:{mobile}">📱 {mobile}</a>
         </div>
@@ -178,7 +181,7 @@ for i, row in filtered_df.iterrows():
     """, unsafe_allow_html=True)
 
 # -----------------------------
-# 7. PDF 및 기타 기능 (기존과 동일)
+# 7. PDF 생성 및 기타
 # -----------------------------
 st.markdown("### 📄 리스트 내보내기")
 if st.button("📄 PDF 파일 생성"):
@@ -200,9 +203,9 @@ if st.button("📄 PDF 파일 생성"):
                 content.append(Paragraph(txt, styles["Normal"]))
         doc.build(content)
         with open(tmp.name, "rb") as f:
-            st.download_button("📥 PDF 다운로드", f, file_name="contact_list.pdf")
+            st.download_button("📥 PDF 다운로드", f, file_name="contacts.pdf")
     except:
-        st.error("❌ PDF 생성 실패 (폰트 파일 확인 필요)")
+        st.error("❌ PDF 생성 실패 (서버에 NanumGothic.ttf 필요)")
 
 if st.button("🔄 데이터 강제 새로고침"):
     st.cache_data.clear()
