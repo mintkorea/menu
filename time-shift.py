@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- [1] 핵심 설정 (변동 없음) ---
+# --- [1] 핵심 설정 (수정 금지) ---
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
@@ -11,7 +11,7 @@ st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
     /* 타이틀 폰트 크기 절반(24px)으로 축소 */
-    .small-title { font-size: 24px !important; font-weight: bold; margin-bottom: 15px; color: #31333F; }
+    .small-title { font-size: 24px !important; font-weight: bold; margin-bottom: 10px; color: #31333F; }
     .stDataFrame div[data-testid="stTable"] { font-size: 16px !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -19,19 +19,19 @@ st.markdown("""
 # [타이틀] 절반 크기로 적용
 st.markdown('<p class="small-title">📅 C조 근무 편성표</p>', unsafe_allow_html=True)
 
-# --- [3] 조회 및 강조 설정 ---
+# --- [3] 조회 기간 설정 및 사용자 강조 ---
 with st.container():
-    # [조회달력 슬라이드] - 사용자님이 말씀하신 슬라이더 방식 복구
+    # [조회달력 슬라이드] 오늘 기준 과거와 미래를 자유롭게 조절
     lookback, lookforward = st.slider("📅 조회 기간 설정 (오늘 기준)", -30, 90, (-10, 60))
     
     # 강조할 성함 선택
     user_focus = st.selectbox("👤 강조할 성함 선택", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- [4] 근무 데이터 생성 (요일 셸 없이 통합) ---
+# --- [4] 근무 데이터 생성 (요일 셸 삭제 반영) ---
 today = datetime.now().date()
 cal_data = []
 
-# 슬라이더에서 선택한 범위만큼 데이터 생성
+# 슬라이더 범위에 따라 경과된 근무표부터 미래까지 생성
 for i in range(lookback, lookforward + 1):
     d = today + timedelta(days=i)
     diff = (d - PATTERN_START).days
@@ -73,7 +73,7 @@ def apply_style(row):
                 
     return styles
 
-# 표 출력 (요일 셸 삭제 반영)
+# 표 출력 (요일 셸 없이 간결하게 표시)
 st.dataframe(
     df.style.apply(apply_style, axis=1),
     use_container_width=True,
