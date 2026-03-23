@@ -1,51 +1,27 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, timezone
+import os
 
-# 1. 한국 표준시(KST) 설정
+# --- 1. 한국 표준시(KST) 설정 (가장 중요한 수정 사항) ---
 def get_now_kst():
+    # 서버의 위치와 상관없이 한국 시간(UTC+9)을 강제로 가져옵니다.
     return datetime.now(timezone(timedelta(hours=9)))
 
-# 2. 기준 설정 (3/24 화요일 C조 근무 시작 기준)
+# --- 2. 기준 설정 (C조 근무 패턴 시작일) ---
+# 사용자님의 엑셀 데이터를 바탕으로 설정된 기준일입니다.
 PATTERN_START_DATE = datetime(2026, 3, 24).date()
 
-st.set_page_config(page_title="성의교정 C조 관리 시스템", layout="wide")
+st.set_page_config(page_title="성의교정 C조 관리 시스템", layout="centered")
 
-# --- 당직 상세 스케줄 데이터 (주신 이미지 내용 그대로 구현) ---
-def get_detail_schedule():
-    # 주간(07:00~17:00) / 야간(17:00~07:00) 상세 로직
-    # 표의 내용을 리스트화하여 모바일에서 보기 좋게 구성
-    data = [
-        ["07:00~08:00", "안내실", "로비", "로비", "휴게"],
-        ["08:00~09:00", "안내실", "휴게", "휴게", "로비"],
-        ["09:00~10:00", "안내실", "순찰", "휴게", "로비"],
-        ["10:00~11:00", "휴게", "안내실", "로비", "순찰/휴게"],
-        ["11:00~12:00", "안내실", "중식", "로비", "중식"],
-        ["12:00~13:00", "중식", "안내실", "중식", "로비"],
-        ["13:00~14:00", "안내실", "휴게", "휴게/순찰", "로비"],
-        ["14:00~15:00", "순찰", "안내실", "로비", "휴게"],
-        ["15:00~16:00", "안내실", "휴게", "로비", "휴게"],
-        ["16:00~17:00", "휴게", "안내실", "휴게", "로비"],
-        ["---", "---", "---", "---", "---"],
-        ["17:00~18:00", "안내실", "휴게", "휴게", "로비"],
-        ["18:00~19:00", "안내실", "석식", "로비", "석식"],
-        ["19:00~20:00", "안내실", "안내실", "석식", "로비"],
-        ["20:00~22:00", "석식/안내실", "안내실/순찰", "로비", "휴게"],
-        ["22:00~23:00", "순찰", "휴게", "순찰", "로비"],
-        ["23:00~01:40", "안내실", "휴게", "휴게", "로비"],
-        ["01:40~05:00", "휴게", "안내실", "로비", "휴게"],
-        ["05:00~06:00", "안내실", "순찰", "로비", "순찰"],
-        ["06:00~07:00", "안내실", "안내실", "휴게", "로비"]
-    ]
-    return pd.DataFrame(data, columns=["시간", "조장", "대원(회관)", "당직A(의산)", "당직B(의산)"])
-
-# 근무자 명단 계산
+# --- 3. 근무자 계산 로직 (새벽 첫 소스 기준) ---
 def get_shift_workers(date):
     diff_days = (date - PATTERN_START_DATE).days
+    # 3일 주기 근무 체크
     if diff_days % 3 == 0:
         shift_num = diff_days // 3
         cycle = shift_num % 6
-        # 엑셀 순번 로직
+        # 엑셀에 명시된 C조 순환 파트너십 로직
         names = {
             0: ["황재업", "이태원", "이정석", "김태언"],
             1: ["황재업", "김태언", "이태원", "이정석"],
@@ -55,45 +31,49 @@ def get_shift_workers(date):
             5: ["황재업", "이태원", "김태언", "이정석"]
         }
         res = names[cycle]
-        return {"조장": res[0], "회관": res[1], "의산A": res[2], "의산B": res[3]}
+        return [("조장", res[0]), ("성희관", res[1]), ("의산연(A)", res[2]), ("의산연(B)", res[3])]
     return None
 
+# 현재 한국 시간 정보 가져오기
 now_kst = get_now_kst()
 today_val = now_kst.date()
+
+# --- 4. 메인 화면 구현 ---
+st.title("📍 실시간 근무 상황판")
+st.write(f"🕒 현재 시각(KST): **{now_kst.strftime('%Y-%m-%d %H:%M')}**")
+
+# 오늘 근무 여부 확인
 workers = get_shift_workers(today_val)
 
-# --- 화면 구현 ---
-st.title("📍 성의교정 C조 당직 시스템")
-st.write(f"🕒 현재 시각: **{now_kst.strftime('%H:%M')}**")
-
 if workers:
-    st.success(f"✅ 오늘은 **C조 근무일**입니다. ({workers['회관']}, {workers['의산A']}, {workers['의산B']})")
+    st.success(f"✅ 오늘({today_val.strftime('%m/%d')})은 **C조 근무일**입니다.")
+    # 근무자 명단 가로 배치
+    cols = st.columns(4)
+    for i, (pos, name) in enumerate(workers):
+        with cols[i]:
+            st.metric(label=pos, value=name)
 else:
-    st.warning("😴 오늘은 **비번/휴무**입니다. 아래 시간표로 다음 일정을 확인하세요.")
+    st.warning(f"😴 오늘({today_val.strftime('%m/%d')})은 **C조 비번/휴무**입니다.")
+    # 다음 근무일 계산
+    days_diff = (today_val - PATTERN_START_DATE).days
+    wait = 3 - (days_diff % 3) if days_diff % 3 > 0 else abs(days_diff % 3)
+    next_work = today_val + timedelta(days=wait)
+    st.info(f"📅 나의 다음 근무일: **{next_work.strftime('%m/%d')}** ({int(wait)}일 남음)")
 
 st.divider()
 
-# --- 핵심: 상세 근무 편성표 ---
-st.subheader("📊 상세 당직 근무 편성표 (시간별 위치)")
+# --- 5. 주간 근무 편성표 (조회 기능) ---
+st.subheader("📅 주간 근무 일정 확인")
+week_list = []
+# 오늘 기준 전후 일정 표시
+for i in range(-2, 10):
+    target_d = today_val + timedelta(days=i)
+    w_data = get_shift_workers(target_d)
+    if w_data:
+        row = {"날짜": target_d.strftime('%m/%d') + f"({['월','화','수','목','금','토','일'][target_d.weekday()]})"}
+        for p, n in w_data:
+            row[p] = n
+        week_list.append(row)
 
-df_detail = get_detail_schedule()
-
-# 오늘 근무자가 있다면 이름을 매칭해서 보여줌
-if workers:
-    # 표의 헤더를 실제 이름으로 변경
-    df_detail.columns = ["시간", f"조장({workers['조장']})", f"회관({workers['회관']})", f"의산A({workers['의산A']})", f"의산B({workers['의산B']})"]
-
-# 표 출력 (이미지가 아니라 진짜 표입니다)
-st.table(df_detail)
-
-st.divider()
-
-# 주간 날짜 확인용 (전체 흐름)
-with st.expander("🗓️ 주간 날짜별 근무 조 확인"):
-    week_list = []
-    for i in range(-1, 8):
-        d = today_val + timedelta(days=i)
-        w = get_shift_workers(d)
-        if w:
-            week_list.append({"날짜": d.strftime('%m/%d(%a)'), "조장": w['조장'], "회관": w['회관'], "의산A": w['의산A'], "의산B": w['의산B']})
-    st.dataframe(pd.DataFrame(week_list), use_container_width=True, hide_index=True)
+if week_list:
+    st.table(pd.DataFrame(week_list))
