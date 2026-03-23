@@ -1,0 +1,155 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime, timedelta
+import os
+
+# --- 1. 설정 및 데이터 관리 ---
+st.set_page_config(page_title="보안 통합 관리 시스템", layout="wide")
+LEAVE_FILE = 'leave_data.csv'
+
+def load_leaves():
+    if os.path.exists(LEAVE_FILE):
+        return pd.read_csv(LEAVE_FILE)
+    return pd.DataFrame(columns=['날짜', '성명', '대근자'])
+
+def save_leaves(df):
+    df.to_csv(LEAVE_FILE, index=False, encoding='utf-8-sig')
+
+# 28명 전체 명단 데이터
+CONTACT_DATA = [
+    {"조": "공통", "직위": "소장", "성명": "이규용", "연락처": "010-8883-6580"},
+    {"조": "공통", "직위": "부소장", "성명": "박상현", "연락처": "010-3193-4603"},
+    {"조": "공통", "직위": "반장", "성명": "유정수", "연락처": "010-5316-8065"},
+    {"조": "공통", "직위": "반장", "성명": "오제준", "연락처": "010-3352-8933"},
+    {"조": "공통", "직위": "반장", "성명": "이강택", "연락처": "010-9048-6708"},
+    {"조": "A조", "직위": "조장", "성명": "배준용", "연락처": "010-4717-7065"},
+    {"조": "A조", "직위": "조원", "성명": "이명구", "연락처": "010-8638-5819"},
+    {"조": "A조", "직위": "조원", "성명": "김영중", "연락처": "010-7726-5963"},
+    {"조": "A조", "직위": "조원", "성명": "김삼동", "연락처": "010-2345-8081"},
+    {"조": "B조", "직위": "조장", "성명": "심규천", "연락처": "010-8287-9895"},
+    {"조": "B조", "직위": "조원", "성명": "임종현", "연락처": "010-7741-6732"},
+    {"조": "B조", "직위": "조원", "성명": "권영국", "연락처": "010-4085-9982"},
+    {"조": "B조", "직위": "조원", "성명": "전준수", "연락처": "010-5687-7107"},
+    {"조": "C조", "직위": "조장", "성명": "황재업", "연락처": "010-9278-6622"},
+    {"조": "C조", "직위": "조원", "성명": "이태원", "연락처": "010-9265-7881"},
+    {"조": "C조", "직위": "조원", "성명": "김태언", "연락처": "010-5386-5386"},
+    {"조": "C조", "직위": "조원", "성명": "이정석", "연락처": "010-2417-1173"},
+    {"조": "A조", "직위": "조장", "성명": "손병휘", "연락처": "010-9966-2090"},
+    {"조": "A조", "직위": "조원", "성명": "권순호", "연락처": "010-2539-1799"},
+    {"조": "A조", "직위": "조원", "성명": "김진식", "연락처": "010-3277-0808"},
+    {"조": "B조", "직위": "조장", "성명": "황일범", "연락처": "010-8929-4294"},
+    {"조": "B조", "직위": "조원", "성명": "이상길", "연락처": "010-9904-0247"},
+    {"조": "B조", "직위": "조원", "성명": "허용", "연락처": "010-8845-0163"},
+    {"조": "C조", "직위": "조장", "성명": "피재영", "연락처": "010-9359-2569"},
+    {"조": "C조", "직위": "조원", "성명": "남형민", "연락처": "010-8767-7073"},
+    {"조": "C조", "직위": "조원", "성명": "강경훈", "연락처": "010-3436-6107"},
+    {"조": "기숙사", "직위": "조원", "성명": "유시균", "연락처": "010-8737-5770"},
+    {"조": "기숙사", "직위": "조원", "성명": "이상헌", "연락처": "010-4285-4231"}
+]
+
+# --- 2. 사이드바 메뉴 ---
+menu = st.sidebar.selectbox("메뉴 선택", ["📱 비상연락망", "📝 연차 관리", "🗓️ C조 근무표"])
+
+if menu == "📱 비상연락망":
+    st.subheader("📱 비상연락망")
+    df = pd.DataFrame(CONTACT_DATA)
+    sel_group = st.sidebar.selectbox("조 필터", ["전체", "A조", "B조", "C조", "공통", "기숙사"])
+    disp_df = df if sel_group == "전체" else df[df['조'] == sel_group]
+    
+    cards_html = "".join([f'''
+        <div class="card" onclick="window.location.href='tel:{r['연락처'].replace('-', '')}'">
+            <div class="name">{r['성명']}</div>
+            <div class="rank">{r['직위']}</div>
+            <div class="phone">{r['연락처'][-4:]}</div>
+        </div>
+    ''' for _, r in disp_df.iterrows()])
+    
+    st.components.v1.html(f"""
+    <style>
+        .container {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-family: sans-serif; }}
+        .card {{ background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 5px 2px; text-align: center; cursor: pointer; }}
+        .name {{ font-weight: bold; font-size: 11px; }}
+        .rank {{ font-size: 8px; color: #666; }}
+        .phone {{ font-size: 8px; color: #2e7d32; font-weight: bold; }}
+    </style>
+    <div class="container">{cards_html}</div>
+    """, height=600, scrolling=True)
+
+elif menu == "📝 연차 관리":
+    st.subheader("📝 연차 신청 및 관리")
+    leaves_df = load_leaves()
+    c_members = sorted([p['성명'] for p in CONTACT_DATA if p['조'] == "C조"])
+    
+    with st.form("leave_form", clear_on_submit=True):
+        col1, col2, col3 = st.columns(3)
+        name = col1.selectbox("성명", c_members)
+        date = col2.date_input("날짜", datetime.now())
+        sub = col3.text_input("맞대근자")
+        if st.form_submit_button("등록"):
+            new_data = pd.DataFrame([[str(date), name, sub]], columns=['날짜', '성명', '대근자'])
+            leaves_df = pd.concat([leaves_df, new_data]).drop_duplicates()
+            save_leaves(leaves_df)
+            st.success("연차 정보가 저장되었습니다.")
+            st.rerun()
+    st.dataframe(leaves_df.sort_values(by='날짜', ascending=False), use_container_width=True, hide_index=True)
+
+elif menu == "🗓️ C조 근무표":
+    st.subheader("🗓️ C조 근무표 (1개월 조회)")
+    leaves_df = load_leaves()
+    
+    # --- 날짜 선택 로직 ---
+    today = datetime.now().date()
+    start_date = st.sidebar.date_input("조회 시작 날짜", today)
+    end_date = start_date + timedelta(days=30)
+    st.sidebar.info(f"조회 기간: {start_date} ~ {end_date}")
+
+    # 로직 설정: 선임순 및 회관순번
+    staff_rank = {"김태언": 1, "이태원": 2, "이정석": 3}
+    a_rotation = ["이태원", "김태언", "이정석"]
+    weekday_kr = ["월", "화", "수", "목", "금", "토", "일"]
+    
+    # 기준점: 3월 3일(화)이 로직의 0번째 근무(이태원 A)
+    base_date = datetime(2026, 3, 3).date()
+    
+    res = []
+    # 선택한 시작 날짜부터 30일간 계산
+    current = start_date
+    while current <= end_date:
+        # 3일 주기 근무일인지 확인 (3/3 기준 3일마다)
+        days_diff = (current - base_date).days
+        if days_diff >= 0 and days_diff % 3 == 0:
+            count_idx = days_diff // 3
+            
+            # 1. 회관(A) 결정: 2회 연속 교대
+            a_worker = a_rotation[(count_idx // 2) % 3]
+            
+            # 2. 의산연(B, C) 결정: 나머지 중 선임이 B
+            others = sorted([n for n in staff_rank.keys() if n != a_worker], key=lambda x: staff_rank[x])
+            b_worker, c_worker = others[0], others[1]
+            
+            # 3. 교대: 연속 근무 2일차(짝수 인덱스일 때의 다음인 홀수 인덱스)에 B/C 교대
+            if count_idx % 2 == 1:
+                b_worker, c_worker = c_worker, b_worker
+                
+            # 4. 연차 반영
+            t_str = current.strftime('%Y-%m-%d')
+            l_name = ""
+            match = leaves_df[leaves_df['날짜'] == t_str]
+            if not match.empty:
+                l_name = match.iloc[0]['성명']
+                if l_name in [b_worker, c_worker]: a_worker = l_name
+            
+            res.append({
+                "일자": f"{current.month}/{current.day:02d}({weekday_kr[current.weekday()]})",
+                "조장": "황재업", "A(회관)": a_worker, "B(산연)": b_worker, "C(산연)": c_worker, "연차": l_name
+            })
+        current += timedelta(days=1)
+
+    def style_final(val):
+        colors = {"황재업": "#D9EAD3", "김태언": "#FFF2CC", "이정석": "#D0E0E3", "이태원": "#F4CCCC"}
+        return f'background-color: {colors.get(val, "")}; font-size: 8px; text-align: center; padding: 0px;'
+
+    if res:
+        st.dataframe(pd.DataFrame(res).style.applymap(style_final), use_container_width=True, hide_index=True, height=650)
+    else:
+        st.warning("선택한 기간 내에 해당하는 근무일이 없습니다.")
