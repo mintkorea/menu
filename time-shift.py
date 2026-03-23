@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# --- 1. 1시간 단위 통합 데이터 (주간 수정안 + 야간 1시간 원칙 반영) ---
-# 원칙: 의산연(이정석, 김태언)은 절대로 동시에 쉬지 않음.
-# 원칙: 모든 시간은 1시간 단위로 쪼개서 관리.
+# --- 1. 근무 데이터 (사용자 수정 이미지 100% 반영) ---
 SCHEDULE_DATA = [
     {"시간": "07:00-08:00", "황재업": "안내실", "이태원": "로비", "이정석": "로비", "김태언": "휴게"},
     {"시간": "08:00-09:00", "황재업": "안내실", "이태원": "휴게", "이정석": "휴게", "김태언": "로비"},
@@ -20,7 +18,6 @@ SCHEDULE_DATA = [
     {"시간": "18:00-19:00", "황재업": "로비", "이태원": "안내실", "이정석": "로비", "김태언": "휴게"},
     {"시간": "19:00-20:00", "황재업": "안내실", "이태원": "휴게", "이정석": "휴게", "김태언": "로비"},
     {"시간": "20:00-21:00", "황재업": "안내실", "이태원": "석식", "이정석": "로비", "김태언": "석식"},
-    # --- 야간 1시간 단위 (의산연 동시 휴게 없음) ---
     {"시간": "21:00-22:00", "황재업": "회관근무", "이태원": "취침", "이정석": "로비", "김태언": "대기"},
     {"시간": "22:00-23:00", "황재업": "회관근무", "이태원": "취침", "이정석": "대기", "김태언": "로비"},
     {"시간": "23:00-00:00", "황재업": "취침", "이태원": "취침", "이정석": "회관근무", "김태언": "로비"},
@@ -34,45 +31,51 @@ SCHEDULE_DATA = [
 ]
 
 st.set_page_config(layout="wide")
-st.title("🛡️ C조 주/야간 1시간 단위 통합 상황판")
+st.title("🗓️ 성의교정 C조 통합 상황판")
 
-# --- 2. 실시간 시간 설정 ---
+# --- 2. 개선된 날짜 로직 ---
 now = datetime.now()
-current_hour = now.hour
-selected_date = st.sidebar.date_input("날짜", now.date())
+selected_date = st.sidebar.date_input("조회 날짜", now.date())
 
-# --- 3. 스타일 및 출력 ---
-df = pd.DataFrame(SCHEDULE_DATA)
+# 기준일: 2026년 3월 18일 (C조 근무일 확정)
+anchor_date = datetime(2026, 3, 18).date()
+days_diff = (selected_date - anchor_date).days
 
-def apply_final_style(row):
-    try:
-        start_h = int(row['시간'].split('-')[0].split(':')[0])
-        is_now = (start_h == current_hour)
-    except:
-        is_now = False
+# 3일 주기 계산: 27일(9주기), 30일(12주기) 모두 True 반환
+if days_diff % 3 == 0:
+    # 근무자 로테이션 (회관/A/B 역할 교대)
+    cycle_idx = days_diff // 3
+    names = ["이태원", "이정석", "김태언"]
     
-    styles = []
-    for col, val in row.items():
-        base = 'color: black; font-weight: bold; '
-        if is_now:
-            base += 'background-color: #FFF9C4; border: 2.5px solid orange; '
-        
-        v = str(val)
-        if '로비' in v: base += 'color: #D32F2F;'
-        elif '순찰' in v: base += 'color: #1976D2;'
-        elif '취침' in v or '대기' in v: base += 'color: #9E9E9E;'
-        elif '식' in v: base += 'color: #EF6C00;'
-        elif '안내실' in v or '회관근무' in v: base += 'color: #008B8B;'
-        
-        styles.append(base)
-    return styles
+    # 6일 단위(근무 2회)마다 역할이 한 칸씩 밀리는 구조 반영
+    shift_offset = (cycle_idx // 2) % 3
+    a_worker = names[shift_offset] 
+    remaining = [n for n in names if n != a_worker]
+    # 당직 A, B 교대 반영
+    b_worker, c_worker = (remaining[1], remaining[0]) if cycle_idx % 2 == 1 else (remaining[0], remaining[1])
 
-st.success(f"📅 {selected_date} | 현재 {now.strftime('%H:%M')} 근무 상황 (노란색 강조)")
-st.table(df.style.apply(apply_final_style, axis=1))
+    # --- 3. 실시간 강조 및 출력 ---
+    df = pd.DataFrame(SCHEDULE_DATA)
+    current_hour = now.hour
 
-st.info("""
-**✅ 야간 근무 원칙 준수**
-1. **1시간 단위 표기**: 모든 야간 스케줄을 1시간 단위로 세분화했습니다.
-2. **동시 휴게 방지**: 의산연(이정석, 김태언) 중 한 명은 반드시 로비 또는 회관근무를 수행하도록 교차 배치했습니다.
-3. **취침 시간**: 4시간 연속 취침 원칙을 유지하며 인원별로 배분했습니다.
-""")
+    def style_row(row):
+        start_h = int(row['시간'].split('-')[0].split(':')[0])
+        is_now = (start_h == current_hour) and (selected_date == now.date())
+        
+        styles = []
+        for col, val in row.items():
+            base = 'color: black; font-weight: bold; '
+            if is_now: base += 'background-color: #FFF9C4; border: 2.5px solid orange; '
+            v = str(val)
+            if '로비' in v: base += 'color: #D32F2F;'
+            elif '순찰' in v: base += 'color: #1976D2;'
+            elif '취침' in v or '대기' in v: base += 'color: #9E9E9E;'
+            elif '식' in v: base += 'color: #EF6C00;'
+            elif '안내실' in v or '회관근무' in v: base += 'color: #008B8B;'
+            styles.append(base)
+        return styles
+
+    st.success(f"✅ {selected_date} 근무: {a_worker}(회), {b_worker}(A), {c_worker}(B)")
+    st.table(df.style.apply(style_row, axis=1))
+else:
+    st.warning(f"⚠️ {selected_date}은 C조 근무일이 아닙니다. (다음 근무: {selected_date + timedelta(days=3-(days_diff%3))}일)")
