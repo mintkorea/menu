@@ -2,20 +2,14 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- 1. 데이터 및 개인 설정 ---
-# 3/24일 기준: 이태원(회관), 김태언(의산A), 이정석(의산B)
+# --- 1. 기본 데이터 설정 ---
 START_DATE = datetime(2026, 3, 24).date()
 WORKERS = ["이태원", "김태언", "이정석"]
-
-# [수정] 현재 연차자 없음
-ANNUAL_LEAVE = {}
-
-# 개인별 강조 색상
 WORKER_COLORS = {
     "황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7"
 }
 
-# 기본 근무 패턴
+# 시간대별 근무 패턴 (이미지 데이터 기준)
 BASE_PATTERN = [
     {"시간": 7, "표시": "07:00", "조": "안내실", "회": "로비", "A": "휴게", "B": "로비"},
     {"시간": 8, "표시": "08:00", "조": "안내실", "회": "휴게", "A": "로비", "B": "휴게"},
@@ -43,47 +37,56 @@ BASE_PATTERN = [
     {"시간": 6, "표시": "06:00", "조": "안내실", "회": "회관근무", "A": "로비", "B": "순찰"},
 ]
 
-# --- 2. 페이지 및 CSS 설정 ---
+# --- 2. 페이지 및 CSS 설정 (사이드바 폰트 크기 포함) ---
 st.set_page_config(page_title="성의교정 C조", layout="centered")
 st.markdown("""
     <style>
+    /* 표 폰트 및 중앙 정렬 */
     html, body, [data-testid="stTable"] { font-size: 9px !important; text-align: center !important; }
     table { margin-left: auto; margin-right: auto; width: 100% !important; table-layout: fixed !important; }
     th, td { text-align: center !important; padding: 4px 1px !important; border: 1px solid #eee; }
-    .main-title { font-size: 18px; font-weight: bold; color: #1E3A8A; text-align: center; margin-bottom: 5px; }
-    .sub-title { font-size: 12px; color: #666; text-align: center; margin-bottom: 15px; }
-    .status-card { background-color: #fcfcfc; border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+    
+    /* 타이틀 스타일 */
+    .main-title { font-size: 20px; font-weight: bold; color: #1E3A8A; text-align: center; margin-top: 10px; }
+    .period-text { font-size: 13px; color: #444; text-align: center; margin-bottom: 20px; font-weight: 500; }
+    
+    /* 사이드바 폰트 크기 확대 */
+    [data-testid="stSidebar"] { font-size: 15px !important; }
+    [data-testid="stSidebar"] .stRadio > label { font-size: 16px !important; font-weight: bold !important; }
+    [data-testid="stSidebar"] .stSelectbox label { font-size: 16px !important; font-weight: bold !important; }
+    [data-testid="stSidebar"] .stNumberInput label { font-size: 16px !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. 공통 로직 ---
+# --- 3. 사이드바 컨트롤 ---
+with st.sidebar:
+    st.header("📋 메뉴 설정")
+    menu = st.radio("업무 선택", ["📍 실시간 상황판", "📅 교대 근무표"])
+    st.divider()
+    
+    user_name = st.selectbox("본인 이름 강조", ["선택 안함", "황재업"] + WORKERS)
+    
+    if menu == "📅 교대 근무표":
+        st.subheader("🗓️ 기간 설정")
+        duration_months = st.number_input("조회 개월 수", min_value=1, max_value=12, value=1)
+
+# --- 4. 메인 로직 ---
 now = datetime.now()
 current_hour = now.hour
 
-with st.sidebar:
-    st.header("⚙️ 메뉴")
-    menu = st.radio("보기 선택", ["📍 실시간 상황판", "📅 교대 근무표"])
-    user_name = st.selectbox("본인 이름 강조", ["선택 안함", "황재업"] + WORKERS)
-
-# --- 4. 메인 화면 ---
 if menu == "📍 실시간 상황판":
-    st.markdown("<div class='main-title'>성의교정 C조 근무편성표</div>", unsafe_allow_html=True)
-    selected_date = st.date_input("날짜 선택", now.date())
+    st.markdown("<div class='main-title'>성의교정 C조 실시간 상황판</div>", unsafe_allow_html=True)
+    selected_date = st.date_input("조회 날짜", now.date())
     
     days_diff = (selected_date - START_DATE).days
     if days_diff % 3 == 0:
         shift = (days_diff // 3) % 3
         w_h, w_a, w_b = WORKERS[(0+shift)%3], WORKERS[(1+shift)%3], WORKERS[(2+shift)%3]
         
-        # 현재 상태 요약
+        # 현재 상태 요약 박스
         cur = next((r for r in BASE_PATTERN if r["시간"] == current_hour), None)
         if cur and selected_date == now.date():
-            st.markdown(f"""
-            <div class='status-card'>
-                <b>현재({now.strftime('%H:%M')}) 위치</b><br>
-                조장: {cur['조']} | 회관({w_h}): {cur['회']} | A({w_a}): {cur['A']} | B({w_b}): {cur['B']}
-            </div>
-            """, unsafe_allow_html=True)
+            st.info(f"💡 현재 시각({now.strftime('%H:%M')}) 위치: 조장({cur['조']}) | 회관({cur['회']}) | A({cur['A']}) | B({cur['B']})")
 
         df_list = []
         for r in BASE_PATTERN:
@@ -109,16 +112,17 @@ if menu == "📍 실시간 상황판":
         st.warning("비번(휴무) 일자입니다.")
 
 elif menu == "📅 교대 근무표":
-    st.markdown("<div class='main-title'>성의교정 C조 근무편성표</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-title'>(3월 24일 ~ 4월 20일)</div>", unsafe_allow_html=True)
+    # 기간 계산
+    start_v = now.date()
+    end_v = start_v + timedelta(days=30 * duration_months)
     
-    # [수정] 요청하신 특정 기간 설정 (3/24 ~ 4/20)
-    fixed_start = datetime(2026, 3, 24).date()
-    fixed_end = datetime(2026, 4, 20).date()
+    # 타이틀 및 기간 표시
+    st.markdown("<div class='main-title'>성의교정 C조 근무편성표</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='period-text'>({start_v.strftime('%m월 %d일')} ~ {end_v.strftime('%m월 %d일')})</div>", unsafe_allow_html=True)
     
     cal_data = []
-    curr = fixed_start
-    while curr <= fixed_end:
+    curr = start_v
+    while curr <= end_v:
         diff = (curr - START_DATE).days
         if diff % 3 == 0:
             s = (diff // 3) % 3
@@ -138,8 +142,8 @@ elif menu == "📅 교대 근무표":
     def style_cal(row):
         styles = []
         f_color = "black"
-        if row['weekday'] == 5: f_color = "#1E88E5" # 토요일 파랑
-        elif row['weekday'] == 6: f_color = "#E53935" # 일요일 빨강
+        if row['weekday'] == 5: f_color = "#1E88E5" # 토요일
+        elif row['weekday'] == 6: f_color = "#E53935" # 일요일
         
         for i, col_name in enumerate(row.index):
             if col_name == "weekday": styles.append(""); continue
