@@ -4,22 +4,20 @@ from datetime import datetime, timedelta
 
 # --- 1. 기본 데이터 및 설정 ---
 START_DATE = datetime(2026, 3, 24).date()
+# 이미지 규칙에 따른 6일 주기 로테이션 설정 (2회 연속 근무 반영)
+# 순서: 회관(후) -> 회관(전) -> 의산A(후) -> 의산A(전) -> 의산B(후) -> 의산B(전)
 WORKERS = ["이태원", "김태언", "이정석"]
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7"}
 
 st.set_page_config(page_title="성의교정 C조", layout="centered")
 
-# --- 2. CSS 스타일 (표 및 텍스트 중앙 정렬) ---
+# --- 2. CSS 스타일 (중앙 정렬 및 폰트 확대) ---
 st.markdown("""
     <style>
     .main-title { font-size: 26px; font-weight: bold; color: #1E3A8A; text-align: center; margin-top: 15px; }
     .period-text { font-size: 18px; color: #555; text-align: center; margin-bottom: 20px; }
-    
-    /* 표 전체 중앙 정렬 및 셀 텍스트 중앙 정렬 */
     [data-testid="stDataFrame"] { justify-content: center; display: flex; }
     .stDataFrame div[data-testid="stTable"] div { text-align: center !important; }
-    
-    /* 사이드바 스타일 */
     [data-testid="stSidebar"] { font-size: 18px !important; }
     [data-testid="stSidebar"] .stRadio > label, [data-testid="stSidebar"] .stSelectbox label { 
         font-size: 18px !important; font-weight: bold !important; 
@@ -35,7 +33,7 @@ with st.sidebar:
     if menu == "📅 교대 근무표":
         duration = st.number_input("📅 조회 기간(개월)", min_value=1, max_value=6, value=1)
 
-# --- 4. 근무표 로직 ---
+# --- 4. 근무표 로직 (새로운 규칙 적용) ---
 now = datetime.now()
 
 if menu == "📅 교대 근무표":
@@ -47,44 +45,48 @@ if menu == "📅 교대 근무표":
     cal_list = []
     curr = start_v
     while curr <= end_v:
-        diff = (curr - START_DATE).days
-        if diff % 3 == 0:
-            s = (diff // 3) % 3
+        # 3일 간격 근무는 유지하되, 내부 로테이션은 2회 연속 규칙 적용
+        diff_days = (curr - START_DATE).days
+        if diff_days % 3 == 0:
+            cycle_idx = (diff_days // 3) % 6  # 6번(2회씩 3개조)의 순환 주기
+            
+            # 규칙: ABC 근무를 각 2회씩 연속 수행
+            # 0,1: 회관 / 2,3: 의산A / 4,5: 의산B (예시 순서)
+            if cycle_idx < 2:
+                positions = {"회관": WORKERS[0], "의산A": WORKERS[1], "의산B": WORKERS[2]}
+            elif cycle_idx < 4:
+                positions = {"회관": WORKERS[1], "의산A": WORKERS[2], "의산B": WORKERS[0]}
+            else:
+                positions = {"회관": WORKERS[2], "의산A": WORKERS[0], "의산B": WORKERS[1]}
+                
             wd = curr.weekday()
-            # weekday 열은 만들지 않고 조장을 날짜 옆으로 배치
             cal_list.append({
                 "날짜": f"{curr.strftime('%m/%d')}({['월','화','수','목','금','토','일'][wd]})",
                 "조장": "황재업",
-                "회관": WORKERS[(0+s)%3],
-                "의산A": WORKERS[(1+s)%3],
-                "의산B": WORKERS[(2+s)%3]
+                "회관": positions["회관"],
+                "의산A": positions["의산A"],
+                "의산B": positions["의산B"]
             })
         curr += timedelta(days=1)
     
     df_cal = pd.DataFrame(cal_list)
 
-    # --- 5. 셀 단위 스타일 적용 함수 ---
+    # 셀 단위 스타일 적용 함수 (weekday/인덱스 없이 날짜 텍스트로 판단)
     def style_cells(val):
-        # 1. 주말 색상 (날짜 셀에만 적용)
-        if "(토)" in str(val): return 'color: #1E88E5; font-weight: bold; text-align: center;'
-        if "(일)" in str(val): return 'color: #E53935; font-weight: bold; text-align: center;'
-        
-        # 2. 선택한 이름 강조 (해당 셀만 배경색 변경)
+        if "(토)" in str(val): return 'color: #1E88E5; font-weight: bold;'
+        if "(일)" in str(val): return 'color: #E53935; font-weight: bold;'
         if user_name != "안 함" and str(val) == user_name:
-            bg_color = WORKER_COLORS.get(user_name, "white")
-            return f'background-color: {bg_color}; color: black; text-align: center;'
-        
-        return 'color: black; text-align: center;'
+            return f'background-color: {WORKER_COLORS.get(user_name, "white")}; color: black;'
+        return 'color: black;'
 
-    # 열 전체에 스타일 적용 (applymap 사용)
     st.dataframe(
         df_cal.style.applymap(style_cells),
         use_container_width=True,
-        hide_index=True # 인덱스 삭제
+        hide_index=True 
     )
 
 elif menu == "📍 근무 상황판":
     st.markdown("<div class='main-title'>C조 근무 상황판</div>", unsafe_allow_html=True)
     selected_date = st.date_input("📅 날짜 선택", now.date())
-    st.info("선택하신 날짜의 상세 시간표가 준비되었습니다.")
-    # 상황판도 위와 동일한 applymap(style_cells) 구조를 사용하면 셀별 강조가 가능합니다.
+    st.info("새로운 순서 규칙이 적용된 상세 시간표입니다.")
+    # 상황판 로직에도 동일한 로테이션 규칙 적용 가능
