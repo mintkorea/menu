@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- [1] 핵심 설정 ---
+# --- [1] 핵심 설정 (변동 없음) ---
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
@@ -11,24 +11,28 @@ st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
     /* 타이틀 폰트 크기 절반(24px)으로 축소 */
-    .small-title { font-size: 24px !important; font-weight: bold; margin-bottom: 10px; color: #31333F; }
+    .small-title { font-size: 24px !important; font-weight: bold; margin-bottom: 15px; color: #31333F; }
     .stDataFrame div[data-testid="stTable"] { font-size: 16px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 작은 타이틀 적용 (맘대로 고치지 않은 최종 크기)
+# [타이틀] 절반 크기로 적용
 st.markdown('<p class="small-title">📅 C조 근무 편성표</p>', unsafe_allow_html=True)
 
-# --- [3] 사용자 확인 (강조 기능) ---
-# 별도의 슬라이더 없이, 기존 어제 저녁 방식인 성함 선택박스만 배치
-user_focus = st.selectbox("👤 강조할 성함 선택", ["안 함", "황재업", "김태언", "이태원", "이정석"])
+# --- [3] 조회 및 강조 설정 ---
+with st.container():
+    # [조회달력 슬라이드] - 사용자님이 말씀하신 슬라이더 방식 복구
+    lookback, lookforward = st.slider("📅 조회 기간 설정 (오늘 기준)", -30, 90, (-10, 60))
+    
+    # 강조할 성함 선택
+    user_focus = st.selectbox("👤 강조할 성함 선택", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- [4] 근무 데이터 생성 (조회 기간 설정: 어제 저녁 방식 원복) ---
-# 슬라이더를 삭제하고, 과거(-15일)부터 미래(+45일)까지 자동으로 리스트업
+# --- [4] 근무 데이터 생성 (요일 셸 없이 통합) ---
 today = datetime.now().date()
 cal_data = []
 
-for i in range(-15, 45):
+# 슬라이더에서 선택한 범위만큼 데이터 생성
+for i in range(lookback, lookforward + 1):
     d = today + timedelta(days=i)
     diff = (d - PATTERN_START).days
     
@@ -55,7 +59,7 @@ df = pd.DataFrame(cal_data)
 def apply_style(row):
     styles = [''] * len(row)
     
-    # 날짜 셀 요일 색상 (Sun: 빨강, Sat: 파랑)
+    # 요일 색상 (Sun: 빨강, Sat: 파랑)
     if '(Sun)' in row['날짜']:
         styles[0] = 'color: red; font-weight: bold'
     elif '(Sat)' in row['날짜']:
@@ -69,7 +73,7 @@ def apply_style(row):
                 
     return styles
 
-# 표 출력 (요일 컬럼 없이 날짜에 통합)
+# 표 출력 (요일 셸 삭제 반영)
 st.dataframe(
     df.style.apply(apply_style, axis=1),
     use_container_width=True,
