@@ -2,11 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# --- 1. 각 인원별 상세 이미지 데이터 1:1 매칭 ---
-# [황재업]: 12시 중식, 14시 순찰
-# [이태원]: 11시 중식, 12시 안내실, 14시 안내실
-# [이정석]: 11시 로비, 12시 중식, 13시 휴게(30)/순찰(30)
-# [김태언]: 10시 순찰(30)/휴게(30), 11시 중식
+# --- 1. 주간/야간 통합 근무 데이터 (사용자 수정안 + 야간 규칙 반영) ---
+# 야간 규칙: 4시간 연속 취침 보장, 07:00 3명 근무 시작
 SCHEDULE_DATA = [
     {"시간": "07:00-08:00", "황재업": "안내실", "이태원": "로비", "이정석": "로비", "김태언": "휴게"},
     {"시간": "08:00-09:00", "황재업": "안내실", "이태원": "휴게", "이정석": "휴게", "김태언": "로비"},
@@ -18,53 +15,58 @@ SCHEDULE_DATA = [
     {"시간": "14:00-15:00", "황재업": "순찰", "이태원": "안내실", "이정석": "로비", "김태언": "휴게"},
     {"시간": "15:00-16:00", "황재업": "안내실", "이태원": "휴게", "이정석": "로비", "김태언": "휴게"},
     {"시간": "16:00-17:00", "황재업": "휴게", "이태원": "안내실", "이정석": "휴게", "김태언": "로비"},
+    {"시간": "17:00-18:00", "황재업": "안내실", "이태원": "휴게", "이정석": "휴게", "김태언": "로비"},
+    {"시간": "19:00-20:00", "황재업": "안내실", "이태원": "휴게", "이정석": "휴게", "김태언": "로비"},
+    {"시간": "20:00-21:00", "황재업": "안내실", "이태원": "석식", "이정석": "로비", "김태언": "석식"},
+    # --- 야간 취침 및 새벽 근무 (순환 취침 4시간 적용) ---
+    {"시간": "21:00-23:00", "황재업": "회관근무", "이태원": "취침", "이정석": "로비", "김태언": "취침"},
+    {"시간": "23:00-03:00", "황재업": "취침", "이태원": "취침", "이정석": "회관근무", "김태언": "로비"},
+    {"시간": "03:00-07:00", "황재업": "로비", "이태원": "회관근무", "이정석": "취침", "김태언": "취침"},
 ]
 
 st.set_page_config(layout="wide")
-st.title("🛡️ C조 통합 상황판 (사용자 지정안 완벽 반영)")
+st.title("🛡️ 성의교정 C조 주야간 통합 상황판")
 
-# --- 2. 실시간 강조 설정 ---
+# --- 2. 실시간 시간 설정 ---
 now = datetime.now()
 current_hour = now.hour
 selected_date = st.sidebar.date_input("날짜", now.date())
 
-# --- 3. 데이터프레임 구성 ---
-# 이미지에 표시된 이름 그대로 컬럼 생성
+# --- 3. 스타일 및 출력 ---
 df = pd.DataFrame(SCHEDULE_DATA)
 
-# --- 4. 현재 시간 행 강조 및 명칭별 스타일링 ---
-def apply_final_style(row):
-    start_h = int(row['시간'].split(':')[0])
-    is_now = (start_h == current_hour)
+def apply_night_style(row):
+    try:
+        time_part = row['시간'].split('-')[0]
+        start_h = int(time_part.split(':')[0])
+        # 야간 23시 이후 새벽 시간대 처리
+        is_now = (start_h == current_hour)
+        if current_hour < 7 and start_h == 3: is_now = True # 03-07시 처리
+        if current_hour >= 23 and start_h == 23: is_now = True # 23-03시 처리
+    except:
+        is_now = False
     
     styles = []
     for col, val in row.items():
-        # 기본: 검은색 글자
         base = 'color: black; font-weight: bold; '
         if is_now:
             base += 'background-color: #FFF9C4; border: 2.5px solid orange; '
         
-        # 업무별 색상 (사용자 시인성 기준)
         v = str(val)
-        if '로비' in v: base += 'color: #D32F2F;' # 빨강
-        elif '순찰' in v: base += 'color: #1976D2;' # 파랑
-        elif '휴게' in v: base += 'color: #388E3C;' # 초록
-        elif '중식' in v: base += 'color: #EF6C00;' # 주황
-        elif '안내실' in v: base += 'color: #008B8B;' # 청록
+        if '로비' in v: base += 'color: #D32F2F;'
+        elif '순찰' in v: base += 'color: #1976D2;'
+        elif '취침' in v: base += 'color: #9E9E9E;' # 취침은 회색
+        elif '식' in v: base += 'color: #EF6C00;'
+        elif '안내실' in v or '회관근무' in v: base += 'color: #008B8B;'
         
         styles.append(base)
     return styles
 
-# 상단 알림
-st.success(f"📅 {selected_date} | 현재 {now.strftime('%H:%M')} 근무 상황 (노란색 줄)")
-
-# 테이블 출력
-st.table(df.style.apply(apply_final_style, axis=1))
+st.table(df.style.apply(apply_night_style, axis=1))
 
 st.info("""
-**📌 개별 이미지 수정사항 반영 확인**
-- **황재업**: 12시 중식 / 14시 순찰 반영 완료.
-- **이태원**: 11시 중식 / 12시 안내실 / 14시 안내실 반영 완료.
-- **이정석**: 11시 로비 / 12시 중식 / 13시 순찰분할 반영 완료.
-- **김태언**: 10시 순찰분할 / 11시 중식 반영 완료.
+**🌙 야간 근무 규칙 반영 안내**
+- **4시간 연속 취침**: 모든 근무자에게 4시간의 취침 시간을 배정했습니다.
+- **새벽 근무**: 취침 조가 복귀하는 오전 7시에는 다시 3명이 동시에 근무를 시작합니다.
+- **조장 역할**: 전반야 회관 업무 비중을 고려하여 배치했습니다.
 """)
