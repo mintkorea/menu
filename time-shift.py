@@ -1,43 +1,44 @@
 import streamlit as st
 from datetime import datetime, timedelta
 
-# --- 1. 기본 데이터 및 로직 (사용자 규칙 완벽 반영) ---
+# --- 1. 기본 설정 및 로직 ---
 START_DATE = datetime(2026, 3, 24).date()
-RANK = ["김태언", "이태원", "이정석"]  # 선임 -> 후임 서열
-HALL_ROTATION = ["김태언", "이정석", "이태원"] # 회관 근무 순서
+RANK = ["김태언", "이태원", "이정석"]  # 선임 순서
+HALL_ROTATION = ["김태언", "이정석", "이태원"] # 회관 순번
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "이정석": "#FFFDE7", "김태언": "#E8F5E9"}
 
 def get_daily_layout(target_date):
     diff = (target_date - START_DATE).days
     if diff % 3 != 0: return None
-    # 이미지 흐름에 맞춘 순번 계산 (3/27부터 김태언 2회 시작)
     seq = (diff // 3) + 5 
     hall_worker = HALL_ROTATION[(seq // 2) % 3]
     others = [p for p in RANK if p != hall_worker]
-    # 1회차 선임A-후임B, 2회차 맞교대
     if seq % 2 == 0: return hall_worker, others[0], others[1]
     else: return hall_worker, others[1], others[0]
 
-# --- 2. UI 및 CSS ---
+# --- 2. UI 설정 ---
 st.set_page_config(page_title="성의교정 C조", layout="centered")
 
 with st.sidebar:
-    st.header("👤 설정")
+    st.header("⚙️ 설정")
     menu = st.radio("메뉴", ["📅 근무 편성표", "📍 오늘 상황판"])
-    selected_user = st.selectbox("강조할 이름 선택", ["안 함", "황재업"] + RANK)
+    selected_user = st.selectbox("👤 이름 강조", ["안 함", "황재업"] + RANK)
 
-# --- 3. 직접 HTML 생성 함수 (중앙 정렬 및 색상 고정) ---
-def build_html_table(data_list, highlight_name):
-    # 테이블 헤더
+# --- 3. HTML 생성 함수 (중앙 정렬 + 요일 색상 강제) ---
+def render_custom_table(data_list, highlight_name):
     html = """
     <style>
-        .custom-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 16px; text-align: center; }
-        .custom-table th { background-color: #f8f9fa; padding: 12px; border: 1px solid #dee2e6; }
-        .custom-table td { padding: 12px; border: 1px solid #dee2e6; text-align: center !important; }
-        .sat { color: #1E88E5; font-weight: bold; } /* 토요일 파랑 */
-        .sun { color: #E53935; font-weight: bold; } /* 일요일 빨강 */
+        .custom-container { display: flex; justify-content: center; width: 100%; }
+        .custom-table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
+        .custom-table th, .custom-table td { 
+            border: 1px solid #ddd; padding: 10px; text-align: center !important; 
+        }
+        .custom-table th { background-color: #f4f4f4; font-weight: bold; }
+        .sat { color: blue !important; font-weight: bold; }
+        .sun { color: red !important; font-weight: bold; }
     </style>
-    <table class="custom-table">
+    <div class='custom-container'>
+    <table class='custom-table'>
         <thead>
             <tr><th>날짜</th><th>조장</th><th>회관</th><th>의산A</th><th>의산B</th></tr>
         </thead>
@@ -45,19 +46,15 @@ def build_html_table(data_list, highlight_name):
     """
     
     for row in data_list:
-        # 강조 색상 결정
-        bg_style = ""
-        if highlight_name != "안 함" and highlight_name in row.values():
-            bg_color = WORKER_COLORS.get(highlight_name, "#ffffff")
-            bg_style = f'style="background-color: {bg_color}; font-weight: bold;"'
+        bg_color = WORKER_COLORS.get(highlight_name, "white") if highlight_name in row.values() else "white"
+        row_style = f"style='background-color: {bg_color};'" if highlight_name in row.values() else ""
         
-        # 요일 클래스 결정
         day_class = ""
-        if "토" in row["날짜"]: day_class = 'class="sat"'
-        elif "일" in row["날짜"]: day_class = 'class="sun"'
+        if "토" in row["날짜"]: day_class = "class='sat'"
+        elif "일" in row["날짜"]: day_class = "class='sun'"
         
         html += f"""
-            <tr {bg_style}>
+            <tr {row_style}>
                 <td {day_class}>{row['날짜']}</td>
                 <td>{row['조장']}</td>
                 <td>{row['회관']}</td>
@@ -65,13 +62,13 @@ def build_html_table(data_list, highlight_name):
                 <td>{row['의산B']}</td>
             </tr>
         """
-    
-    html += "</tbody></table>"
-    return html
+    html += "</tbody></table></div>"
+    # st.markdown의 unsafe_allow_html을 사용해야 태그가 깨지지 않습니다.
+    st.markdown(html, unsafe_allow_html=True)
 
-# --- 4. 메인 화면 출력 ---
+# --- 4. 메인 화면 ---
 if menu == "📅 근무 편성표":
-    st.markdown("<h2 style='text-align:center;'>📅 성의교정 C조 근무편성표</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center;'>성의교정 C조 근무편성표</h2>", unsafe_allow_html=True)
     
     display_data = []
     for i in range(45):
@@ -84,10 +81,18 @@ if menu == "📅 근무 편성표":
                 "조장": "황재업", "회관": h, "의산A": a, "의산B": b
             })
     
-    # HTML 직접 렌더링 (가장 확실함)
-    st.write(build_html_table(display_data, selected_user), unsafe_allow_html=True)
+    render_custom_table(display_data, selected_user)
 
 elif menu == "📍 오늘 상황판":
-    st.markdown("<h2 style='text-align:center;'>📍 C조 실시간 상황판</h2>", unsafe_allow_html=True)
-    # 상황판도 동일한 방식으로 시간대별 데이터 구축 가능
-    st.info("편성표의 로직과 강조 기능이 정상 작동하는지 먼저 확인해주세요.")
+    st.markdown("<h2 style='text-align:center;'>C조 실시간 근무 상황판</h2>", unsafe_allow_html=True)
+    sel_date = st.date_input("조회 날짜", datetime.now().date())
+    res = get_daily_layout(sel_date)
+    
+    if res:
+        h, a, b = res
+        st.success(f"📅 **{sel_date} 근무자:** 조장(황재업), 회관({h}), A({a}), B({b})")
+        # 상황판 데이터 (예시)
+        board = [{"시간": "07:00", "조": "안내실", "회": "로비", "A": "휴게", "B": "로비"}]
+        # 상황판도 동일한 HTML 방식으로 렌더링하면 중앙정렬이 유지됩니다.
+    else:
+        st.warning("비번입니다.")
