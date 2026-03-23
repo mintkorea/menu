@@ -11,37 +11,41 @@ def load_leaves():
         return pd.read_csv('leave_data.csv')
     return pd.DataFrame(columns=['날짜', '성명', '대근자'])
 
-# 인원 데이터 (사번, 생일 포함)
-CONTACT_DATA = [
-    {"id": 0, "조": "C조", "직위": "조원", "성명": "김태언", "연락처": "010-5386-5386", "사번": "2023001", "생일": "01월 01일"},
-    {"id": 1, "조": "C조", "직위": "조원", "성명": "이태원", "연락처": "010-9265-7881", "사번": "2023002", "생일": "02월 02일"},
-    {"id": 2, "조": "C조", "직위": "조원", "성명": "이정석", "연락처": "010-2417-1173", "사번": "2023003", "생일": "03월 03일"},
-    {"id": 3, "조": "C조", "직위": "조장", "성명": "황재업", "연락처": "010-9278-6622", "사번": "2023004", "생일": "04월 04일"},
-    # ... 추가 인원 데이터
+# 엑셀의 시간 숫자(float)를 "HH:mm" 문자열로 변환하는 함수
+def format_excel_time(t):
+    if pd.isna(t) or isinstance(t, str): return ""
+    total_seconds = int(t * 24 * 3600)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    return f"{hours:02d}:{minutes:02d}"
+
+# --- 2. C조 상세 시간표 (엑셀 '진한 색 To' 기준 반영) ---
+# From 시각에 교대하여 To 시각까지 근무하는 구조
+RAW_TIMETABLE = [
+    {"구분": "주간1", "From": 0.291666, "To": 0.3125, "조장": "안내실", "대원": "로비", "당직A": "로비", "당직B": "휴게"},
+    {"구분": "주간2", "From": 0.333333, "To": 0.354166, "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
+    {"구분": "주간3", "From": 0.375, "To": 0.395833, "조장": "안내실", "대원": "순찰", "당직A": "휴게", "당직B": "로비"},
+    {"구분": "주간4", "From": 0.416666, "To": 0.4375, "조장": "휴게", "대원": "안내실", "당직A": "로비", "당직B": "순찰"},
+    {"구분": "주간5", "From": 0.458333, "To": 0.479166, "조장": "로비", "대원": "안내실", "당직A": "순찰", "당직B": "휴게"},
+    {"구분": "주간6", "From": 0.5, "To": 0.520833, "조장": "순찰", "대원": "휴게", "당직A": "안내실", "당직B": "로비"},
+    {"구분": "주간7", "From": 0.541666, "To": 0.5625, "조장": "안내실", "대원": "휴게", "당직A": "로비", "당직B": "휴게"},
+    {"구분": "주간8", "From": 0.583333, "To": 0.604166, "조장": "로비", "대원": "순찰", "당직A": "휴게", "당직B": "안내실"},
+    {"구분": "주간9", "From": 0.625, "To": 0.645833, "조장": "안내실", "대원": "휴게", "당직A": "로비", "당직B": "휴게"},
+    {"구분": "주간10", "From": 0.666666, "To": 0.729166, "조장": "휴게", "대원": "안내실", "당직A": "휴게", "당직B": "로비"},
+    {"구분": "야간1", "From": 0.708333, "To": 0.729166, "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
+    {"구분": "야간2", "From": 0.75, "To": 0.770833, "조장": "안내실", "대원": "석식", "당직A": "로비", "당직B": "석식"},
 ]
 
-# --- 2. C조 상세 시간표 데이터 (첨부파일 기반) ---
-# 모바일 가독성을 위해 핵심 동선 위주로 재구성
-TIMETABLE_DATA = [
-    {"구분": "주간1", "시간": "07:00-07:30", "조장": "안내실", "대원(A)": "로비", "당직A(B)": "로비", "당직B(C)": "휴게"},
-    {"구분": "주간2", "시간": "08:00-08:30", "조장": "안내실", "대원(A)": "휴게", "당직A(B)": "휴게", "당직B(C)": "로비"},
-    {"구분": "주간4", "시간": "10:00-10:30", "조장": "휴게", "대원(A)": "안내실", "당직A(B)": "로비", "당직B(C)": "순찰"},
-    {"구분": "주간7", "시간": "13:00-13:30", "조장": "안내실", "대원(A)": "휴게", "당직A(B)": "로비", "당직B(C)": "휴게"},
-    {"구분": "석식", "시간": "18:00-19:00", "조장": "안내실", "대원(A)": "석식", "당직A(B)": "로비", "당직B(C)": "석식"},
-    {"구분": "야간1", "시간": "19:00-19:30", "조장": "안내실", "대원(A)": "휴게", "당직A(B)": "휴게", "당직B(C)": "로비"},
-    {"구분": "야간2", "시간": "20:00-21:00", "조장": "안내실", "대원(A)": "순찰", "당직A(B)": "로비", "당직B(C)": "휴게"},
-]
+menu = st.sidebar.selectbox("메뉴 선택", ["🗓️ 근무 상황판", "📱 비상연락망", "📝 연차 관리"])
 
-menu = st.sidebar.selectbox("메뉴 선택", ["📱 비상연락망", "🗓️ C조 근무표 & 시간표", "📝 연차 관리"])
-
-# --- [메뉴: 근무표 & 시간표] ---
-if menu == "🗓️ C조 근무표 & 시간표":
-    st.subheader("🗓️ C조 근무 편성 및 상세 시간표")
+if menu == "🗓️ 근무 상황판":
+    st.subheader("🗓️ 오늘 근무 및 시간대별 상황")
     
-    # 1. 날짜 선택 및 편성 계산 (이전 로직 동일)
+    # 1. 날짜 및 인원 로직
     today = datetime.now().date()
-    selected_date = st.sidebar.date_input("조회 날짜 선택", today)
+    selected_date = st.sidebar.date_input("조회 날짜", today)
     
+    # C조 근무 로직 (이태원 시작 기준)
     base_date = datetime(2026, 3, 3).date()
     days_diff = (selected_date - base_date).days
     
@@ -54,39 +58,43 @@ if menu == "🗓️ C조 근무표 & 시간표":
         others = sorted([n for n in staff_rank.keys() if n != a_worker], key=lambda x: staff_rank[x])
         b_worker, c_worker = others[0], others[1]
         if count_idx % 2 == 1: b_worker, c_worker = c_worker, b_worker
-        
-        # 상단 현황판
+
+        # 상단 현재 인원 카드
         st.markdown(f"""
-            <div style="background:#f8f9fa; padding:10px; border-radius:10px; border-left:5px solid #2e7d32; margin-bottom:15px;">
-                <h4 style="margin:0;">📅 {selected_date} C조 근무자</h4>
-                <p style="margin:5px 0; font-size:14px;">
-                    <b>조장:</b> 황재업 | <b>회관(A):</b> {a_worker} | <b>의산연(B):</b> {b_worker} | <b>의산연(C):</b> {c_worker}
-                </p>
+            <div style="background:#262730; color:white; padding:15px; border-radius:10px; margin-bottom:20px;">
+                <h4 style="margin:0; color:#00ff00;">● {selected_date} 근무 편성</h4>
+                <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:15px;">
+                    <span><b>조장:</b> 황재업</span>
+                    <span><b>회관(A):</b> {a_worker}</span>
+                    <span><b>의산연(B):</b> {b_worker}</span>
+                    <span><b>의산연(C):</b> {c_worker}</span>
+                </div>
             </div>
         """, unsafe_allow_html=True)
+
+        # 2. 실시간 근무 시간표 (From이 교대 시점)
+        st.write("🕒 **시간대별 근무 위치 (From: 교대시간)**")
         
-        # 2. 상세 시간표 열람 (성명 매칭)
-        st.write("🕒 **시간대별 상세 위치**")
-        
-        display_timetable = []
-        for row in TIMETABLE_DATA:
-            display_timetable.append({
-                "시간": row["시간"],
-                "황재업": row["조장"],
-                a_worker: row["대원(A)"],
-                b_worker: row["당직A(B)"],
-                c_worker: row["당직B(C)"]
+        table_rows = []
+        for row in RAW_TIMETABLE:
+            start_t = format_excel_time(row["From"])
+            end_t = format_excel_time(row["To"])
+            table_rows.append({
+                "교대(From)": start_t,
+                "종료(To)": end_t,
+                "황재업(조장)": row["조장"],
+                f"{a_worker}(A)": row["대원"],
+                f"{b_worker}(B)": row["당직A"],
+                f"{c_worker}(C)": row["당직B"]
             })
             
-        st.dataframe(
-            pd.DataFrame(display_timetable),
-            use_container_width=True,
-            hide_index=True
-        )
+        df_time = pd.DataFrame(table_rows)
         
-        st.caption("※ 표를 옆으로 밀어서 전체 시간을 확인하세요. (모바일 최적화)")
+        # 강조 스타일: 현재 시간대에 해당하는 행 하이라이트 (옵션)
+        st.dataframe(df_time, use_container_width=True, hide_index=True)
+        st.info("💡 'From' 시각에 맞춰 해당 위치로 이동 및 교대하시면 됩니다.")
         
     else:
-        st.warning("선택하신 날짜는 C조 근무일이 아닙니다.")
+        st.warning("선택한 날짜는 C조 근무일이 아닙니다.")
 
-# --- 나머지 메뉴 (비상연락망, 연차관리)는 이전과 동일하게 유지 ---
+# --- 나머지 메뉴 로직 생략 (이전과 동일) ---
