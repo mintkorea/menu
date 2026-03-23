@@ -1,27 +1,31 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # timezone 추가
 import os
 from streamlit_javascript import st_javascript
 
-# --- 1. 기기-성함 매칭 데이터 (최종 정정본) ---
+# --- 1. 기기-성함 매칭 데이터 ---
 DEVICE_MAP = {
-    "S918": "황재업",    # 황재업 조장님 (기존 설정 유지)
-    "N971": "이정석",    # 이정석님: 갤럭시 노트 20 Ultra
-    "N970": "김태언",    # 김태언님: 갤럭시 노트 10
-    "V510": "김태언",    # 김태언님: LG V50S
-    "G988": "이태원",    # 이태원님: 갤럭시 S20 Ultra
+    "S918": "황재업",
+    "N971": "이정석",
+    "N970": "김태언",
+    "V510": "김태언",
+    "G988": "이태원",
 }
 
-# --- 2. 기본 설정 및 데이터 로드 ---
+# --- 2. 한국 표준시(KST) 함수 추가 ---
+def get_now_kst():
+    # 서버 위치와 상관없이 한국 시간(UTC+9)을 가져옵니다.
+    return datetime.now(timezone(timedelta(hours=9)))
+
+# --- 3. 기본 설정 및 데이터 로드 ---
 PATTERN_START_DATE = datetime(2026, 3, 9).date()
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7", "연차": "#FFEBEE"}
 VACATION_FILE = 'vacation.csv'
-ADMIN_PASSWORD = "1234" # 관리자 암호
+ADMIN_PASSWORD = "1234"
 
 st.set_page_config(page_title="성의교정 C조 관리 시스템", layout="centered")
 
-# 연차 데이터 로드 함수
 def load_vacation_data():
     if os.path.exists(VACATION_FILE):
         try:
@@ -35,7 +39,6 @@ def load_vacation_data():
 def save_vacation_data(df):
     df.to_csv(VACATION_FILE, index=False, encoding='utf-8-sig')
 
-# 기기 감지 함수
 def get_device_user():
     ua = st_javascript("navigator.userAgent")
     if ua and ua != 0:
@@ -45,10 +48,12 @@ def get_device_user():
                 return name
     return "안 함"
 
-# 데이터 불러오기
 df_vac = load_vacation_data()
+# 현재 한국 시간 변수 설정
+now_kst = get_now_kst()
+today_val = now_kst.date()
 
-# --- 3. CSS 스타일 ---
+# --- 4. CSS 스타일 ---
 st.markdown("""
     <style>
     .main-title { font-size: 26px; font-weight: bold; color: #1E3A8A; text-align: center; margin-top: 10px; }
@@ -56,14 +61,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. 사이드바 (기기 인식 및 설정) ---
+# --- 5. 사이드바 ---
 with st.sidebar:
     st.header("⚙️ 스마트 설정")
     menu = st.radio("메뉴 이동", ["📅 근무 편성표", "📍 실시간 상황판", "✍️ 연차 신청/관리"])
     
     st.divider()
     
-    # 기기 인식 시도 및 이름 강조 설정
     detected = get_device_user()
     user_list = ["안 함", "황재업", "김태언", "이태원", "이정석"]
     
@@ -76,15 +80,14 @@ with st.sidebar:
     if detected != "안 함":
         st.success(f"📱 기기 인식: **{detected}**님")
 
-    # 근무 편성표 전용 슬라이더
     if menu == "📅 근무 편성표":
         st.subheader("📅 조회 설정")
-        start_date = st.date_input("조회 시작일", datetime.now().date() - timedelta(days=3))
+        # 오늘 날짜 기준으로 초기값 설정
+        start_date = st.date_input("조회 시작일", today_val - timedelta(days=3))
         duration = st.slider("조회 기간(일)", 7, 90, 30)
 
-# --- 5. 메뉴별 로직 ---
+# --- 6. 메뉴별 로직 ---
 
-# 연차 여부 확인 함수
 def check_vacation(date, name):
     is_vac = df_vac[(df_vac['날짜'] == date) & (df_vac['이름'] == name)]
     return "연차" if not is_vac.empty else name
@@ -103,7 +106,6 @@ if menu == "📅 근무 편성표":
             cycle_idx = (shift_count // 2) % 3 
             is_second_day = shift_count % 2 == 1
             
-            # 기본 패턴 계산
             if cycle_idx == 0: h_p, a_p, b_p = "김태언", ("이정석" if is_second_day else "이태원"), ("이태원" if is_second_day else "이정석")
             elif cycle_idx == 1: h_p, a_p, b_p = "이정석", ("이태원" if is_second_day else "김태언"), ("김태언" if is_second_day else "이태원")
             else: h_p, a_p, b_p = "이태원", ("이정석" if is_second_day else "김태언"), ("김태언" if is_second_day else "이정석")
@@ -128,8 +130,9 @@ if menu == "📅 근무 편성표":
 
 elif menu == "📍 실시간 상황판":
     st.markdown("<div class='main-title'>📍 실시간 근무 상황</div>", unsafe_allow_html=True)
-    today = datetime.now().date()
-    diff_days = (today - PATTERN_START_DATE).days
+    st.write(f"🕒 현재 시각(KST): **{now_kst.strftime('%Y-%m-%d %H:%M')}**")
+    
+    diff_days = (today_val - PATTERN_START_DATE).days
     
     if diff_days % 3 == 0:
         shift_count = diff_days // 3
@@ -142,24 +145,24 @@ elif menu == "📍 실시간 상황판":
         cols = st.columns(4)
         positions = [("조장", "황재업"), ("회관", h_p), ("의산(A)", a_p), ("의산(B)", b_p)]
         for i, (pos, name) in enumerate(positions):
-            status = check_vacation(today, name)
+            status = check_vacation(today_val, name)
             with cols[i]:
                 st.metric(pos, status)
                 if status == "연차": st.error("❌ 부재중")
                 else: st.success("✅ 근무중")
     else:
-        st.info("오늘은 정규 근무일이 아닙니다.")
+        st.info(f"오늘은 정규 근무일이 아닙니다. (다음 근무: {(today_val + timedelta(days=3 - (diff_days % 3))).strftime('%m/%d')})")
 
 elif menu == "✍️ 연차 신청/관리":
     st.markdown("<div class='main-title'>📂 연차 관리 시스템</div>", unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs(["🗓️ 연차 현황", "✍️ 연차 신청", "🔐 관리자 메뉴"])
 
     with tab1:
-        st.dataframe(df_vac.sort_values('날짜', ascending=False), use_container_width=True)
+        st.dataframe(df_vac.sort_values('날짜', ascending=False), use_container_width=True, hide_index=True)
 
     with tab2:
         with st.form("vac_form", clear_on_submit=True):
-            v_date = st.date_input("날짜")
+            v_date = st.date_input("날짜", value=today_val)
             v_name = st.selectbox("성명", ["황재업", "김태언", "이태원", "이정석"])
             v_reason = st.text_input("사유")
             if st.form_submit_button("신청하기"):
@@ -172,9 +175,9 @@ elif menu == "✍️ 연차 신청/관리":
         pwd = st.text_input("관리자 암호", type="password")
         if pwd == ADMIN_PASSWORD:
             if not df_vac.empty:
-                df_with_id = df_vac.copy()
-                st.dataframe(df_with_id)
-                idx = st.number_input("삭제할 데이터 ID(번호)", 0, len(df_vac)-1, 0)
+                st.write("삭제할 항목의 번호를 선택하세요.")
+                st.dataframe(df_vac)
+                idx = st.number_input("삭제할 데이터 ID", 0, len(df_vac)-1, 0)
                 if st.button("🗑️ 선택 항목 삭제"):
                     df_vac = df_vac.drop(idx).reset_index(drop=True)
                     save_vacation_data(df_vac)
