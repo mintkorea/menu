@@ -3,11 +3,11 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 import os
 
-# --- 1. 한국 표준시(KST) 설정 (어제 소스에 이 부분만 추가되었습니다) ---
+# --- 1. 한국 표준시(KST) 설정 (새벽 시간 인식 오류 해결용) ---
 def get_now_kst():
     return datetime.now(timezone(timedelta(hours=9)))
 
-# --- 2. 기본 설정 및 기준일 ---
+# --- 2. 기준 설정 ---
 PATTERN_START_DATE = datetime(2026, 3, 24).date()
 DEVICE_MAP = {"S918": "황재업", "N971": "이정석", "N970": "김태언", "V510": "김태언", "G988": "이태원"}
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7", "연차": "#FFEBEE"}
@@ -46,7 +46,7 @@ df_vac = load_vacation_data()
 now_kst = get_now_kst()
 today_val = now_kst.date()
 
-# --- 3. 사이드바 메뉴 (어제 만드신 구성 그대로) ---
+# --- 3. 사이드바 메뉴 ---
 with st.sidebar:
     st.header("⚙️ 스마트 설정")
     menu = st.radio("메뉴 이동", ["📍 실시간 상황판", "📅 근무 편성표", "✍️ 연차 신청/관리"])
@@ -58,7 +58,6 @@ if menu == "📍 실시간 상황판":
     st.markdown("### 📍 실시간 근무 및 안내")
     st.caption(f"🕒 현재 시각: {now_kst.strftime('%Y-%m-%d %H:%M')}")
     
-    # 상단 요약 안내 (어제 디자인)
     with st.expander("⏰ C조 표준 근무 시간 안내", expanded=False):
         st.table(pd.DataFrame([
             {"구분": "주간", "시간": "08:00 ~ 18:00", "비고": "회관/의산"},
@@ -102,7 +101,6 @@ if menu == "📍 실시간 상황판":
 
 elif menu == "📅 근무 편성표":
     st.markdown("### 📅 전체 근무 편성표 조회")
-    # 어제 발생했던 NameError(today 미정의)를 today_val로 수정하여 해결
     start_date = st.date_input("조회 시작일", today_val)
     
     full_list = []
@@ -117,7 +115,6 @@ elif menu == "📅 근무 편성표":
 
 elif menu == "✍️ 연차 신청/관리":
     st.markdown("### ✍️ 연차 신청 및 관리")
-    # 연차 파일 저장 및 관리 로직 (어제 버전 유지)
     with st.form("vacation_form"):
         v_date = st.date_input("연차 날짜", today_val)
         v_name = st.selectbox("신청자", ["황재업", "김태언", "이태원", "이정석"])
