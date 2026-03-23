@@ -1,8 +1,8 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import pandas as pd
 from datetime import datetime, timedelta
 
-# --- 1. 데이터 및 로직 설정 ---
+# --- 1. 기본 설정 및 로직 ---
 START_DATE = datetime(2026, 3, 24).date()
 RANK = ["김태언", "이태원", "이정석"]  # 선임 순서
 HALL_ROTATION = ["김태언", "이정석", "이태원"] # 회관 순번
@@ -11,65 +11,47 @@ WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "이정석": "#
 def get_daily_layout(target_date):
     diff = (target_date - START_DATE).days
     if diff % 3 != 0: return None
+    # 3/27부터 김태언 2회 시작 유도 (이미지 패턴 반영)
     seq = (diff // 3) + 5 
     hall_worker = HALL_ROTATION[(seq // 2) % 3]
     others = [p for p in RANK if p != hall_worker]
+    # 회관 1회차: 선임A-후임B / 2회차: 후임A-선임B
     if seq % 2 == 0: return hall_worker, others[0], others[1]
     else: return hall_worker, others[1], others[0]
 
-# --- 2. UI 레이아웃 ---
+# --- 2. UI 설정 ---
 st.set_page_config(page_title="성의교정 C조", layout="centered")
 
 with st.sidebar:
-    st.header("👤 개인 설정")
+    st.header("👤 강조 설정")
     selected_user = st.selectbox("강조할 이름 선택", ["안 함", "황재업"] + RANK)
-    st.info("이름을 선택하면 해당 줄이 강조됩니다.")
 
-st.markdown("<h2 style='text-align:center;'>📅 성의교정 C조 근무 시스템</h2>", unsafe_allow_html=True)
+# --- 3. 스타일 함수 (행 전체 강조 및 요일 색상) ---
+def apply_styles(df, target_name):
+    # 기본 중앙 정렬 설정
+    styled = df.style.set_properties(**{
+        'text-align': 'center',
+        'border': '1px solid #ddd'
+    })
+    
+    # 1. 특정 이름이 포함된 행(Row)만 배경색 변경
+    def highlight_row(row):
+        if target_name != "안 함" and target_name in row.values:
+            color = WORKER_COLORS.get(target_name, "#ffffff")
+            return [f'background-color: {color}; font-weight: bold; color: black;'] * len(row)
+        return [''] * len(row)
 
-# --- 3. HTML 생성 함수 (완전 격리 방식) ---
-def generate_html(data_list, highlight_name):
-    rows_html = ""
-    for row in data_list:
-        # 강조 색상 설정
-        is_highlight = highlight_name in row.values()
-        bg_color = WORKER_COLORS.get(highlight_name, "#ffffff") if is_highlight else "#ffffff"
-        
-        # 요일 색상 설정
-        day_style = ""
-        if "토" in row["날짜"]: day_style = "color: blue; font-weight: bold;"
-        elif "일" in row["날짜"]: day_style = "color: red; font-weight: bold;"
-        
-        rows_html += f"""
-        <tr style="background-color: {bg_color}; font-weight: {'bold' if is_highlight else 'normal'};">
-            <td style="{day_style}">{row['날짜']}</td>
-            <td>{row['조장']}</td>
-            <td>{row['회관']}</td>
-            <td>{row['의산A']}</td>
-            <td>{row['의산B']}</td>
-        </tr>
-        """
+    # 2. 요일별 글자 색상 (날짜 열 기준)
+    def color_day(val):
+        if "토" in str(val): return 'color: blue; font-weight: bold;'
+        if "일" in str(val): return 'color: red; font-weight: bold;'
+        return ''
 
-    return f"""
-    <div style="display: flex; justify-content: center;">
-        <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; text-align: center;">
-            <thead>
-                <tr style="background-color: #f2f2f2;">
-                    <th style="border: 1px solid #ddd; padding: 12px;">날짜</th>
-                    <th style="border: 1px solid #ddd; padding: 12px;">조장</th>
-                    <th style="border: 1px solid #ddd; padding: 12px;">회관</th>
-                    <th style="border: 1px solid #ddd; padding: 12px;">의산A</th>
-                    <th style="border: 1px solid #ddd; padding: 12px;">의산B</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows_html}
-            </tbody>
-        </table>
-    </div>
-    """
+    return styled.apply(highlight_row, axis=1).map(color_day, subset=['날짜'])
 
-# --- 4. 데이터 생성 및 출력 ---
+# --- 4. 메인 화면 출력 ---
+st.markdown("<h3 style='text-align:center;'>📅 성의교정 C조 근무편성표</h3>", unsafe_allow_html=True)
+
 display_data = []
 for i in range(45):
     d = START_DATE + timedelta(days=i)
@@ -81,6 +63,21 @@ for i in range(45):
             "조장": "황재업", "회관": h, "의산A": a, "의산B": b
         })
 
-# [중요] components.html을 사용하여 HTML을 안전하게 렌더링
-full_html = generate_html(display_data, selected_user)
-components.html(full_html, height=1000, scrolling=True)
+if display_data:
+    df = pd.DataFrame(display_data)
+    # 스타일 적용 후 출력
+    st.dataframe(
+        apply_styles(df, selected_user),
+        use_container_width=True,
+        hide_index=True
+    )
+
+# --- 5. 실시간 상황판 (간략) ---
+st.markdown("---")
+st.markdown("<h3 style='text-align:center;'>📍 오늘 근무 상황</h3>", unsafe_allow_html=True)
+today_res = get_daily_layout(datetime.now().date())
+if today_res:
+    h, a, b = today_res
+    st.success(f"**오늘의 근무자:** 조장(황재업), 회관({h}), 의산A({a}), 의산B({b})")
+else:
+    st.info("오늘은 C조 비번(휴무)입니다.")
