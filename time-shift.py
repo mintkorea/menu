@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# --- 1. 정밀 대조 데이터 (수정본 100% 반영) ---
+# --- 1. 정밀 근무 패턴 데이터 (이미지 100% 대조) ---
 BASE_PATTERN = [
     {"시간": 7, "표시": "07:00", "조": "안내실", "회": "로비", "A": "휴게", "B": "로비"},
     {"시간": 8, "표시": "08:00", "조": "안내실", "회": "휴게", "A": "로비", "B": "휴게"},
@@ -34,32 +34,45 @@ BASE_PATTERN = [
 START_DATE = datetime(2026, 3, 24).date()
 WORKERS = ["이태원", "김태언", "이정석"]
 
+# --- 3. 페이지 및 CSS 설정 ---
 st.set_page_config(layout="centered")
-
-# --- 3. 모바일 최적화 및 색상 CSS ---
 st.markdown("""
     <style>
     html, body, [data-testid="stTable"] { font-size: 9px !important; }
-    table { width: 100% !important; table-layout: fixed !important; }
+    table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse; }
     th, td { padding: 3px 1px !important; text-align: center !important; border: 1px solid #f0f0f0; }
+    .status-box { padding: 10px; border-radius: 5px; background-color: #f8f9fa; margin-bottom: 10px; border-left: 5px solid #007bff; }
+    .worker-name { font-size: 11px; font-weight: bold; color: #333; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. 로직 처리 ---
+# --- 4. 타이틀 및 날짜 처리 ---
+st.title("📋 C조 근무 상황판")
 now = datetime.now()
 current_hour = now.hour
-selected_date = st.date_input("📅 날짜", now.date())
+selected_date = st.date_input("날짜 선택", now.date())
 
 days_diff = (selected_date - START_DATE).days
 
 if days_diff % 3 == 0:
+    # 로테이션 순번 계산
     shift = (days_diff // 3) % 3
     lineup = [WORKERS[(0+shift)%3], WORKERS[(1+shift)%3], WORKERS[(2+shift)%3]]
     w_h, w_a, w_b = lineup[0], lineup[1], lineup[2]
 
-    st.subheader(f"✅ {selected_date.strftime('%m/%d')} C조 순번")
+    # --- 5. 당일 근무자 및 현재 상태 표시 (상단 요약) ---
+    st.markdown(f"### 📍 현재 시간 근무 현황 ({now.strftime('%H:%M')})")
+    cur = next((r for r in BASE_PATTERN if r["시간"] == current_hour), None)
     
-    # 데이터 재구성
+    if cur and selected_date == now.date():
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"<div class='status-box'><span class='worker-name'>황재업(조):</span> {cur['조']}<br><span class='worker-name'>{w_h}(회관):</span> {cur['회']}</div>", unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"<div class='status-box'><span class='worker-name'>{w_a}(의산A):</span> {cur['A']}<br><span class='worker-name'>{w_b}(의산B):</span> {cur['B']}</div>", unsafe_allow_html=True)
+
+    # --- 6. 하단 근무 테이블 ---
+    st.markdown("### 🗓️ 전체 시간표")
     display_df = []
     for r in BASE_PATTERN:
         display_df.append({
@@ -71,39 +84,23 @@ if days_diff % 3 == 0:
         })
     df = pd.DataFrame(display_df)
 
-    # --- 색상 및 강조 스타일 함수 ---
     def apply_style(row):
         is_now = (int(row['시간'].split(':')[0]) == current_hour) and (selected_date == now.date())
         styles = []
         for val in row:
-            bg_color = "transparent"
-            text_color = "black"
-            font_weight = "normal"
-            border = "none"
-
-            # 1. 업무별 배경색 지정
+            bg, text, weight, border = "transparent", "black", "normal", "none"
             v = str(val)
-            if '순찰' in v:
-                bg_color = "#E3F2FD"; text_color = "#1565C0"; font_weight = "bold" # 파란색
-            elif '휴게' in v or '휴' in v:
-                bg_color = "#F5F5F5"; text_color = "#757575" # 회색
-            elif '중식' in v or '석식' in v or '식' in v:
-                bg_color = "#FFF3E0"; text_color = "#E65100"; font_weight = "bold" # 주황색
-            elif '로비' in v:
-                text_color = "#D32F2F"; font_weight = "bold" # 빨간색 글자
+            if '순찰' in v: bg = "#E3F2FD"; text = "#1565C0"; weight = "bold"
+            elif '휴' in v or '취침' in v: bg = "#F5F5F5"; text = "#757575"
+            elif '식' in v: bg = "#FFF3E0"; text = "#E65100"; weight = "bold"
+            elif '로비' in v: text = "#D32F2F"; weight = "bold"
             
-            # 2. 현재 시간 행 강조 (테두리 및 배경)
-            if is_now:
-                bg_color = "#FFF9C4" # 연노랑
-                border = "1.5px solid red"
-                font_weight = "bold"
-
-            styles.append(f'background-color: {bg_color}; color: {text_color}; font-weight: {font_weight}; border: {border};')
+            if is_now: bg = "#FFF9C4"; border = "1.2px solid red"; weight = "bold"
+            styles.append(f'background-color: {bg}; color: {text}; font-weight: {weight}; border: {border};')
         return styles
 
     st.table(df.style.apply(apply_style, axis=1))
+    st.caption("🎨 범례: 🔵순찰 | 🟠식사 | ⚪휴게/취침 | 🔴로비강조")
 
-    # 하단 범례 추가
-    st.write("🎨 **범례**: 🔵순찰 | 🟠식사 | ⚪휴게 | 🔴로비(강조)")
 else:
-    st.warning("C조 근무일이 아닙니다.")
+    st.warning(f"⚠️ {selected_date}은 C조 근무일이 아닙니다.")
