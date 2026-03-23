@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import os
 from streamlit_javascript import st_javascript
 
-# --- 1. 설정 및 기기 인식 (기존 동일) ---
+# --- 1. 설정 및 기기 인식 (사용자 데이터 기반) ---
 DEVICE_MAP = {"S918": "황재업", "N971": "이정석", "N970": "김태언", "V510": "김태언", "G988": "이태원"}
 PATTERN_START_DATE = datetime(2026, 3, 9).date()
 VACATION_FILE = 'vacation.csv'
@@ -14,9 +14,10 @@ st.set_page_config(page_title="성의교정 C조 관리 시스템", layout="wide
 now_kst = datetime.now(timezone(timedelta(hours=9)))
 today_val = now_kst.date()
 now_total_min = now_kst.hour * 60 + now_kst.minute
+# 07:00 투입 기준이므로 07시 이전은 전날 근무의 연장선
 if now_total_min < 7 * 60: now_total_min += 24 * 60
 
-# --- 2. 연차 데이터 로드 ---
+# --- 2. 연차 데이터 로드 (연차 기능 복구) ---
 def load_vacation():
     if os.path.exists(VACATION_FILE):
         try:
@@ -28,7 +29,7 @@ def load_vacation():
 
 df_vac = load_vacation()
 
-# --- 3. 사이드바 및 사용자 인식 ---
+# --- 3. 사이드바 메뉴 및 자동 인식 ---
 ua = st_javascript("navigator.userAgent")
 detected = "안 함"
 if ua and ua != 0:
@@ -36,15 +37,16 @@ if ua and ua != 0:
         if model in str(ua).upper(): detected = name; break
 
 with st.sidebar:
-    menu = st.radio("메뉴", ["📍 실시간 상황판", "📅 근무 편성표", "✍️ 연차 신청/관리"])
-    user_name = st.selectbox("사용자", ["안 함", "황재업", "이정석", "김태언", "이태원"], 
+    menu = st.radio("메뉴 선택", ["📍 실시간 상황판", "📅 근무 편성표", "✍️ 연차 신청/관리"])
+    user_name = st.selectbox("사용자 확인", ["안 함", "황재업", "이정석", "김태언", "이태원"], 
                              index=["안 함", "황재업", "이정석", "김태언", "이태원"].index(detected))
 
-# --- 4. 실시간 상황판 (엑셀 이미지 로직) ---
+# --- 4. [페이지 1] 실시간 상황판 (엑셀 이미지 100% 일치) ---
 if menu == "📍 실시간 상황판":
     st.title("🏛️ C조 실시간 당직 안내")
     diff_days = (today_val - PATTERN_START_DATE).days
     if diff_days % 3 == 0:
+        # 이미지 데이터
         sched = [
             {"From": "07:00", "To": "08:00", "성희_조장": "안내실", "성희_대원": "로비", "의산_A": "로비", "의산_B": "휴게"},
             {"From": "08:00", "To": "09:00", "성희_조장": "안내실", "성희_대원": "휴게", "의산_A": "휴게", "의산_B": "로비"},
@@ -82,7 +84,7 @@ if menu == "📍 실시간 상황판":
     else:
         st.warning(f"오늘({today_val.strftime('%m/%d')})은 비번입니다.")
 
-# --- 5. 근무 편성표 (에러 수정 지점!) ---
+# --- 5. [페이지 2] 근무 편성표 (에러 수정 및 연차 반영) ---
 elif menu == "📅 근무 편성표":
     st.title("📅 C조 월간 근무 편성표")
     first_day = today_val.replace(day=1)
@@ -95,13 +97,14 @@ elif menu == "📅 근무 편성표":
         if d_diff % 3 == 0:
             shift_count = d_diff // 3
             cycle_idx = (shift_count // 2) % 3 
-            is_second_day = shift_count % 2 == 1 # ◀ 여기서 변수명을 통일했습니다!
+            is_second_day = shift_count % 2 == 1 # ◀ 캡처 에러 원인 수정!
             
-            # 어제 검증한 로직 그대로
+            # 어제 검증한 로직 그대로 복구
             if cycle_idx == 0: h, a, b = "김태언", ("이정석" if is_second_day else "이태원"), ("이태원" if is_second_day else "이정석")
             elif cycle_idx == 1: h, a, b = "이정석", ("이태원" if is_second_day else "김태언"), ("김태언" if is_second_day else "이태원")
             else: h, a, b = "이태원", ("이정석" if is_second_day else "김태언"), ("김태언" if is_second_day else "이정석")
             
+            # 연차 연동
             v_names = df_vac[df_vac['날짜'] == curr]['이름'].tolist()
             h = "🌴연차" if h in v_names else h
             a = "🌴연차" if a in v_names else a
@@ -111,15 +114,17 @@ elif menu == "📅 근무 편성표":
         curr += timedelta(days=1)
     st.table(pd.DataFrame(days_list))
 
-# --- 6. 연차 관리 ---
+# --- 6. [페이지 3] 연차 신청/관리 (기능 복구) ---
 elif menu == "✍️ 연차 신청/관리":
-    st.title("✍️ 연차 신청")
+    st.title("✍️ 연차 신청 및 관리")
     with st.form("vac_form"):
-        v_date = st.date_input("날짜", value=today_val)
-        v_name = st.selectbox("이름", ["황재업", "이정석", "김태언", "이태원"])
-        if st.form_submit_button("신청"):
+        v_date = st.date_input("연차 날짜", value=today_val)
+        v_name = st.selectbox("신청자", ["황재업", "이정석", "김태언", "이태원"])
+        if st.form_submit_button("신청하기"):
             new_v = pd.DataFrame([{"날짜": v_date, "이름": v_name, "사유": "개인사정"}])
             df_vac = pd.concat([df_vac, new_v], ignore_index=True)
             df_vac.to_csv(VACATION_FILE, index=False)
+            st.success(f"{v_name}님 연차 등록 완료!")
             st.rerun()
-    st.dataframe(df_vac)
+    st.subheader("🗓️ 연차 등록 내역")
+    st.dataframe(df_vac.sort_values("날짜"))
