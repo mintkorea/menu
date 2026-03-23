@@ -1,13 +1,9 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import os
 
-# --- 1. 한국 표준시(KST) 설정 (새벽 시간 인식 오류 해결용) ---
-def get_now_kst():
-    return datetime.now(timezone(timedelta(hours=9)))
-
-# --- 2. 기준 설정 ---
+# --- 1. 기본 설정 및 기준일 ---
 PATTERN_START_DATE = datetime(2026, 3, 24).date()
 DEVICE_MAP = {"S918": "황재업", "N971": "이정석", "N970": "김태언", "V510": "김태언", "G988": "이태원"}
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7", "연차": "#FFEBEE"}
@@ -43,20 +39,19 @@ def get_shift_workers(date):
     return None
 
 df_vac = load_vacation_data()
-now_kst = get_now_kst()
-today_val = now_kst.date()
+today_val = datetime.now().date()
 
-# --- 3. 사이드바 메뉴 ---
+# --- 2. 사이드바 메뉴 ---
 with st.sidebar:
     st.header("⚙️ 스마트 설정")
     menu = st.radio("메뉴 이동", ["📍 실시간 상황판", "📅 근무 편성표", "✍️ 연차 신청/관리"])
     user_name = st.selectbox("👤 내 이름 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- 4. 메뉴별 로직 ---
+# --- 3. 메뉴별 로직 ---
 
 if menu == "📍 실시간 상황판":
     st.markdown("### 📍 실시간 근무 및 안내")
-    st.caption(f"🕒 현재 시각: {now_kst.strftime('%Y-%m-%d %H:%M')}")
+    st.caption(f"🕒 현재 시각: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     
     with st.expander("⏰ C조 표준 근무 시간 안내", expanded=False):
         st.table(pd.DataFrame([
