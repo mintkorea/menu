@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- [1] 핵심 설정 (수정 금지) ---
+# --- [1] 핵심 설정 (변동 없음) ---
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
@@ -16,27 +16,28 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# [타이틀] 절반 크기로 적용
+# [타이틀] 절반 크기로 유지
 st.markdown('<p class="small-title">📅 C조 근무 편성표</p>', unsafe_allow_html=True)
 
-# --- [3] 조회 기간 설정 및 사용자 강조 ---
+# --- [3] 조회 기간 설정 (달력 + 슬라이드) ---
 with st.container():
-    # [조회달력 슬라이드] 오늘 기준 과거와 미래를 자유롭게 조절
-    lookback, lookforward = st.slider("📅 조회 기간 설정 (오늘 기준)", -30, 90, (-10, 60))
+    # 1. 달력으로 시작 날짜 선택 (경과된 근무 확인용)
+    start_date = st.date_input("📅 조회 시작 날짜 선택", datetime.now().date() - timedelta(days=7))
+    
+    # 2. 슬라이드로 조회 일수 선택
+    duration = st.slider("📆 조회 기간(일수) 설정", 7, 90, 30)
     
     # 강조할 성함 선택
     user_focus = st.selectbox("👤 강조할 성함 선택", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- [4] 근무 데이터 생성 (요일 셸 삭제 반영) ---
-today = datetime.now().date()
+# --- [4] 근무 데이터 생성 (요일 셸 삭제) ---
 cal_data = []
 
-# 슬라이더 범위에 따라 경과된 근무표부터 미래까지 생성
-for i in range(lookback, lookforward + 1):
-    d = today + timedelta(days=i)
+for i in range(duration):
+    d = start_date + timedelta(days=i)
     diff = (d - PATTERN_START).days
     
-    # 3일 로테이션 (C조 근무일)
+    # 3일 로테이션 (C조 근무일만 계산)
     if diff % 3 == 0:
         sc = diff // 3
         ci, i2 = (sc // 2) % 3, sc % 2 == 1
