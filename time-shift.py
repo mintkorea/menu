@@ -6,23 +6,24 @@ from datetime import datetime, timedelta
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
-# --- [2] CSS: 타이틀 폰트 절반 축소 및 가독성 최적화 ---
+# --- [2] CSS: 타이틀 확실한 표시 및 가독성 최적화 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
-    /* 타이틀 폰트 크기를 기존의 절반 수준(22px)으로 축소 */
-    .small-title { 
+    /* 타이틀: 절반 크기(22px)로 상단에 강제 고정 */
+    .fixed-title { 
         font-size: 22px !important; 
         font-weight: bold; 
-        margin-bottom: 15px; 
-        color: #31333F; 
+        margin-bottom: 20px; 
+        color: #31333F;
+        display: block !important;
     }
     .stDataFrame div[data-testid="stTable"] { font-size: 16px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# [타이틀] 절반 크기로 표시
-st.markdown('<div class="small-title">📅 C조 근무 편성표</div>', unsafe_allow_html=True)
+# [타이틀] 지시하신 대로 절반 크기로 상단에 삽입
+st.markdown('<div class="fixed-title">📅 C조 근무 편성표</div>', unsafe_allow_html=True)
 
 # --- [3] 조회 설정 (달력 + 슬라이드) ---
 with st.container():
