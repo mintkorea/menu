@@ -6,20 +6,25 @@ from datetime import datetime, timedelta
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
-# --- [2] CSS: 가독성 및 스크롤 최적화 ---
+# --- [2] CSS: 타이틀 폰트 절반 축소 및 가독성 최적화 ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-    /* 표 내부 텍스트 크기 및 요일 색상 강조를 위한 스타일 */
+    .block-container { padding-top: 1rem !important; }
+    /* 타이틀 폰트 크기를 기존의 절반 수준(22px)으로 축소 */
+    .small-title { 
+        font-size: 22px !important; 
+        font-weight: bold; 
+        margin-bottom: 15px; 
+        color: #31333F; 
+    }
     .stDataFrame div[data-testid="stTable"] { font-size: 16px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [3] 타이틀 (Streamlit 기본 타이틀 사용으로 가려짐 방지) ---
-# 기존 마크다운 방식이 아닌 기본 title 함수를 사용하여 확실히 표시
-st.title("📅 C조 근무 편성표") 
+# [타이틀] 절반 크기로 표시
+st.markdown('<div class="small-title">📅 C조 근무 편성표</div>', unsafe_allow_html=True)
 
-# --- [4] 조회 기간 설정 및 강조 ---
+# --- [3] 조회 설정 (달력 + 슬라이드) ---
 with st.container():
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -32,13 +37,20 @@ with st.container():
     # 강조할 성함 선택
     user_focus = st.selectbox("👤 강조할 성함 선택", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- [5] 근무 데이터 생성 (요일 셸 없이 날짜에 통합) ---
+# --- [4] 사람별 고유 강조 색상 설정 ---
+color_map = {
+    "황재업": "#D1FAE5", # 연한 초록
+    "김태언": "#FFF2CC", # 연한 노랑
+    "이태원": "#E0F2FE", # 연한 파랑
+    "이정석": "#FEE2E2"  # 연한 빨강
+}
+
+# --- [5] 근무 데이터 생성 (요일 셸 없이 통합) ---
 cal_data = []
 for i in range(duration):
     d = start_date + timedelta(days=i)
     diff = (d - PATTERN_START).days
     
-    # 3일 주기 로직 적용
     if diff % 3 == 0:
         sc = diff // 3
         ci, i2 = (sc // 2) % 3, sc % 2 == 1
@@ -57,25 +69,26 @@ for i in range(duration):
 
 df = pd.DataFrame(cal_data)
 
-# --- [6] 스타일 적용 (요일 색상 + 사용자 강조) ---
+# --- [6] 스타일 적용 (요일 색상 + 사람별 고유 색상 강조) ---
 def apply_style(row):
     styles = [''] * len(row)
-    # 날짜 셀 요일 색상 강조 (빨강/파랑)
+    # 요일 색상 (일: 빨강, 토: 파랑)
     if '(Sun)' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
     elif '(Sat)' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
     
-    # 사용자 노란색 강조
+    # 사람별 고유 강조 색상 적용
     if user_focus != "안 함":
+        bg_color = color_map.get(user_focus, "#FFF2CC")
         for i, val in enumerate(row):
             if val == user_focus:
-                styles[i] = 'background-color: #FFF2CC; font-weight: bold; color: black;'
+                styles[i] = f'background-color: {bg_color}; font-weight: bold; color: black;'
     return styles
 
-# --- [7] 표 출력 (스크롤 없이 전체 노출 설정) ---
+# --- [7] 표 출력 (스크롤 없이 전체 노출) ---
 if not df.empty:
     st.dataframe(
         df.style.apply(apply_style, axis=1),
         use_container_width=True,
         hide_index=True,
-        height=(len(df) + 1) * 38 # 스크롤 따로 생기지 않게 높이 자동 조절
+        height=(len(df) + 1) * 38 
     )
