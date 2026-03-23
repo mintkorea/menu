@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- 1. 기본 근무 패턴 (이름 대신 역할 '회관', '의산A', '의산B'로 정의) ---
-# 사용자님이 주신 1시간 단위 원칙 및 의산연 동시 휴게 불가 규칙 적용
+# --- 1. 근무 패턴 정의 (1시간 단위 & 의산연 동시 휴게 불가) ---
+# 조장: 황재업 고정 / 회관, 의산A, 의산B는 날짜별 성함 가변
 BASE_PATTERN = [
     {"시간": "07:00-08:00", "조장": "안내실", "회관": "로비", "의산A": "로비", "의산B": "휴게"},
     {"시간": "08:00-09:00", "조장": "안내실", "회관": "휴게", "의산A": "휴게", "의산B": "로비"},
@@ -32,40 +32,44 @@ BASE_PATTERN = [
 ]
 
 st.set_page_config(layout="wide")
-st.title("🛡️ C조 성의 워크플레이스 허브")
+st.title("🗓️ 성의교정 C조 통합 상황판")
 
-# --- 2. 날짜에 따른 근무자 자동 배정 로직 ---
+# --- 2. 날짜별 인원 매칭 로직 (3/24 기준) ---
 now = datetime.now()
 selected_date = st.sidebar.date_input("조회 날짜", now.date())
 
-# 기준일: 3/18 (C조 확정 근무일)
-anchor_date = datetime(2026, 3, 18).date()
+# 기준일: 3/24 (이태원-회관, 김태언-A, 이정석-B)
+anchor_date = datetime(2026, 3, 24).date()
 days_diff = (selected_date - anchor_date).days
 
 if days_diff % 3 == 0:
+    # 3일 주기 로테이션 명단
+    # 3/24 기준: 이태원(회), 김태언(A), 이정석(B) 순서로 고정
     cycle_idx = days_diff // 3
-    names = ["이태원", "이정석", "김태언"]
     
-    # 3일 주기 로테이션 적용
+    # 6일(근무 2회)마다 회관 역할이 바뀌는 구조 가정
+    names = ["이태원", "김태언", "이정석"]
     shift_offset = (cycle_idx // 2) % 3
-    worker_h = names[shift_offset]  # 회관 역할
+    
+    worker_h = names[shift_offset] 
     remaining = [n for n in names if n != worker_h]
+    # 당직 A, B 순서 교대
     worker_a, worker_b = (remaining[1], remaining[0]) if cycle_idx % 2 == 1 else (remaining[0], remaining[1])
 
-    # --- 3. 데이터프레임 구성 (이름 동적 매칭) ---
-    final_df_list = []
+    # --- 3. 화면 출력용 데이터 구성 ---
+    final_list = []
     for r in BASE_PATTERN:
-        final_df_list.append({
+        final_list.append({
             "시간": r["시간"],
             "황재업(조)": r["조장"],
             f"{worker_h}(회)": r["회관"],
             f"{worker_a}(A)": r["의산A"],
             f"{worker_b}(B)": r["의산B"]
         })
-    df = pd.DataFrame(final_df_list)
+    df = pd.DataFrame(final_list)
 
-    # --- 4. 스타일 적용 ---
-    def style_table(row):
+    # --- 4. 현재 시간 강조 스타일 ---
+    def style_row(row):
         start_h = int(row['시간'].split('-')[0].split(':')[0])
         is_now = (start_h == now.hour) and (selected_date == now.date())
         styles = []
@@ -81,8 +85,8 @@ if days_diff % 3 == 0:
             styles.append(base)
         return styles
 
-    st.success(f"✅ {selected_date} 근무: {worker_h}(회), {worker_a}(A), {worker_b}(B)")
-    st.table(df.style.apply(style_table, axis=1))
+    st.success(f"✅ {selected_date} 근무자: {worker_h}(회관), {worker_a}(의산A), {worker_b}(의산B)")
+    st.table(df.style.apply(style_row, axis=1))
 
 else:
-    st.warning(f"C조 근무일이 아닙니다. 다음 근무: {selected_date + timedelta(days=3-(days_diff%3))}일")
+    st.warning(f"C조 근무일이 아닙니다. (다음 근무: {selected_date + timedelta(days=3-(days_diff%3))}일)")
