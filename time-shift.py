@@ -6,46 +6,38 @@ import os
 # --- 1. 설정 및 데이터 관리 ---
 st.set_page_config(page_title="보안 통합 관리 시스템", layout="wide")
 
-def load_leaves():
-    if os.path.exists('leave_data.csv'):
-        return pd.read_csv('leave_data.csv')
-    return pd.DataFrame(columns=['날짜', '성명', '대근자'])
-
-# 엑셀의 시간 숫자(float)를 "HH:mm" 문자열로 변환하는 함수
 def format_excel_time(t):
     if pd.isna(t) or isinstance(t, str): return ""
-    total_seconds = int(t * 24 * 3600)
+    total_seconds = int(round(t * 24 * 3600))
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
     return f"{hours:02d}:{minutes:02d}"
 
-# --- 2. C조 상세 시간표 (엑셀 '진한 색 To' 기준 반영) ---
-# From 시각에 교대하여 To 시각까지 근무하는 구조
+# --- 2. C조 연속 근무 시간표 데이터 (셀 분할의 의미 반영) ---
+# 120분 근무는 시각적으로 두 칸을 차지하는 느낌을 주도록 구성
 RAW_TIMETABLE = [
-    {"구분": "주간1", "From": 0.291666, "To": 0.3125, "조장": "안내실", "대원": "로비", "당직A": "로비", "당직B": "휴게"},
-    {"구분": "주간2", "From": 0.333333, "To": 0.354166, "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
-    {"구분": "주간3", "From": 0.375, "To": 0.395833, "조장": "안내실", "대원": "순찰", "당직A": "휴게", "당직B": "로비"},
-    {"구분": "주간4", "From": 0.416666, "To": 0.4375, "조장": "휴게", "대원": "안내실", "당직A": "로비", "당직B": "순찰"},
-    {"구분": "주간5", "From": 0.458333, "To": 0.479166, "조장": "로비", "대원": "안내실", "당직A": "순찰", "당직B": "휴게"},
-    {"구분": "주간6", "From": 0.5, "To": 0.520833, "조장": "순찰", "대원": "휴게", "당직A": "안내실", "당직B": "로비"},
-    {"구분": "주간7", "From": 0.541666, "To": 0.5625, "조장": "안내실", "대원": "휴게", "당직A": "로비", "당직B": "휴게"},
-    {"구분": "주간8", "From": 0.583333, "To": 0.604166, "조장": "로비", "대원": "순찰", "당직A": "휴게", "당직B": "안내실"},
-    {"구분": "주간9", "From": 0.625, "To": 0.645833, "조장": "안내실", "대원": "휴게", "당직A": "로비", "당직B": "휴게"},
-    {"구분": "주간10", "From": 0.666666, "To": 0.729166, "조장": "휴게", "대원": "안내실", "당직A": "휴게", "당직B": "로비"},
-    {"구분": "야간1", "From": 0.708333, "To": 0.729166, "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
-    {"구분": "야간2", "From": 0.75, "To": 0.770833, "조장": "안내실", "대원": "석식", "당직A": "로비", "당직B": "석식"},
+    {"No": "1", "시간": "07:00-08:00", "구분": "60분", "조장": "안내실", "대원": "로비", "당직A": "로비", "당직B": "휴게"},
+    # 2시간 근무 (셀 분할 반영)
+    {"No": "2-1", "시간": "08:00-09:00", "구분": "120분", "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
+    {"No": "2-2", "시간": "09:00-10:00", "구분": "연장", "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
+    {"No": "3", "시간": "10:00-11:00", "구분": "60분", "조장": "안내실", "대원": "순찰", "당직A": "휴게", "당직B": "로비"},
+    {"No": "4", "시간": "11:00-12:00", "구분": "60분", "조장": "휴게", "대원": "안내실", "당직A": "로비", "당직B": "순찰"},
+    {"No": "5", "시간": "12:00-13:00", "구분": "60분", "조장": "로비", "대원": "안내실", "당직A": "순찰", "당직B": "휴게"},
+    {"No": "6", "시간": "13:00-14:00", "구분": "60분", "조장": "순찰", "대원": "휴게", "당직A": "안내실", "당직B": "로비"},
+    {"No": "7", "시간": "14:00-15:00", "구분": "60분", "조장": "안내실", "대원": "휴게", "당직A": "로비", "당직B": "휴게"},
+    {"No": "8", "시간": "15:00-16:00", "구분": "60분", "조장": "로비", "대원": "순찰", "당직A": "휴게", "당직B": "안내실"},
+    {"No": "9", "시간": "16:00-17:00", "구분": "60분", "조장": "안내실", "대원": "휴게", "당직A": "로비", "당직B": "휴게"},
+    {"No": "10", "시간": "17:00-18:00", "구분": "60분", "조장": "휴게", "대원": "안내실", "당직A": "휴게", "당직B": "로비"},
+    {"No": "야1", "시간": "19:00-20:00", "구분": "60분", "조장": "안내실", "대원": "휴게", "당직A": "휴게", "당직B": "로비"},
+    {"No": "야2", "시간": "20:00-21:00", "구분": "60분", "조장": "안내실", "대원": "석식", "당직A": "로비", "당직B": "석식"},
 ]
 
 menu = st.sidebar.selectbox("메뉴 선택", ["🗓️ 근무 상황판", "📱 비상연락망", "📝 연차 관리"])
 
 if menu == "🗓️ 근무 상황판":
-    st.subheader("🗓️ 오늘 근무 및 시간대별 상황")
+    st.subheader("🗓️ C조 실시간 근무 상황판")
     
-    # 1. 날짜 및 인원 로직
-    today = datetime.now().date()
-    selected_date = st.sidebar.date_input("조회 날짜", today)
-    
-    # C조 근무 로직 (이태원 시작 기준)
+    selected_date = st.sidebar.date_input("조회 날짜", datetime.now().date())
     base_date = datetime(2026, 3, 3).date()
     days_diff = (selected_date - base_date).days
     
@@ -59,42 +51,35 @@ if menu == "🗓️ 근무 상황판":
         b_worker, c_worker = others[0], others[1]
         if count_idx % 2 == 1: b_worker, c_worker = c_worker, b_worker
 
-        # 상단 현재 인원 카드
-        st.markdown(f"""
-            <div style="background:#262730; color:white; padding:15px; border-radius:10px; margin-bottom:20px;">
-                <h4 style="margin:0; color:#00ff00;">● {selected_date} 근무 편성</h4>
-                <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:15px;">
-                    <span><b>조장:</b> 황재업</span>
-                    <span><b>회관(A):</b> {a_worker}</span>
-                    <span><b>의산연(B):</b> {b_worker}</span>
-                    <span><b>의산연(C):</b> {c_worker}</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        # 근무자 상단 고정 바
+        st.info(f"📍 **{selected_date} 편성** | 조장: 황재업 | A: {a_worker} | B: {b_worker} | C: {c_worker}")
 
-        # 2. 실시간 근무 시간표 (From이 교대 시점)
-        st.write("🕒 **시간대별 근무 위치 (From: 교대시간)**")
-        
-        table_rows = []
+        # 시간표 데이터프레임 구성
+        display_data = []
         for row in RAW_TIMETABLE:
-            start_t = format_excel_time(row["From"])
-            end_t = format_excel_time(row["To"])
-            table_rows.append({
-                "교대(From)": start_t,
-                "종료(To)": end_t,
-                "황재업(조장)": row["조장"],
-                f"{a_worker}(A)": row["대원"],
-                f"{b_worker}(B)": row["당직A"],
-                f"{c_worker}(C)": row["당직B"]
+            display_data.append({
+                "시간": row["시간"],
+                "비고": row["구분"],
+                "황재업": row["조장"],
+                a_worker: row["대원"],
+                b_worker: row["당직A"],
+                c_worker: row["당직B"]
             })
-            
-        df_time = pd.DataFrame(table_rows)
         
-        # 강조 스타일: 현재 시간대에 해당하는 행 하이라이트 (옵션)
-        st.dataframe(df_time, use_container_width=True, hide_index=True)
-        st.info("💡 'From' 시각에 맞춰 해당 위치로 이동 및 교대하시면 됩니다.")
-        
-    else:
-        st.warning("선택한 날짜는 C조 근무일이 아닙니다.")
+        df = pd.DataFrame(display_data)
 
-# --- 나머지 메뉴 로직 생략 (이전과 동일) ---
+        # 2시간 근무(120분) 구간 시각적 강조 스타일 함수
+        def highlight_long_shift(s):
+            return ['background-color: #3e3e3e; border-left: 5px solid #ff4b4b' if s['비고'] in ['120분', '연장'] else '' for _ in s]
+
+        st.dataframe(
+            df.style.apply(highlight_long_shift, axis=1),
+            use_container_width=True,
+            hide_index=True,
+            height=600
+        )
+        
+        st.warning("⚠️ **빨간색 선**으로 표시된 구간은 **2시간 연속 근무** 구간입니다. 착오 없으시기 바랍니다.")
+
+    else:
+        st.warning("C조 근무일이 아닙니다.")
