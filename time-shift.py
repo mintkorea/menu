@@ -6,34 +6,32 @@ from datetime import datetime, timedelta
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
-# --- [2] CSS: 타이틀 확실한 표시 및 가독성 최적화 ---
+# --- [2] CSS: 타이틀 강제 표시 및 스크롤 제거 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 1rem !important; }
-    /* 타이틀: 절반 크기(22px)로 상단에 강제 고정 */
+    /* 타이틀을 기존 대비 절반 크기(22px)로 상단에 강제 고정 */
     .fixed-title { 
         font-size: 22px !important; 
         font-weight: bold; 
         margin-bottom: 20px; 
         color: #31333F;
         display: block !important;
+        visibility: visible !important;
     }
+    /* 표 내부 텍스트 크기 및 스크롤 방지 */
     .stDataFrame div[data-testid="stTable"] { font-size: 16px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# [타이틀] 지시하신 대로 절반 크기로 상단에 삽입
+# [타이틀] 절반 크기로 최상단 배치 (절대 날리지 않음)
 st.markdown('<div class="fixed-title">📅 C조 근무 편성표</div>', unsafe_allow_html=True)
 
 # --- [3] 조회 설정 (달력 + 슬라이드) ---
 with st.container():
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        # 달력 시작일 선택
-        start_date = st.date_input("📅 조회 시작 날짜", datetime(2026, 3, 16).date())
-    with col2:
-        # 조회 일수 슬라이더
-        duration = st.slider("📆 조회 일수(범위)", 7, 100, 31)
+    # 캡처 화면과 동일한 레이아웃 유지
+    start_date = st.date_input("📅 조회 시작 날짜", datetime(2026, 3, 16).date())
+    duration = st.slider("📆 조회 일수(범위)", 7, 100, 31)
     
     # 강조할 성함 선택
     user_focus = st.selectbox("👤 강조할 성함 선택", ["안 함", "황재업", "김태언", "이태원", "이정석"])
@@ -91,5 +89,5 @@ if not df.empty:
         df.style.apply(apply_style, axis=1),
         use_container_width=True,
         hide_index=True,
-        height=(len(df) + 1) * 38 
+        height=(len(df) + 1) * 38 # 스크롤 따로 생기지 않게 높이 자동 조절
     )
