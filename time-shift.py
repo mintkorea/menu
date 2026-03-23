@@ -3,30 +3,29 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 import os
 
-# --- 1. 기존 설정 및 데이터 로직 (절대 수정 금지) ---
+# --- [기존 로직 유지] 설정 및 데이터 ---
 ADMIN_PW = "1234"
 PATTERN_START = datetime(2026, 3, 9).date()
 VACATION_FILE = 'vacation.csv'
 
 st.set_page_config(page_title="성의 C조 관리", layout="wide")
 
-# --- 2. CSS: 강조하신 가독성 개선 (이름 크게, 요일 색상) ---
+# --- [UI 개선] 가독성 강화 CSS ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    .main-title { font-size: 20px !important; font-weight: bold; color: #1E3A8A; text-align: center; margin-bottom: 10px; }
-    /* 실시간 2x2 카드: 이름 크기 대폭 확대 */
-    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-    .card { background: #f8f9fa; border: 2px solid #1E3A8A; border-radius: 10px; padding: 12px; text-align: center; }
-    .card-name { font-size: 20px !important; font-weight: bold; color: #333; margin-bottom: 5px; border-bottom: 1px dotted #ccc; }
-    .card-value { font-size: 24px !important; font-weight: 900; color: #D32F2F; }
-    /* 요일 색상 스타일 */
-    .sun-row { color: #D32F2F !important; font-weight: bold; }
-    .sat-row { color: #1976D2 !important; font-weight: bold; }
+    /* 2x2 카드: 이름(22px)과 장소(26px) 크기 극대화 */
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+    .card { background: #ffffff; border: 2px solid #1E3A8A; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    .card-name { font-size: 22px !important; font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+    .card-value { font-size: 26px !important; font-weight: 900; color: #D32F2F; }
+    /* 요일 색상: 일요일(빨강), 토요일(파랑) */
+    .sun { color: #FF0000 !important; font-weight: bold; }
+    .sat { color: #0000FF !important; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# 시간 계산 (KST 07시 기준)
+# 시간 계산 (KST)
 now_kst = datetime.now(timezone(timedelta(hours=9)))
 today = now_kst.date()
 now_total = now_kst.hour * 60 + now_kst.minute
@@ -42,19 +41,17 @@ def load_vac():
 if 'vac_df' not in st.session_state:
     st.session_state.vac_df = load_vac()
 
-# --- 3. 사이드바 (기존 메뉴 유지) ---
+# --- 사이드바 메뉴 ---
 with st.sidebar:
     st.header("⚙️ 메뉴")
     menu = st.radio("선택", ["📍 실시간 상황판", "📅 근무 편성표", "🌴 연차 관리"])
     user_focus = st.selectbox("👤 본인 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- 4. [메뉴] 실시간 상황판 (개선된 2x2 레이아웃) ---
+# --- 1. [기존 기능 유지] 실시간 상황판 (UI만 2x2 개선) ---
 if menu == "📍 실시간 상황판":
-    st.markdown("<div class='main-title'>📍 현재 근무 위치</div>", unsafe_allow_html=True)
-    
     diff = (today - PATTERN_START).days
     if diff % 3 == 0:
-        # 기존 로직 유지
+        # 기존 순환 로직
         sc = diff // 3
         ci, i2 = (sc // 2) % 3, sc % 2 == 1
         if ci == 0: h_n, a_n, b_n = "김태언", ("이정석" if i2 else "이태원"), ("이태원" if i2 else "이정석")
@@ -78,7 +75,7 @@ if menu == "📍 실시간 상황판":
         
         curr = next((r for r in sched if (int(r[0][:2])*60+int(r[0][3:])) <= now_total < (int(r[1][:2])*60+int(r[1][3:]) if r[1]!="00:00" else 1440)), sched[-1])
         
-        # 이름 크게(20px), 장소 더 크게(24px)
+        # 이름 크게(22px), 장소 더 크게(26px) 시인성 확보
         st.markdown(f"""
         <div class="grid-container">
             <div class="card"><div class="card-name">황재업</div><div class="card-value">{curr[2]}</div></div>
@@ -91,9 +88,8 @@ if menu == "📍 실시간 상황판":
         st.dataframe(pd.DataFrame(sched, columns=["From", "To", "조장", "성희", "의산A", "의산B"]), use_container_width=True, hide_index=True)
     else: st.warning("오늘은 비번입니다.")
 
-# --- 5. [메뉴] 근무 편성표 (요일 색상 완벽 적용) ---
+# --- 2. [기존 기능 유지] 근무 편성표 (요일 색상 추가) ---
 elif menu == "📅 근무 편성표":
-    st.markdown("<div class='main-title'>📅 성의교정 C조 근무편성표</div>", unsafe_allow_html=True)
     cal = []
     c_d = today - timedelta(days=2)
     while c_d <= today + timedelta(days=21):
@@ -111,28 +107,23 @@ elif menu == "📅 근무 편성표":
                         "의산A": f"🌴{a}" if a in v else a, "의산B": f"🌴{b}" if b in v else b})
         c_d += timedelta(days=1)
     
-    # 요일별 폰트 색상 스타일링
+    # 요일 색상 스타일링
     def color_weekday(val):
         if val == 'Sun': return 'color: red; font-weight: bold'
         if val == 'Sat': return 'color: blue; font-weight: bold'
         return ''
-    
     st.dataframe(pd.DataFrame(cal).style.applymap(color_weekday, subset=['요일']), use_container_width=True, hide_index=True)
 
-# --- 6. [메뉴] 연차 관리 (기존 보안 기능 유지) ---
+# --- 3. [기존 기능 유지] 연차 관리 (보안 포함) ---
 elif menu == "🌴 연차 관리":
-    st.markdown("<div class='main-title'>🌴 연차 신청 및 관리</div>", unsafe_allow_html=True)
     with st.form("vac_form"):
         d, n = st.date_input("날짜"), st.selectbox("성함", ["이태원", "김태언", "이정석"])
         if st.form_submit_button("신청하기"):
             st.session_state.vac_df = pd.concat([st.session_state.vac_df, pd.DataFrame([{"날짜": d, "이름": n}])]).drop_duplicates()
             st.session_state.vac_df.to_csv(VACATION_FILE, index=False); st.rerun()
-    
-    st.divider()
     st.dataframe(st.session_state.vac_df, use_container_width=True, hide_index=True)
-    
-    with st.expander("🔐 관리자 전용 삭제"):
-        if st.text_input("비밀번호", type="password") == ADMIN_PW:
+    with st.expander("🔐 관리자 삭제"):
+        if st.text_input("비번", type="password") == ADMIN_PW:
             for i, r in st.session_state.vac_df.iterrows():
                 if st.button(f"삭제: {r['날짜']} {r['이름']}", key=i):
                     st.session_state.vac_df = st.session_state.vac_df.drop(i)
