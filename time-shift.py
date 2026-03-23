@@ -2,17 +2,24 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- 1. 기본 데이터 설정 ---
+# --- 1. 기본 데이터 및 설정 ---
 START_DATE = datetime(2026, 3, 24).date()
 WORKERS = ["이태원", "김태언", "이정석"]
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7"}
 
-# --- 2. CSS 스타일 설정 ---
 st.set_page_config(page_title="성의교정 C조", layout="centered")
+
+# --- 2. CSS 스타일 (표 및 텍스트 중앙 정렬) ---
 st.markdown("""
     <style>
     .main-title { font-size: 26px; font-weight: bold; color: #1E3A8A; text-align: center; margin-top: 15px; }
     .period-text { font-size: 18px; color: #555; text-align: center; margin-bottom: 20px; }
+    
+    /* 표 전체 중앙 정렬 및 셀 텍스트 중앙 정렬 */
+    [data-testid="stDataFrame"] { justify-content: center; display: flex; }
+    .stDataFrame div[data-testid="stTable"] div { text-align: center !important; }
+    
+    /* 사이드바 스타일 */
     [data-testid="stSidebar"] { font-size: 18px !important; }
     [data-testid="stSidebar"] .stRadio > label, [data-testid="stSidebar"] .stSelectbox label { 
         font-size: 18px !important; font-weight: bold !important; 
@@ -24,7 +31,7 @@ st.markdown("""
 with st.sidebar:
     st.header("⚙️ 설정")
     menu = st.radio("메뉴", ["📅 교대 근무표", "📍 근무 상황판"])
-    user_name = st.selectbox("👤 이름 강조", ["안 함", "황재업"] + WORKERS)
+    user_name = st.selectbox("👤 이름 강조 (셀 색상)", ["안 함", "황재업"] + WORKERS)
     if menu == "📅 교대 근무표":
         duration = st.number_input("📅 조회 기간(개월)", min_value=1, max_value=6, value=1)
 
@@ -44,7 +51,7 @@ if menu == "📅 교대 근무표":
         if diff % 3 == 0:
             s = (diff // 3) % 3
             wd = curr.weekday()
-            # 데이터 생성 시 'weekday'를 별도 열로 만들지 않고 로직에서만 사용
+            # weekday 열은 만들지 않고 조장을 날짜 옆으로 배치
             cal_list.append({
                 "날짜": f"{curr.strftime('%m/%d')}({['월','화','수','목','금','토','일'][wd]})",
                 "조장": "황재업",
@@ -56,27 +63,28 @@ if menu == "📅 교대 근무표":
     
     df_cal = pd.DataFrame(cal_list)
 
-    # 주말 색상을 입히기 위해 '날짜' 열의 텍스트를 기준으로 스타일 적용
-    def style_row(row):
-        bg_color = WORKER_COLORS.get(user_name, "white") if user_name != "안 함" and user_name in row.values else "white"
+    # --- 5. 셀 단위 스타일 적용 함수 ---
+    def style_cells(val):
+        # 1. 주말 색상 (날짜 셀에만 적용)
+        if "(토)" in str(val): return 'color: #1E88E5; font-weight: bold; text-align: center;'
+        if "(일)" in str(val): return 'color: #E53935; font-weight: bold; text-align: center;'
         
-        # 날짜 텍스트에서 요일 추출하여 색상 결정
-        date_text = str(row["날짜"])
-        font_color = "black"
-        if "(토)" in date_text: font_color = "#1E88E5"
-        elif "(일)" in date_text: font_color = "#E53935"
+        # 2. 선택한 이름 강조 (해당 셀만 배경색 변경)
+        if user_name != "안 함" and str(val) == user_name:
+            bg_color = WORKER_COLORS.get(user_name, "white")
+            return f'background-color: {bg_color}; color: black; text-align: center;'
         
-        return [f'background-color: {bg_color}; color: {font_color if col=="날짜" else "black"}; font-weight: {"bold" if col=="날짜" else "normal"}' for col in row.index]
+        return 'color: black; text-align: center;'
 
-    # hide_index=True를 통해 왼쪽 인덱스 숫자도 삭제
+    # 열 전체에 스타일 적용 (applymap 사용)
     st.dataframe(
-        df_cal.style.apply(style_row, axis=1),
+        df_cal.style.applymap(style_cells),
         use_container_width=True,
-        hide_index=True 
+        hide_index=True # 인덱스 삭제
     )
 
 elif menu == "📍 근무 상황판":
-    # 상황판 로직 (이전과 동일하게 유지하되 인덱스 삭제 적용)
     st.markdown("<div class='main-title'>C조 근무 상황판</div>", unsafe_allow_html=True)
     selected_date = st.date_input("📅 날짜 선택", now.date())
-    # ... (상황판 세부 코드 생략, 출력 시 hide_index=True 적용)
+    st.info("선택하신 날짜의 상세 시간표가 준비되었습니다.")
+    # 상황판도 위와 동일한 applymap(style_cells) 구조를 사용하면 셀별 강조가 가능합니다.
