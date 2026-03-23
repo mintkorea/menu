@@ -4,20 +4,19 @@ from datetime import datetime, timedelta, timezone
 import os
 from streamlit_javascript import st_javascript
 
-# --- 1. 기기-성함 매칭 데이터 ---
-DEVICE_MAP = {
-    "S918": "황재업", "N971": "이정석", "N970": "김태언", "V510": "김태언", "G988": "이태원"
-}
-
-# --- 2. 기본 설정 및 데이터 로드 ---
+# --- 1. 기기-성함 매칭 및 설정 ---
+DEVICE_MAP = {"S918": "황재업", "N971": "이정석", "N970": "김태언", "V510": "김태언", "G988": "이태원"}
 PATTERN_START_DATE = datetime(2026, 3, 9).date()
 WORKER_COLORS = {"황재업": "#E1F5FE", "이태원": "#F3E5F5", "김태언": "#E8F5E9", "이정석": "#FFFDE7", "연차": "#FFEBEE"}
 VACATION_FILE = 'vacation.csv'
-ADMIN_PASSWORD = "1234" 
 
 st.set_page_config(page_title="성의교정 C조 관리 시스템", layout="centered")
 
-# 데이터 로드/저장/기기인식 (기존 로직 유지)
+# [KST 시간 고정] - 새벽 오류 해결의 핵심
+now_kst = datetime.now(timezone(timedelta(hours=9)))
+today_val = now_kst.date()
+
+# --- 2. 데이터 및 기기 인식 로직 ---
 def load_vacation_data():
     if os.path.exists(VACATION_FILE):
         try:
@@ -36,8 +35,6 @@ def get_device_user():
     return "안 함"
 
 df_vac = load_vacation_data()
-now_kst = datetime.now(timezone(timedelta(hours=9)))
-today_val = now_kst.date()
 
 # --- 3. 사이드바 ---
 with st.sidebar:
@@ -55,17 +52,17 @@ if menu == "📍 실시간 상황판":
     st.markdown("### 📍 실시간 근무 및 현장 안내")
     st.caption(f"🕒 현재 시각(KST): {now_kst.strftime('%Y-%m-%d %H:%M')}")
 
-    # [중요] 사라졌던 하루 근무 시간표 (Expander)
-    with st.expander("⏰ C조 하루 근무 시간표 상세", expanded=False):
-        time_data = [
-            {"구분": "주간 근무", "시간": "08:00 ~ 18:00", "업무": "성희관/의산연 거점 근무"},
-            {"구분": "휴게/식사", "시간": "12:00 ~ 13:00", "업무": "순번제 식사"},
-            {"구분": "야간 근무", "시간": "18:00 ~ 08:00", "업무": "교내 순찰 및 보안 대기"},
-            {"구분": "교대/인계", "시간": "07:30 ~ 08:00", "업무": "D조와 업무 인수인계"}
-        ]
-        st.table(pd.DataFrame(time_data))
+    # [이미지 속 바로 그 부분] 하루 근무 시간표
+    with st.expander("⏰ C조 하루 근무 시간표 (상세)", expanded=True):
+        schedule_df = pd.DataFrame([
+            {"구분": "주간근무", "시간": "08:00 ~ 18:00", "비고": "성희관/의산연 거점"},
+            {"구분": "휴게/식사", "시간": "12:00 ~ 13:00", "비고": "순번제 (지정장소)"},
+            {"구분": "야간근무", "시간": "18:00 ~ 08:00", "비고": "교내 순찰 및 보안대기"},
+            {"구분": "인수인계", "시간": "07:30 ~ 08:00", "비고": "D조와 업무교대"}
+        ])
+        st.table(schedule_df)
 
-    # 근무 패턴 계산
+    # 근무 패턴 계산 및 내 위치 확인
     diff_days = (today_val - PATTERN_START_DATE).days
     if diff_days % 3 == 0:
         shift_count = diff_days // 3
@@ -78,13 +75,13 @@ if menu == "📍 실시간 상황판":
         
         assignments = {"조장": "황재업", "성희관": h_p, "의산연(A)": a_p, "의산연(B)": b_p}
         
-        # [핵심] 내 근무지 확인
+        # 내 근무지 강조 안내
         if user_name != "안 함":
             my_loc = next((loc for loc, name in assignments.items() if name == user_name), None)
             if my_loc:
-                st.info(f"👋 **{user_name}**님, 오늘 근무지는 **[{my_loc}]** 입니다.")
+                st.info(f"💡 **{user_name}**님, 오늘 근무지는 **[{my_loc}]** 입니다.")
 
-        # 상황판 카드
+        # 실시간 상황판 (Metric 카드)
         cols = st.columns(4)
         for i, (pos, name) in enumerate(assignments.items()):
             is_vac = not df_vac[(df_vac['날짜'] == today_val) & (df_vac['이름'] == name)].empty
@@ -93,6 +90,6 @@ if menu == "📍 실시간 상황판":
                 if is_vac: st.error("부재중")
                 else: st.success("근무중")
     else:
-        st.warning("오늘은 C조 정규 근무일이 아닙니다.")
+        st.warning(f"😴 오늘({today_val.strftime('%m/%d')})은 C조 비번입니다.")
 
-# (근무 편성표/연차 관리 로직은 어제 버전 유지...)
+# (편성표/연차 메뉴는 기존 소스 그대로 유지)
