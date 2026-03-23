@@ -1,69 +1,63 @@
 import streamlit as st
 import pandas as pd
-from io import StringIO
+import os
 
-# 1. 통합 데이터 설정 (에러 방지를 위해 따옴표 처리 강화)
-def get_integrated_data():
-    csv_content = """건물,층,구분,명칭,비고
-"성의회관","14F","숙소/교수실","게스트하우스(포스텍/학교관리), 성기현, 백종호, 박은호, 김평만, 김수정, 최진일 교수실","1404호~1421호 상세 포함"
-"성의회관","13F","연구/입주사","김정훈, 조동우, 김동 교수실 / (주)플럼라인생명과학, (주)알젠오가노, 맵스젠, 셀로이드","1301호~1319호 연구실 및 실험실"
-"성의회관","11F","도서관","효원도서관, 도서관장실, 사서팀, 연속간행물실, 복사실","24시간 출입문 폐쇄"
-"성의회관","1F","로비","마리아홀, 써니문구/매점, 그라머시 플라워, 안젤로커피, 152통신실, 안내실","내방객 주요 편의시설"
-"의산연","지하1층","연구/행정","통합관제실, 서태석 교수, 의공학교실, 방사선분석실, 산학협동실, 초저온냉동고실","B101~B123호"
-"의산연","1층","연구지원","물품보관실, 대학원 강의실, 연구기술지원팀, 공동기기실, 유세포분석실, 세포배양실","1001~1020호"
-"의산연","2층","연구/행정","정보전략팀 서버실, 가톨릭세포치료사업단, 한국가톨릭의료협회, 대강당, 정보융합진흥원","2001~2024호"
-"옴니버스파크","A동 8F","교수실","미생물학, 예방의학, 의학통계연구실, 의생명과학교실","A동 전용"
-"옴니버스파크","B동 7F","행정","산학협력단, 의생명산업연구원, 경영관리팀, 연구기획/관리팀, 구매관재팀","B동 전용"
-"옴니버스파크","1F","식당/편의","마스터센터, 대강의실, TBL실, PBL실, 푸드코트(북촌손만두, 제주면장, 아비꼬 등)","공통 로비층"
-"대학본관","2F","병원/학교","의료원보직자실, 원목사무실, 정보융합진흥원 행정사무실, 빅데이터 통합센터","내원객 안내금지 구역 포함"
-"대학본관","1F","행정/편의","병원통합행정사무실, 소아청소년완화의료팀, 학생식당, 직원식당, 노조사무실","116~119호 회의실 및 택배보관"
-"서울성모병원","6F","외래","산부인과, 소아청소년과, 유방센터, 갑상선센터, 국제진료센터, 암병원","본관 6층"
-"서울성모병원","3F","외래","심뇌혈관병원, 순환기내과, 안센터, 혈액내과, 신장내과, 호흡기내과","가장 방문객이 많은 층"
-"서울성모병원","B1F","편의","푸드코트, 편의점, 은행, 의료기기매장, 안경점, 세탁소","장례식장 연결로"
-"""
-    try:
-        # quotechar를 사용하여 따옴표 안의 쉼표는 무시하도록 설정
-        df = pd.read_csv(StringIO(csv_content), quotechar='"', skipinitialspace=True)
-        return df
-    except Exception as e:
-        st.error(f"데이터를 읽어오는 중 오류가 발생했습니다: {e}")
-        return pd.DataFrame(columns=["건물", "층", "구분", "명칭", "비고"])
+# 페이지 설정
+st.set_page_config(page_title="가톨릭대 성의교정 통합 안내", layout="wide")
 
-# 2. 페이지 설정 및 디자인
-st.set_page_config(page_title="성의교정 통합 안내", page_icon="📍", layout="wide")
-
-# 사이드바
-st.sidebar.title("🏢 성의교정 건물 목록")
-bldg_list = ["전체", "서울성모병원", "성의회관", "의산연", "옴니버스파크", "대학본관", "병원별관"]
-selected_bldg = st.sidebar.radio("안내가 필요한 건물을 선택하세요", bldg_list)
-
-# 메인 화면
-st.title("📍 성의교정 & 성모병원 통합 검색 시스템")
-query = st.text_input("🔍 검색어 입력 (부서, 교수명, 진료과 등)", placeholder="예: '마리아', '서태석', '산부인과'...")
+@st.cache_data
+def load_all_data():
+    # 불러올 파일 목록
+    files = {
+        "대학본관": "대학본관.csv",
+        "병원별관": "병원별관 입주현황.CSV",
+        "성모병원": "성모병원 입주현황.CSV",
+        "성의회관": "성의회관 입주현황.CSV",
+        "옴니버스": "옴니버스 입주현황.csv",
+        "의산연": "의산연 입주현황.csv"
+    }
+    
+    combined_df = pd.DataFrame()
+    
+    for bname, fname in files.items():
+        if os.path.exists(fname):
+            # CSV 읽기 (인코딩 에러 방지를 위해 cp949 사용)
+            df = pd.read_csv(fname, encoding='cp949')
+            # 건물명 컬럼이 없는 경우 추가
+            if '건물' not in df.columns:
+                df['건물'] = bname
+            combined_df = pd.concat([combined_df, df], ignore_index=True)
+            
+    return combined_df
 
 # 데이터 로드
-df = get_integrated_data()
+try:
+    master_df = load_all_data()
+except Exception as e:
+    st.error(f"파일을 읽는 중 오류가 발생했습니다. 파일명과 인코딩을 확인해주세요: {e}")
+    st.stop()
 
-# 필터링 로직
-if selected_bldg != "전체":
-    df = df[df['건물'] == selected_bldg]
+# UI 구성
+st.title("🏢 성의교정 & 성모병원 통합 검색 시스템")
+st.info("원본 CSV 데이터를 기반으로 실시간 안내를 제공합니다.")
 
-if query:
-    # 전체 텍스트에서 검색 (대소문자 무시)
-    mask = df.apply(lambda row: row.astype(str).str.contains(query, case=False).any(), axis=1)
-    results = df[mask]
+# 검색창
+search_query = st.text_input("🔍 검색어 입력 (부서명, 교수명, 시설명, 호수 등)", placeholder="예: '서태석', '산부인과', '1416'")
+
+# 필터 및 결과 출력
+if search_query:
+    # 전체 컬럼에서 검색어가 포함된 행 찾기
+    mask = master_df.apply(lambda row: row.astype(str).str.contains(search_query, case=False).any(), axis=1)
+    results = master_df[mask]
     
     if not results.empty:
-        st.success(f"'{query}'에 대한 결과가 {len(results)}건 있습니다.")
+        st.success(f"'{search_query}' 검색 결과 {len(results)}건")
+        # 검색된 결과 테이블로 표시
         st.dataframe(results, use_container_width=True, hide_index=True)
-        
-        # 상세 카드 뷰
-        for _, row in results.iterrows():
-            with st.expander(f"📌 {row['건물']} {row['층']} - {row['명칭'][:30]}..."):
-                st.write(f"**상세 위치:** {row['층']} ({row['구분']})")
-                st.write(f"**전체 명칭:** {row['명칭']}")
-                st.write(f"**참고 사항:** {row['비고']}")
     else:
-        st.error(f"'{query}'와 일치하는 정보를 찾을 수 없습니다.")
+        st.warning("검색 결과가 없습니다.")
 else:
-    st.info("검색창에 키워드를 입력하시면 상세 위치를 확인할 수 있습니다.")
+    # 검색어가 없을 때 기본 화면 (건물별 통계 등)
+    st.write("왼쪽 사이드바에서 건물을 선택하거나 검색어를 입력하세요.")
+    st.sidebar.header("건물별 현황")
+    st.sidebar.write(master_df['건물'].value_counts())
