@@ -79,3 +79,4 @@ def styling(row):
 
 st.markdown("### 📋 전체 근무 시간표 (1시간 단위)")
 st.table(df_time.style.apply(styling, axis=1))
+
