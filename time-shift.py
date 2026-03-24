@@ -3,18 +3,16 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (이름 개행 방지에 집중) ---
+# --- [1] 설정 및 CSS (표 헤더 이름 개행 방지 및 디자인) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
     .block-container { padding-top: 2.5rem !important; }
-    
-    /* 타이틀 및 시간 */
     .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 17.5px !important; text-align: center; margin-bottom: 20px; color: #555; }
     
-    /* 상단 요약 카드 (기존 유지) */
+    /* 상단 요약 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
     .status-card { 
         border: 2px solid #2E4077; border-radius: 10px; padding: 6px 0; 
@@ -23,42 +21,40 @@ st.markdown("""
     .worker-name { font-size: 16px !important; font-weight: 700; color: #444; }
     .status-val { font-size: 19px; font-weight: 900; color: #C04B41; }
     
-    /* 건물명 헤더 */
+    /* 건물 헤더 */
     .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 13px; }
     .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 🚨 표 스타일: 이름(헤더)과 데이터 폰트 모두 축소 🚨 */
+    /* 표 스타일 (헤더 '김태언' 개행 방지 최우선) */
     [data-testid="stTable"] { width: 100% !important; table-layout: fixed !important; }
     
-    /* 1. 표의 헤더 (근무자 이름 나오는 부분) */
+    /* 헤더 이름 부분 폰트 및 자간 강제 조절 */
     [data-testid="stTable"] thead tr th {
         padding: 4px 1px !important;
-        font-size: 10px !important;   /* 👈 이름 폰트 축소 */
+        font-size: 10px !important; 
         font-weight: bold !important;
         text-align: center !important;
-        white-space: nowrap !important; /* 👈 절대 개행 금지 */
-        letter-spacing: -1.0px !important; /* 👈 자간을 더 좁힘 */
+        white-space: nowrap !important; /* 👈 절대 개행 방지 */
+        letter-spacing: -1.0px !important; /* 👈 자간 압축 */
     }
 
-    /* 2. 표의 본문 (근무지 데이터 부분) */
+    /* 본문 데이터 부분 */
     [data-testid="stTable"] td { 
         width: 16.66% !important; 
         padding: 4px 1px !important; 
-        font-size: 10px !important;   /* 👈 데이터 폰트 축소 */
+        font-size: 10.5px !important; 
         line-height: 1.0 !important; 
         height: 30px !important; 
         text-align: center !important; 
-        white-space: nowrap !important; /* 👈 절대 개행 금지 */
+        white-space: nowrap !important;
         letter-spacing: -0.5px !important;
     }
-    
-    /* 인덱스 열 숨기기 */
     thead tr th:first-child, tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 (기존 동일) ---
+# --- [2] 날짜/시간 및 근무자 패턴 로직 (사용자 원본) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -116,7 +112,6 @@ with tab1:
     curr_idx = get_rt_idx(now.hour, now.minute)
     curr_row = df_rt.iloc[curr_idx]
 
-    # 상단 요약 카드
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
@@ -126,26 +121,37 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 건물명 헤더
-    st.markdown(f"""<div class="b-header"><div class="b-section" style="background:#fff;">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
-
-    # 표 출력 (하이라이트 및 상단 고정)
+    st.markdown(f"""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
     st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
-    # 근무 편성표 로직 (기존 유지)
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
-    with c1: start_d = st.date_input("📅 시작일", now.date(), key="cal_d_final_v2")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="cal_s_final_v2")
-    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="cal_sb_final_v2")
+    with c1: start_d = st.date_input("📅 시작일", now.date(), key="cal_d_v3")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="cal_s_v3")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="cal_sb_v3")
 
     cal_list = []
     for i in range(dur):
         d = start_d + timedelta(days=i)
         w_jojang, w_seong, w_a, w_b = get_workers_by_date(d)
         if w_jojang: cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": w_jojang, "성희": w_seong, "의산A": w_a, "의산B": w_b})
+    
     df_cal = pd.DataFrame(cal_list)
     if not df_cal.empty:
+        # 🚨 [중요] 개인별 강조 색상 로직 🚨
         color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#E0F2FE", "이정석": "#FEE2E2"}
-        st.dataframe(df_cal.style.apply(lambda r: ['color: red' if 'Sun' in r['날짜'] else 'color: blue' if 'Sat' in r['날짜'] else '' for _ in r], axis=1), use_container_width=True, hide_index=True)
+        
+        def style_cal(row):
+            styles = [''] * len(row)
+            # 주말 색상
+            if 'Sun' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
+            elif 'Sat' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
+            # 선택한 근무자 강조 (배경색 적용)
+            if focus != "안 함":
+                for idx, val in enumerate(row):
+                    if val == focus:
+                        styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold; color: black;'
+            return styles
+            
+        st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True)
