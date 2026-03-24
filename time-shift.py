@@ -12,7 +12,7 @@ st.markdown("""
     .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 15px; text-align: center; margin-bottom: 15px; color: #666; }
     
-    /* 카드 디자인: 높이 최소화 */
+    /* 카드 디자인: 높이 최소화 및 의산연 강조 */
     .status-container { 
         display: grid; grid-template-columns: repeat(2, 1fr); 
         gap: 8px; margin-bottom: 20px; 
@@ -54,7 +54,7 @@ is_work_day = j is not None
 tab1, tab2 = st.tabs(["🕒 실시간 근무 현황", "📅 월간 근무 편성표"])
 
 # ---------------------------------------------------------
-# TAB 1: 실시간 근무 현황 (현재 시간부터 정렬)
+# TAB 1: 실시간 근무 현황 (의산연 타임라인 상단 고정)
 # ---------------------------------------------------------
 with tab1:
     st.markdown('<div class="unified-title">C조 실시간 근무 현황</div>', unsafe_allow_html=True)
@@ -64,7 +64,7 @@ with tab1:
         st.warning("📅 오늘은 C조 휴무일입니다.")
         j, s, a, b = "황재업", "김태언", "이태원", "이정석"
 
-    # 전체 데이터 준비
+    # 전체 시간표 (From/To + 조장/성의/의산A/의산B)
     time_raw = [
         ["07:00", "08:00"], ["08:00", "09:00"], ["09:00", "10:00"], ["10:00", "11:00"],
         ["11:00", "12:00"], ["12:00", "13:00"], ["13:00", "14:00"], ["14:00", "15:00"],
@@ -85,8 +85,9 @@ with tab1:
         ["휴게", "안내실", "로비", "휴게"], ["안내실", "순찰", "로비", "순찰"], ["안내실", "안내실", "휴게", "로비"]
     ]
     df_full = pd.DataFrame([t + l for t, l in zip(time_raw, loc_raw)], 
-                           columns=["From", "To", "조장", "성의", "의생A", "의생B"])
+                           columns=["From", "To", "조장", "성의", "의산A", "의산B"])
 
+    # 현재 시각 인덱스 추출
     def get_curr_idx(h, m):
         if h == 1 and m < 40: return 16
         if h == 1 and m >= 40: return 17
@@ -100,21 +101,19 @@ with tab1:
 
     idx = get_curr_idx(now.hour, now.minute)
     curr_row = df_full.iloc[idx]
-    
-    # ⭐️ 현재 인덱스부터 끝까지만 노출
     df_display = df_full.iloc[idx:].copy()
 
-    # 상단 카드
+    # 상단 정보 카드 (의산연 근무자 포함)
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{j}</div><div class="status-val">{curr_row['조장']}</div></div>
             <div class="status-card"><div class="worker-name">{s}</div><div class="status-val">{curr_row['성의']}</div></div>
-            <div class="status-card"><div class="worker-name">{a}</div><div class="status-val">{curr_row['의생A']}</div></div>
-            <div class="status-card"><div class="worker-name">{b}</div><div class="status-val">{curr_row['의생B']}</div></div>
+            <div class="status-card"><div class="worker-name">{a}</div><div class="status-val">{curr_row['의산A']}</div></div>
+            <div class="status-card"><div class="worker-name">{b}</div><div class="status-val">{curr_row['의산B']}</div></div>
         </div>
     """, unsafe_allow_html=True)
 
-    # 표 출력 (첫 행 하이라이트)
+    # 표 출력 (현재 행이 항상 맨 위로)
     st.table(df_display.style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == idx and is_work_day else ['']*len(r), axis=1))
 
 # ---------------------------------------------------------
@@ -123,16 +122,16 @@ with tab1:
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1, 1])
-    with col1: start_d = st.date_input("📅 시작일", now.date(), key="cal_start")
-    with col2: dur = st.slider("📆 일수", 7, 60, 31)
-    with col3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"])
+    with col1: start_d = st.date_input("📅 시작일", now.date(), key="cal_start_date")
+    with col2: dur = st.slider("📆 조회 일수", 7, 60, 31)
+    with col3: focus = st.selectbox("👤 강조 인원", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
     cal_list = []
     for i in range(dur):
         d = start_d + timedelta(days=i)
         wj, ws, wa, wb = get_workers_by_date(d)
         if wj:
-            cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": wj, "성희": ws, "의산A": wa, "의산B": wb})
+            cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": wj, "성의": ws, "의산A": wa, "의산B": wb})
 
     if cal_list:
         df_cal = pd.DataFrame(cal_list)
