@@ -14,7 +14,6 @@ st.markdown("""
         font-weight: 800;
         margin-bottom: 20px;
         text-align: center;
-        color: #333;
     }
     .status-container { 
         display: grid; 
@@ -32,63 +31,76 @@ st.markdown("""
     .name-label { font-size: 13px; color: #666; margin-bottom: 3px; border-bottom: 1px solid #eee; }
     .loc-label { font-size: 19px; font-weight: 800; color: #C04B41; }
     
-    /* 테이블 인덱스 제거 및 폰트 조절 */
+    /* 인덱스 제거 */
     thead tr th:first-child { display:none; }
     tbody th { display:none; }
-    [data-testid="stTable"] { font-size: 14px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 한국 표준시(KST) 설정 ---
+# --- [2] 시간 설정 ---
 kst = pytz.timezone('Asia/Seoul')
 now_kst = datetime.now(kst)
 now_time_str = now_kst.strftime("%H:%M")
 now_hour = now_kst.hour
 
-# --- [3] 근무 데이터 (순찰 후 휴게 로직 적용) ---
+# --- [3] 정밀 근무 데이터 (요청 규칙 완벽 반영) ---
+# 순찰: 회관(09, 14시) / 의산연(10, 13시) -> 순찰 후 휴게 로직
 time_data = [
-    ["07:00", "08:00", "안내실", "로비 / 안내실", "로비", "휴게"],
-    ["08:00", "09:00", "안내실", "휴게", "휴게 / 로비", "로비"],
-    ["09:00", "10:00", "안내실", "순찰 / 휴게", "휴게 / 로비", "로비"], # 순찰 후 휴게
-    ["10:00", "11:00", "휴게 / 안내", "안내 / 휴게", "로비 / 순찰", "순찰 / 휴게"], # 30분 순찰/휴게
-    ["11:00", "12:00", "안내실 / 중식", "중식 / 안내", "로비 / 중식", "중식 / 로비"], 
-    ["12:00", "13:00", "중식 / 안내", "안내 / 중식", "중식 / 로비", "로비 / 중식"], 
-    ["13:00", "14:00", "안내실 / 휴게", "휴게 / 안내실", "휴게 / 순찰", "로비 / 순찰"], # 순찰 시작
-    ["14:00", "15:00", "순찰 / 휴게", "안내실", "로비", "휴게"], # 순찰 후 휴게
-    ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], 
-    ["16:00", "17:00", "휴게 / 안내", "안내실", "휴게 / 로비", "로비"], 
-    ["17:00", "18:00", "안내실", "휴게", "휴게 / 로비", "로비"], 
-    ["18:00", "19:00", "안내실", "석식 / 로비", "로비 / 석식", "석식 / 로비"], 
-    ["19:00", "20:00", "안내실", "안내실", "석식 / 로비", "로비"], 
-    ["20:00", "21:00", "석식 / 안내", "안내실", "로비", "휴게"], 
-    ["21:00", "22:00", "안내실", "순찰 / 휴게", "로비", "휴게"], # 순찰 후 휴게
-    ["22:00", "23:00", "순찰 / 안내", "안내 / 휴게", "순찰 / 로비", "로비 / 휴게"], # 교대
-    ["23:00", "01:40", "안내실", "휴게", "휴게", "로비"], 
-    ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], 
-    ["02:00", "05:00", "휴게", "안내실", "로비", "휴게"], 
-    ["05:00", "06:00", "안내실 / 순찰", "순찰 / 안내", "로비 / 순찰", "순찰 / 로비"], 
-    ["06:00", "07:00", "안내실", "안내실", "휴게 / 로비", "로비"], 
+    ["07:00", "08:00", "안내실", "로비", "로비", "휴게"],
+    ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
+    ["09:00", "10:00", "순찰 / 휴게", "안내실", "휴게", "로비"], # 회관 오전 순찰
+    ["10:00", "11:00", "휴게", "안내실", "로비", "순찰 / 휴게"], # 의산연 오전 순찰
+    ["11:00", "12:00", "안내실", "중식", "로비", "중식"],
+    ["12:00", "13:00", "중식", "안내실", "중식", "로비"],
+    ["13:00", "14:00", "안내실", "휴게", "순찰 / 휴게", "로비"], # 의산연 오후 순찰
+    ["14:00", "15:00", "순찰 / 휴게", "안내실", "로비", "휴게"], # 회관 오후 순찰
+    ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"],
+    ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"],
+    ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"],
+    ["18:00", "19:00", "안내실", "석식", "로비", "석식"],
+    ["19:00", "20:00", "안내실", "안내실", "석식", "로비"],
+    ["20:00", "21:00", "석식", "안내실", "로비", "휴게"],
+    ["21:00", "22:00", "안내실", "순찰 / 휴게", "로비", "휴게"],
+    ["22:00", "23:00", "순찰 / 휴게", "안내실", "순찰 / 휴게", "로비"],
+    ["23:00", "01:40", "안내실", "휴게", "휴게", "로비"],
+    ["01:40", "02:00", "안내실", "안내실", "로비", "로비"],
+    ["02:00", "05:00", "휴게", "안내실", "로비", "휴게"],
+    ["05:00", "06:00", "안내실", "순찰 / 휴게", "로비", "순찰 / 휴게"],
+    ["06:00", "07:00", "안내실", "안내실", "휴게", "로비"],
 ]
 df_time = pd.DataFrame(time_data, columns=["From", "To", "조장", "성의", "의생A", "의생B"])
 
 # --- [4] 실시간 위치 추출 ---
-curr_row = df_time[df_time['From'].apply(lambda x: int(x.split(':')[0])) == now_hour].iloc[0]
+# 23:00 ~ 01:40 등 긴 시간대 대응
+def get_current_row(h):
+    for i, row in df_time.iterrows():
+        start_h = int(row['From'].split(':')[0])
+        end_h = int(row['To'].split(':')[0])
+        if end_h == 0: end_h = 24
+        if start_h <= h < end_h:
+            return row
+    return df_time.iloc[-1]
+
+curr = get_current_row(now_hour)
 
 # --- [5] 화면 표시 ---
 st.markdown(f'<div class="main-title">🕒 실시간 근무 현황 ({now_time_str})</div>', unsafe_allow_html=True)
 
 st.markdown(f"""
     <div class="status-container">
-        <div class="status-card"><div class="name-label">조장 (황재업)</div><div class="loc-label">{curr_row['조장']}</div></div>
-        <div class="status-card"><div class="name-label">성의회관</div><div class="loc-label">{curr_row['성의']}</div></div>
-        <div class="status-card"><div class="name-label">의생연 A</div><div class="loc-label">{curr_row['의생A']}</div></div>
-        <div class="status-card"><div class="name-label">의생연 B</div><div class="loc-label">{curr_row['의생B']}</div></div>
+        <div class="status-card"><div class="name-label">조장 (황재업)</div><div class="loc-label">{curr['조장']}</div></div>
+        <div class="status-card"><div class="name-label">성의회관</div><div class="loc-label">{curr['성의']}</div></div>
+        <div class="status-card"><div class="name-label">의생연 A</div><div class="loc-label">{curr['의생A']}</div></div>
+        <div class="status-card"><div class="name-label">의생연 B</div><div class="loc-label">{curr['의생B']}</div></div>
     </div>
 """, unsafe_allow_html=True)
 
 # --- [6] 테이블 표시 ---
 def styling(row):
-    if int(row['From'].split(':')[0]) == now_hour:
+    start_h = int(row['From'].split(':')[0])
+    end_h = int(row['To'].split(':')[0])
+    if end_h == 0: end_h = 24
+    if start_h <= now_hour < end_h:
         return ['background-color: #FFE5E5; font-weight: bold'] * len(row)
     return [''] * len(row)
 
