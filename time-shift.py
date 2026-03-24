@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# --- [원본 복구] 사용자 최종 확정 레이아웃 ---
+# --- [원본] 사용자 최종 확정 레이아웃 복구 ---
 PATTERN_START = datetime(2026, 3, 9).date()
 st.set_page_config(page_title="C조 근무 편성표", layout="wide")
 
-# --- [1] CSS: 28px 타이틀 및 여백 유지 ---
+# --- [1] CSS: 28px 타이틀 및 여백 ---
 st.markdown("""
     <style>
     .block-container { padding-top: 3.5rem !important; }
@@ -22,7 +22,7 @@ st.markdown("""
 
 st.markdown('<div class="fixed-title">📅 C조 근무 편성표</div>', unsafe_allow_html=True)
 
-# --- [2] 조회 설정: 가로 3단 컬럼 ---
+# --- [2] 조회 설정: 가로 3단 컬럼 배치 ---
 col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
     start_date = st.date_input("📅 조회 시작 날짜", datetime(2026, 3, 16).date())
@@ -31,7 +31,7 @@ with col2:
 with col3:
     user_focus = st.selectbox("👤 강조할 성함", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
-# --- [3] 데이터 및 색상 로직 ---
+# --- [3] 데이터 및 강조 색상 로직 ---
 color_map = {
     "황재업": "#D1FAE5", 
     "김태언": "#FFF2CC", 
@@ -60,7 +60,7 @@ df = pd.DataFrame(cal_data)
 
 def apply_style(row):
     styles = [''] * len(row)
-    # 주말 색상
+    # 주말 색상 강조
     if 'Sun' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
     elif 'Sat' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
     
@@ -71,7 +71,7 @@ def apply_style(row):
                 styles[i] = f'background-color: {bg_color}; font-weight: bold; color: black;'
     return styles
 
-# --- [4] 표 출력 ---
+# --- [4] 데이터 프레임 출력 ---
 if not df.empty:
     st.dataframe(
         df.style.apply(apply_style, axis=1),
