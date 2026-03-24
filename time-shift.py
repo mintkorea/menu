@@ -3,59 +3,61 @@ import pandas as pd
 from datetime import datetime
 import pytz
 
-# --- [1] 설정 및 디자인 (이전 카드 스타일 + 중앙 정렬 CSS) ---
+# --- [1] CSS: 레이아웃 및 중앙 정렬 끝판왕 ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
+    /* 전체 배경 및 여백 */
     .block-container { padding-top: 1.5rem !important; }
     
-    /* 타이틀 스타일 수정 */
-    .main-title { font-size: 28px !important; font-weight: 800; text-align: center; margin-bottom: 20px; color: #2E4077; }
+    /* 1. 타이틀 디자인 (스크린샷 스타일) */
+    .main-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 15px; color: #333; }
 
-    /* 카드 디자인 (이전 스타일 복구: 성함 + 상태) */
+    /* 2. 카드 디자인 (성함/상태 분리 및 테두리) */
     .status-container { 
         display: grid; grid-template-columns: repeat(2, 1fr); 
-        gap: 10px; margin-bottom: 25px; 
+        gap: 10px; margin-bottom: 20px; 
     }
     .status-card { 
         border: 2px solid #2E4077; border-radius: 12px; 
-        padding: 12px 0; text-align: center; background: #fff;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        padding: 10px 0; text-align: center; background: #fff;
     }
-    .card-name { font-size: 16px; font-weight: 700; color: #555; margin-bottom: 4px; }
-    .card-status { font-size: 20px; font-weight: 800; color: #C04B41; }
+    .card-name { font-size: 15px; font-weight: 600; color: #666; margin-bottom: 2px; }
+    .card-status { font-size: 19px; font-weight: 800; color: #C04B41; }
 
-    /* 표 헤더 위쪽 건물명 섹션 */
+    /* 3. 건물명 헤더 (색상 및 너비 정밀 조정) */
     .b-header {
-        display: flex; margin-top: 15px; border: 1px solid #dee2e6; border-bottom: none;
+        display: flex; margin-top: 10px; border: 1px solid #dee2e6; border-bottom: none;
         font-weight: bold; text-align: center; font-size: 14px;
     }
-    .b-time { width: 120px; background: #fff; padding: 10px 0; border-right: 1px solid #dee2e6; }
-    .b-seongui { flex: 1; background: #FFF2CC; padding: 10px 0; border-right: 1px solid #dee2e6; }
-    .b-uysan { flex: 1; background: #D9EAD3; padding: 10px 0; }
+    .b-time { width: 22%; background: #fff; padding: 10px 0; border-right: 1px solid #dee2e6; }
+    .b-seongui { width: 39%; background: #FFF2CC; padding: 10px 0; border-right: 1px solid #dee2e6; }
+    .b-uysan { width: 39%; background: #D9EAD3; padding: 10px 0; }
 
-    /* 표 정리: 전 구역 중앙 정렬 및 셀 크기 */
-    [data-testid="stTable"] { width: 100% !important; }
-    [data-testid="stTable"] td, [data-testid="stTable"] th {
-        text-align: center !important; /* 전체 중앙 정렬 */
-        vertical-align: middle !important;
-        padding: 8px 2px !important;
-        font-size: 14px !important;
+    /* 4. 표 중앙 정렬 및 셀 너비 강제 고정 */
+    [data-testid="stTable"] { width: 100% !important; border-collapse: collapse !important; }
+    [data-testid="stTable"] thead tr th { 
+        text-align: center !important; background-color: #f8f9fa !important; padding: 8px 2px !important;
     }
-    /* 시간 열(From/To) 너비 고정 */
-    [data-testid="stTable"] td:nth-child(2), [data-testid="stTable"] td:nth-child(3) { width: 55px !important; }
+    [data-testid="stTable"] td { 
+        text-align: center !important; vertical-align: middle !important; padding: 10px 2px !important; 
+    }
     
+    /* 각 열 너비 지정 (22% / 39% / 39% 비율에 맞춰 배분) */
+    [data-testid="stTable"] th:nth-child(2), [data-testid="stTable"] td:nth-child(2),
+    [data-testid="stTable"] th:nth-child(3), [data-testid="stTable"] td:nth-child(3) { width: 11% !important; } /* From, To */
+    
+    [data-testid="stTable"] th:nth-child(n+4), [data-testid="stTable"] td:nth-child(n+4) { width: 19.5% !important; } /* 성함 4개 */
+
     thead tr th:first-child { display:none; }
     tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 데이터 로직 ---
+# --- [2] 데이터 로직 (기존과 동일) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
-
-# 실제 근무자 성함 (이미지 기준)
 names = ["황재업", "이태원", "이정석", "김태언"]
 
 time_raw = [
@@ -78,8 +80,7 @@ loc_raw = [
     ["휴게", "안내실", "로비", "휴게"], ["안내실", "순찰", "로비", "순찰"], ["안내실", "안내실", "휴게", "로비"]
 ]
 
-df_full = pd.DataFrame([t + l for t, l in zip(time_raw, loc_raw)], 
-                       columns=["From", "To"] + names)
+df_full = pd.DataFrame([t + l for t, l in zip(time_raw, loc_raw)], columns=["From", "To"] + names)
 
 def get_curr_idx(h, m):
     if h == 1 and m < 40: return 16
@@ -99,7 +100,7 @@ df_display = df_full.iloc[idx:].copy()
 # --- [3] 화면 출력 ---
 st.markdown('<div class="main-title">🕒 C조 실시간 근무 현황</div>', unsafe_allow_html=True)
 
-# 1. 카드 부분 (성함 상단, 상태 하단 강조 스타일)
+# 1. 카드 (성함+상태 조합)
 st.markdown(f"""
     <div class="status-container">
         <div class="status-card"><div class="card-name">{names[0]}</div><div class="card-status">{curr_row[names[0]]}</div></div>
@@ -109,7 +110,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 2. 건물명 헤더 (표 바로 위)
+# 2. 건물명 헤더 (너비 비율 22% : 39% : 39%)
 st.markdown(f"""
     <div class="b-header">
         <div class="b-time">구분 (시간)</div>
@@ -118,5 +119,5 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 3. 표 출력 (전체 중앙 정렬 및 하이라이트)
+# 3. 표 출력 (전체 중앙 정렬 강제 적용)
 st.table(df_display.style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == idx else ['']*len(r), axis=1))
