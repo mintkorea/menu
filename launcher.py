@@ -78,3 +78,4 @@ if pw == "1234": # 비밀번호는 원하시는 대로 수정하세요
         if st.button("삭제 실행", type="primary"):
             st.session_state.apps = [a for a in st.session_state.apps if a['title'] != target]
             st.rerun()
+
