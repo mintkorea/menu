@@ -3,19 +3,18 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (여백, 정렬, 폰트 수정) ---
+# --- [1] 설정 및 CSS (여백 중간값, 건물명 확대, 중앙 정렬) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 1. 상단 여백 확보 (탭 잘림 방지) */
+    /* 1. 상단 여백 조정 (2.5rem과 4rem의 중간인 3.2rem) */
     .block-container { 
-        padding-top: 4rem !important; 
-        max-width: 500px; /* 모바일 가독성을 위해 최대 너비 제한 */
+        padding-top: 3.2rem !important; 
+        max-width: 500px;
         margin: auto;
     }
     
-    /* 타이틀 및 요약 카드 */
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 16px !important; text-align: center; margin-bottom: 15px; color: #555; }
     
@@ -27,7 +26,7 @@ st.markdown("""
     .worker-name { font-size: 15px !important; font-weight: 700; color: #444; }
     .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
     
-    /* 2. 건물 헤더 (폰트 2pt 확대: 12px -> 14px) */
+    /* 2. 건물 헤더 (폰트 크기 14px로 확대) */
     .b-header { 
         display: flex; border: 1px solid #dee2e6; border-bottom: none; 
         font-weight: bold; text-align: center; font-size: 14px; 
@@ -35,7 +34,7 @@ st.markdown("""
     .b-section { width: 33.33%; padding: 7px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 3. 표 중앙 정렬 및 개행 방지 */
+    /* 3. 표 중앙 정렬 및 가독성 설정 */
     [data-testid="stTable"] { 
         display: flex;
         justify-content: center;
@@ -65,7 +64,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 (근무 패턴) ---
+# --- [2] 로직 (기본 데이터) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -119,7 +118,7 @@ with tab1:
     curr_idx = get_rt_idx(now.hour, now.minute)
     curr_row = df_rt.iloc[curr_idx]
 
-    # 요약 카드
+    # 상단 요약 카드
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
@@ -129,18 +128,18 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 건물 헤더 (폰트 상향)
+    # 건물 헤더
     st.markdown(f"""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
     
-    # 표 출력 (중앙 정렬 적용됨)
+    # 실시간 표 중앙 정렬 출력
     st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
-    with c1: start_d = st.date_input("📅 시작일", now.date(), key="d_v6")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="s_v6")
-    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="sb_v6")
+    with c1: start_d = st.date_input("📅 시작일", now.date(), key="d_v7")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="s_v7")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="sb_v7")
 
     cal_list = []
     for i in range(dur):
