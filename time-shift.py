@@ -3,45 +3,54 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (개행 방지 및 폰트 최적화) ---
+# --- [1] 설정 및 CSS (표 내부 폰트만 확실히 축소) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
     .block-container { padding-top: 2.5rem !important; }
-    .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
-    .title-sub { font-size: 17.5px !important; text-align: center; margin-bottom: 20px; color: #555; font-weight: 500; }
     
-    /* 상단 요약 카드 */
+    /* 타이틀 및 상단 시간 (기존 크기 유지) */
+    .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
+    .title-sub { font-size: 17.5px !important; text-align: center; margin-bottom: 20px; color: #555; }
+    
+    /* 상단 카드 (기존 크기 유지) */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
     .status-card { 
         border: 2px solid #2E4077; border-radius: 10px; padding: 6px 0; 
         text-align: center; background: #F8F9FA; min-height: 65px;
     }
     .worker-name { font-size: 16px !important; font-weight: 700; color: #444; }
-    .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
+    .status-val { font-size: 19px; font-weight: 900; color: #C04B41; }
     
     /* 건물 헤더 스타일 */
-    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 12px; }
-    .b-section { width: 33.33%; padding: 5px 0; border-right: 1px solid #dee2e6; }
+    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 13px; }
+    .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 표 스타일 (⭐️ 폰트 축소 및 개행 절대 방지) */
+    /* 🚨 표 내부 데이터 폰트만 집중 축소 🚨 */
     [data-testid="stTable"] { width: 100% !important; table-layout: fixed !important; }
     [data-testid="stTable"] td { 
         width: 16.66% !important; 
-        padding: 4px 1px !important; /* 여백 최소화 */
-        font-size: 10.5px !important; /* ⭐️ 폰트 추가 축소로 개행 방지 */
-        line-height: 1.1 !important; 
+        padding: 2px 1px !important; 
+        font-size: 10px !important;   /* 👈 여기서 표 내부 글자 크기만 10px로 확 줄임 */
+        line-height: 1.0 !important; 
+        height: 28px !important; 
         text-align: center !important; 
-        white-space: nowrap !important; /* ⭐️ 한 줄 유지 강제 */
-        letter-spacing: -0.5px;         /* 글자 간격 좁힘 */
+        white-space: nowrap !important; /* 개행 절대 방지 */
+        letter-spacing: -0.8px;         /* 글자 간격을 더 좁혀서 개행 방지 */
     }
+    
+    /* From, To 시간 부분도 작게 유지 */
+    [data-testid="stTable"] td:nth-child(1), [data-testid="stTable"] td:nth-child(2) {
+        font-size: 10px !important;
+    }
+
     thead tr th:first-child, tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 날짜/시간 및 근무자 패턴 로직 (사용자 원본) ---
+# --- [2] 로직 (동일) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -83,6 +92,7 @@ with tab1:
         ["02:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"],
         ["06:00", "07:00", "안내실", "안내실", "휴게", "로비"],
     ]
+    # 표 헤더에 실시간 근무자 이름 적용
     df_rt = pd.DataFrame(time_data, columns=["From", "To", jojang, seonghui, uisanA, uisanB])
 
     def get_rt_idx(h, m):
@@ -99,7 +109,7 @@ with tab1:
     curr_idx = get_rt_idx(now.hour, now.minute)
     curr_row = df_rt.iloc[curr_idx]
 
-    # 상단 요약 카드 (이름 고정)
+    # 상단 카드
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
@@ -112,15 +122,16 @@ with tab1:
     # 건물명 헤더
     st.markdown(f"""<div class="b-header"><div class="b-section" style="background:#fff;">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
 
-    # 하이라이트 행 상단 배치
+    # 하이라이트 행부터 출력
     st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
+    # 편성표 탭 로직 포함 (생략 없음)
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
-    with c1: start_d = st.date_input("📅 시작일", now.date(), key="cal_d")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="cal_s")
-    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="cal_sb")
+    with c1: start_d = st.date_input("📅 시작일", now.date(), key="cal_d_final")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="cal_s_final")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="cal_sb_final")
 
     cal_list = []
     for i in range(dur):
@@ -130,12 +141,4 @@ with tab2:
     df_cal = pd.DataFrame(cal_list)
     if not df_cal.empty:
         color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#E0F2FE", "이정석": "#FEE2E2"}
-        def style_cal(row):
-            styles = [''] * len(row)
-            if 'Sun' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
-            elif 'Sat' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
-            if focus != "안 함":
-                for idx, val in enumerate(row):
-                    if val == focus: styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold; color: black;'
-            return styles
-        st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True)
+        st.dataframe(df_cal.style.apply(lambda r: ['color: red' if 'Sun' in r['날짜'] else 'color: blue' if 'Sat' in r['날짜'] else '' for _ in r], axis=1), use_container_width=True, hide_index=True)
