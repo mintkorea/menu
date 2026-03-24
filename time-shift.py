@@ -3,14 +3,19 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (기능 복구 및 편성표 높이 고정) ---
+# --- [1] 설정 및 CSS (여백, 정렬, 폰트 수정) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 1.5rem !important; }
+    /* 1. 상단 여백 확보 (탭 잘림 방지) */
+    .block-container { 
+        padding-top: 4rem !important; 
+        max-width: 500px; /* 모바일 가독성을 위해 최대 너비 제한 */
+        margin: auto;
+    }
     
-    /* 타이틀 및 요약 카드 디자인 복구 */
+    /* 타이틀 및 요약 카드 */
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 16px !important; text-align: center; margin-bottom: 15px; color: #555; }
     
@@ -22,32 +27,45 @@ st.markdown("""
     .worker-name { font-size: 15px !important; font-weight: 700; color: #444; }
     .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
     
-    /* 건물 헤더 복구 */
-    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 12px; }
-    .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
+    /* 2. 건물 헤더 (폰트 2pt 확대: 12px -> 14px) */
+    .b-header { 
+        display: flex; border: 1px solid #dee2e6; border-bottom: none; 
+        font-weight: bold; text-align: center; font-size: 14px; 
+    }
+    .b-section { width: 33.33%; padding: 7px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 표 내부 글자 크기 및 개행 방지 (김태언 한 줄 유지) */
+    /* 3. 표 중앙 정렬 및 개행 방지 */
+    [data-testid="stTable"] { 
+        display: flex;
+        justify-content: center;
+    }
+    [data-testid="stTable"] table {
+        margin-left: auto;
+        margin-right: auto;
+        width: 100% !important;
+    }
     [data-testid="stTable"] thead tr th {
         font-size: 10px !important;
         white-space: nowrap !important;
         letter-spacing: -1.0px !important;
         padding: 4px 1px !important;
+        text-align: center !important;
     }
     [data-testid="stTable"] td {
         font-size: 10.5px !important;
         white-space: nowrap !important;
         padding: 4px 1px !important;
+        text-align: center !important;
     }
     thead tr th:first-child, tbody th { display:none; }
 
-    /* 🚨 Tab 2 편성표 높이 강제 고정 🚨 */
-    /* 데이터프레임이 일정 높이를 넘으면 내부 스크롤 생성 */
+    /* 편성표 높이 고정 */
     .stDataFrame { height: 450px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 (기본 패턴 유지) ---
+# --- [2] 로직 (근무 패턴) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -101,7 +119,7 @@ with tab1:
     curr_idx = get_rt_idx(now.hour, now.minute)
     curr_row = df_rt.iloc[curr_idx]
 
-    # ✅ 실시간 요약 카드 복구
+    # 요약 카드
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
@@ -111,18 +129,18 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # ✅ 건물 헤더 복구
+    # 건물 헤더 (폰트 상향)
     st.markdown(f"""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
     
-    # ✅ 실시간 표 강조 출력 복구
+    # 표 출력 (중앙 정렬 적용됨)
     st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
-    with c1: start_d = st.date_input("📅 시작일", now.date(), key="d_final")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="s_final")
-    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="sb_final")
+    with c1: start_d = st.date_input("📅 시작일", now.date(), key="d_v6")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="s_v6")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="sb_v6")
 
     cal_list = []
     for i in range(dur):
@@ -142,5 +160,4 @@ with tab2:
                     if val == focus: styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold;'
             return styles
             
-        # ✅ height 설정을 통해 편성표만 내부 스크롤 적용
         st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True, height=450)
