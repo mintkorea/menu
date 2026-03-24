@@ -14,7 +14,7 @@ st.markdown("""
     /* 탭 가독성 강화 */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] {
-        height: 45px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
+        height: 40px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
         padding: 0 20px; font-weight: 700; color: #333 !important;
     }
     .stTabs [aria-selected="true"] {
