@@ -1,20 +1,21 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 기본 설정 및 CSS ---
-st.set_page_config(page_title="C조 근무 시스템", layout="wide")
+# --- [1] 설정 및 디자인 (기존 요청값 유지) ---
+st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 st.markdown("""
     <style>
     .block-container { padding-top: 3.2rem !important; max-width: 500px; margin: auto; }
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; }
-    .title-sub { font-size: 14px !important; text-align: center; color: #666; margin-bottom: 20px; }
+    .title-sub { font-size: 14px !important; text-align: center; color: #666; margin-bottom: 15px; }
+    /* 표 강조 스타일 */
+    [data-testid="stTable"] td { font-size: 12px !important; text-align: center !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 07시 기준 날짜 로직 (성공한 로직 유지) ---
+# --- [2] 07시 기준 날짜 로직 (절대 불변) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 target_date = (now - timedelta(days=1)).date() if now.hour < 7 else now.date()
@@ -25,7 +26,7 @@ def get_workers_by_date(d):
     if diff % 3 == 0:
         sc = diff // 3
         ci, i2 = (sc // 2) % 3, sc % 2 == 1
-        if ci == 0: return "황재업", "이태원", "이정석", "김태언" # 순서 보정
+        if ci == 0: return "황재업", "이태원", "이정석", "김태언"
         elif ci == 1: return "황재업", "이정석", "김태언", "이태원"
         else: return "황재업", "김태언", "이태원", "이정석"
     return "황재업", "이태원", "이정석", "김태언"
@@ -48,22 +49,24 @@ time_data = [
 ]
 df_rt = pd.DataFrame(time_data, columns=["From", "To", j, s, a, b])
 
-# --- [4] 현재 시간 인덱스 찾기 ---
+# --- [4] 성공의 핵심: 현재 시간부터 끝까지 보여주는 로직 ---
 def get_curr_idx():
     h, m = now.hour, now.minute
     val = h if h >= 7 else h + 24
-    if val == 25 and m < 40: return 16 # 01:00 ~ 01:40
+    if val == 25 and m < 40: return 16 
     for i, r in enumerate(time_data):
         sh = int(r[0].split(':')[0]); sh = sh if sh >= 7 else sh + 24
         eh = int(r[1].split(':')[0]); eh = eh if eh >= 7 else eh + 24
         if sh <= val < eh: return i
-    return 20
+    return 0
 
 curr_idx = get_curr_idx()
 
 # --- [5] 화면 출력 ---
 st.markdown('<div class="unified-title">C조 실시간 근무 현황</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="title-sub">기준 날짜: {target_date.strftime("%Y-%m-%d")} (현재: {now.strftime("%H:%M")})</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="title-sub">기준: {target_date.strftime("%m/%d")} (현재 {now.strftime("%H:%M")})</div>', unsafe_allow_html=True)
 
-# 현재 근무 시간대만 강조해서 표로 출력
-st.table(df_rt.iloc[curr_idx:curr_idx+1].style.set_properties(**{'background-color': '#FFE5E5', 'font-weight': 'bold'}))
+# ★ 수정 포인트: iloc[curr_idx:] 를 사용하여 현재 시간부터 마지막(07시)까지 다 보여줌
+st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
+
+st.info("💡 위 표는 현재 시간부터 오늘 근무 종료(07:00)까지의 스케줄입니다.")
