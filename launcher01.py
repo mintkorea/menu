@@ -108,3 +108,4 @@ if admin_pw == "1234":
             st.session_state.apps.pop(del_idx)
             save_data(st.session_state.apps)
             st.rerun()
+
