@@ -1,88 +1,87 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
-# --- [복구] 실시간 상황 작업 중이던 원본 소스 ---
+# --- [복구] 실시간 상황 및 타임테이블 작업 버전 ---
 PATTERN_START = datetime(2026, 3, 9).date()
-st.set_page_config(page_title="C조 근무 편성표", layout="wide")
+st.set_page_config(page_title="C조 근무 편성표 (실시간)", layout="wide")
 
-# --- [1] CSS: 4칸 박스 및 사용자 정의 스타일 ---
+# --- [1] CSS: 4칸 박스 및 테이블 디자인 ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 3.5rem !important; }
-    .fixed-title { font-size: 28px !important; font-weight: 800 !important; margin-bottom: 15px !important; }
+    .block-container { padding-top: 2rem !important; }
     
-    /* 실시간 근무지 카드 스타일 */
-    .status-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
-    .status-card {
-        border: 2px solid #2E4077; border-radius: 12px;
-        padding: 15px; text-align: center; background-color: white;
+    /* 실시간 상황판 그리드 */
+    .status-container { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 10px; 
+        margin-bottom: 20px; 
     }
-    .name-label { font-size: 20px; font-weight: 800; color: #333; margin-bottom: 8px; border-bottom: 1px dotted #ccc; }
-    .loc-label { font-size: 24px; font-weight: 800; color: #C04B41; }
+    .status-card {
+        border: 2px solid #2E4077; 
+        border-radius: 12px;
+        padding: 15px; 
+        text-align: center; 
+        background-color: white;
+    }
+    .name-label { font-size: 18px; font-weight: 800; color: #333; margin-bottom: 5px; border-bottom: 1px dotted #ccc; }
+    .loc-label { font-size: 22px; font-weight: 800; color: #C04B41; }
     
-    [data-testid="stTable"] { font-size: 16px !important; }
+    /* 시간표 스타일 */
+    [data-testid="stTable"] { font-size: 15px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="fixed-title">📅 C조 근무 편성표</div>', unsafe_allow_html=True)
-
-# --- [2] 실시간 근무지 판정 로직 (작업 중이던 부분) ---
+# --- [2] 실시간 근무자 및 시간대 판정 ---
 today = datetime(2026, 3, 24).date()
+now_hour = datetime.now().hour
 days_diff = (today - PATTERN_START).days
 
-# 근무자 계산
+# 오늘 근무 명단 계산
 sc = days_diff // 3
 ci, i2 = (sc // 2) % 3, sc % 2 == 1
 if ci == 0: h, a, b = "김태언", ("이정석" if i2 else "이태원"), ("이태원" if i2 else "이정석")
 elif ci == 1: h, a, b = "이정석", ("이태원" if i2 else "김태언"), ("김태언" if i2 else "이태원")
 else: h, a, b = "이태원", ("이정석" if i2 else "김태언"), ("김태언" if i2 else "이정석")
 
-# 4칸 실시간 상황판 출력
+# --- [3] 실시간 근무지 4칸 박스 출력 ---
+# 현재 시간(now_hour)에 따른 위치 데이터 (예시 로직)
+loc_data = {
+    "황재업": "안내실", 
+    h: "로비", 
+    a: "로비", 
+    b: "휴게"
+}
+
 st.markdown(f"""
     <div class="status-container">
-        <div class="status-card"><div class="name-label">황재업</div><div class="loc-label">안내실</div></div>
-        <div class="status-card"><div class="name-label">{h}</div><div class="loc-label">로비</div></div>
-        <div class="status-card"><div class="name-label">{a}</div><div class="loc-label">로비</div></div>
-        <div class="status-card"><div class="name-label">{b}</div><div class="loc-label">휴게</div></div>
+        <div class="status-card"><div class="name-label">황재업</div><div class="loc-label">{loc_data['황재업']}</div></div>
+        <div class="status-card"><div class="name-label">{h}</div><div class="loc-label">{loc_data[h]}</div></div>
+        <div class="status-card"><div class="name-label">{a}</div><div class="loc-label">{loc_data[a]}</div></div>
+        <div class="status-card"><div class="name-label">{b}</div><div class="loc-label">{loc_data[b]}</div></div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- [3] 하단 조회 설정 (원본 레이아웃) ---
-col1, col2, col3 = st.columns([1, 1, 1])
-with col1:
-    start_date = st.date_input("📅 조회 시작 날짜", today)
-with col2:
-    duration = st.slider("📆 조회 일수", 7, 100, 31)
-with col3:
-    user_focus = st.selectbox("👤 강조할 성함", ["안 함", "황재업", "김태언", "이태원", "이정석"])
+# --- [4] 시간대별 근무표 (Time Table) ---
+time_slots = [
+    {"F": "07:00", "T": "08:00", "조장": "안내실", "성희": "로비", "의산A": "로비", "의산B": "휴게"},
+    {"F": "08:00", "T": "09:00", "조장": "안내실", "성희": "휴게", "의산A": "휴게", "의산B": "로비"},
+    {"F": "09:00", "T": "10:00", "조장": "안내실", "성희": "순찰", "의산A": "휴게", "의산B": "로비"},
+    {"F": "10:00", "T": "11:00", "조장": "휴게", "성희": "안내실", "의산A": "로비", "의산B": "순찰/휴"},
+    {"F": "11:00", "T": "12:00", "조장": "안내실", "성희": "중식", "의산A": "로비", "의산B": "중식"},
+    {"F": "12:00", "T": "13:00", "조장": "중식", "성희": "안내실", "의산A": "중식", "의산B": "로비"},
+    {"F": "13:00", "T": "14:00", "조장": "안내실", "성희": "휴게", "의산A": "순찰/로", "의산B": "로비"},
+    {"F": "14:00", "T": "15:00", "조장": "순찰", "성희": "안내실", "의산A": "로비", "의산B": "휴게"},
+]
 
-# --- [4] 데이터 및 스타일 로직 ---
-color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#FFE5D9", "이정석": "#FDE2E2"}
+df_time = pd.DataFrame(time_slots)
 
-cal_data = []
-for i in range(duration):
-    d = start_date + timedelta(days=i)
-    diff = (d - PATTERN_START).days
-    if diff % 3 == 0:
-        r_sc = diff // 3
-        r_ci, r_i2 = (r_sc // 2) % 3, r_sc % 2 == 1
-        if r_ci == 0: rh, ra, rb = "김태언", ("이정석" if r_i2 else "이태원"), ("이태원" if r_i2 else "이정석")
-        elif r_ci == 1: rh, ra, rb = "이정석", ("이태원" if r_i2 else "김태언"), ("김태언" if r_i2 else "이태원")
-        else: rh, ra, rb = "이태원", ("이정석" if r_i2 else "김태언"), ("김태언" if r_i2 else "이정석")
-        cal_data.append({"날짜": d.strftime("%m/%d(%a)"), "조장": "황재업", "성희": rh, "의산A": ra, "의산B": rb})
+# 현재 시간대 강조 색상 적용
+def highlight_time(row):
+    start_h = int(row['F'].split(':')[0])
+    if start_h == now_hour:
+        return ['background-color: #FFE5E5'] * len(row)
+    return [''] * len(row)
 
-df = pd.DataFrame(cal_data)
-
-def apply_style(row):
-    styles = [''] * len(row)
-    if 'Sun' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
-    elif 'Sat' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
-    if user_focus != "안 함":
-        bg_color = color_map.get(user_focus, "#FFF2CC")
-        for i, val in enumerate(row):
-            if val == user_focus: styles[i] = f'background-color: {bg_color}; font-weight: bold;'
-    return styles
-
-if not df.empty:
-    st.dataframe(df.style.apply(apply_style, axis=1), use_container_width=True, hide_index=True, height=(len(df) + 1) * 38)
+st.table(df_time.style.apply(highlight_time, axis=1))
