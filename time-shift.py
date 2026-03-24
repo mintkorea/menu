@@ -2,53 +2,72 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
-import streamlit.components.v1 as components
 
-# --- [1] 설정 및 CSS (셀 너비 및 정렬 고정) ---
+# --- [1] 설정 및 CSS (여백 중간값, 건물명 확대, 중앙 정렬) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 3.2rem !important; max-width: 500px; margin: auto; }
+    /* 1. 상단 여백 조정 (2.5rem과 4rem의 중간인 3.2rem) */
+    .block-container { 
+        padding-top: 3.2rem !important; 
+        max-width: 500px;
+        margin: auto;
+    }
+    
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 16px !important; text-align: center; margin-bottom: 15px; color: #555; }
     
-    /* 현황판 카드 스타일 */
-    .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
-    .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 8px 0; text-align: center; background: #F8F9FA; }
-    .worker-name { font-size: 14px !important; font-weight: 700; color: #444; }
-    .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
+    .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+    .status-card { 
+        border: 2px solid #2E4077; border-radius: 10px; padding: 6px 0; 
+        text-align: center; background: #F8F9FA; min-height: 65px;
+    }
+    .worker-name { font-size: 15px !important; font-weight: 700; color: #444; }
+    .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
     
-    /* 표 너비 비율 고정 */
-    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 13px; }
-    .bh-time { width: 30%; background: #f8f9fa; border-right: 1px solid #dee2e6; padding: 7px 0; }
-    .bh-sh { width: 35%; background: #FFF2CC; border-right: 1px solid #dee2e6; padding: 7px 0; }
-    .bh-us { width: 35%; background: #D9EAD3; padding: 7px 0; }
+    /* 2. 건물 헤더 (폰트 크기 14px로 확대) */
+    .b-header { 
+        display: flex; border: 1px solid #dee2e6; border-bottom: none; 
+        font-weight: bold; text-align: center; font-size: 14px; 
+    }
+    .b-section { width: 33.33%; padding: 7px 0; border-right: 1px solid #dee2e6; }
+    .b-section:last-child { border-right: none; }
 
-    [data-testid="stTable"] table { width: 100% !important; table-layout: fixed !important; }
-    [data-testid="stTable"] th, [data-testid="stTable"] td { padding: 6px 2px !important; text-align: center !important; font-size: 11px !important; }
+    /* 3. 표 중앙 정렬 및 가독성 설정 */
+    [data-testid="stTable"] { 
+        display: flex;
+        justify-content: center;
+    }
+    [data-testid="stTable"] table {
+        margin-left: auto;
+        margin-right: auto;
+        width: 100% !important;
+    }
+    [data-testid="stTable"] thead tr th {
+        font-size: 10px !important;
+        white-space: nowrap !important;
+        letter-spacing: -1.0px !important;
+        padding: 4px 1px !important;
+        text-align: center !important;
+    }
+    [data-testid="stTable"] td {
+        font-size: 10.5px !important;
+        white-space: nowrap !important;
+        padding: 4px 1px !important;
+        text-align: center !important;
+    }
     thead tr th:first-child, tbody th { display:none; }
+
+    /* 편성표 높이 고정 */
+    .stDataFrame { height: 450px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 공통 데이터 및 로직 ---
+# --- [2] 로직 (기본 데이터) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
-
-# 연락망 데이터
-security_contacts = [
-    {"g": "top", "p": "보안반장", "n": "유정수", "t": "010-5316-8065"},
-    {"g": "top", "p": "보안소장", "n": "이규용", "t": "010-8883-6580"},
-    {"g": "top", "p": "부소장", "n": "박상현", "t": "010-3193-4603"},
-    {"g": "top", "p": "보안반장", "n": "오제준", "t": "010-3352-8933"},
-    {"g": "a", "p": "조장", "n": "배준용", "t": "010-4717-7065"},
-    {"g": "b", "p": "조장", "n": "심규천", "t": "010-8287-9895"},
-    {"g": "c", "p": "조장", "n": "황재업", "t": "010-9278-6622"},
-    {"g": "c", "p": "조원", "n": "이태원", "t": "010-9265-7881"},
-    {"g": "c", "p": "조원", "n": "김태언", "t": "010-5386-5386"},
-    {"g": "c", "p": "조원", "n": "이정석", "t": "010-2417-1173"}
-]
 
 def get_workers_by_date(target_date):
     diff = (target_date - PATTERN_START).days
@@ -60,67 +79,84 @@ def get_workers_by_date(target_date):
         else: return "황재업", "이태원", ("이정석" if i2 else "김태언"), ("김태언" if i2 else "이정석")
     return None, None, None, None
 
-# --- [3] 화면 구성 (탭별 독립 블록) ---
-tab1, tab2, tab3 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표", "📞 비상 연락망"])
+jojang, seonghui, uisanA, uisanB = get_workers_by_date(now.date())
+if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
-# 1. 실시간 현황 탭
+# --- [3] 화면 구성 ---
+tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
+
 with tab1:
     st.markdown('<div class="unified-title">C조 실시간 근무 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
-    
-    j, s, a, b = get_workers_by_date(now.date())
-    if j is None: j, s, a, b = "황재업", "김태언", "이태원", "이정석"
 
     time_data = [
         ["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
+        ["09:00", "10:00", "순찰", "안내실", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "순찰"],
+        ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"],
         ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"],
-        ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"] # 예시 데이터 단축
+        ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"],
+        ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"],
+        ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"],
+        ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"],
+        ["23:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"],
+        ["02:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"],
+        ["06:00", "07:00", "안내실", "안내실", "휴게", "로비"],
     ]
-    df_rt = pd.DataFrame(time_data, columns=["From", "To", j, s, a, b])
-    
-    # 상단 요약 카드
-    st.markdown(f"""<div class="status-container">
-        <div class="status-card"><div class="worker-name">{j}</div><div class="status-val">안내실</div></div>
-        <div class="status-card"><div class="worker-name">{s}</div><div class="status-val">휴게</div></div>
-    </div>""", unsafe_allow_html=True)
-    
-    st.markdown('<div class="b-header"><div class="bh-time">시간</div><div class="bh-sh">성의회관</div><div class="bh-us">의산연</div></div>', unsafe_allow_html=True)
-    st.table(df_rt)
+    df_rt = pd.DataFrame(time_data, columns=["From", "To", jojang, seonghui, uisanA, uisanB])
 
-# 2. 근무 편성표 탭 (오류 수정 핵심)
+    def get_rt_idx(h, m):
+        if h == 1 and m < 40: return 16
+        if h == 1 and m >= 40: return 17
+        for i, row in df_rt.iterrows():
+            try:
+                sh, eh = int(row['From'].split(':')[0]), int(row['To'].split(':')[0])
+                if eh == 0: eh = 24
+                if sh <= h < eh: return i
+            except: continue
+        return 20
+
+    curr_idx = get_rt_idx(now.hour, now.minute)
+    curr_row = df_rt.iloc[curr_idx]
+
+    # 상단 요약 카드
+    st.markdown(f"""
+        <div class="status-container">
+            <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
+            <div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{curr_row[seonghui]}</div></div>
+            <div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{curr_row[uisanA]}</div></div>
+            <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{curr_row[uisanB]}</div></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 건물 헤더
+    st.markdown(f"""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
+    
+    # 실시간 표 중앙 정렬 출력
+    st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
+
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
-    
-    # 탭 내부 위젯
-    c1, c2 = st.columns(2)
-    with c1: start_d = st.date_input("📅 시작일", now.date(), key="date_sel")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="slider_sel")
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c1: start_d = st.date_input("📅 시작일", now.date(), key="d_v7")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="s_v7")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="sb_v7")
 
     cal_list = []
     for i in range(dur):
         d = start_d + timedelta(days=i)
-        w_j, w_s, w_a, w_b = get_workers_by_date(d)
-        if w_j: cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": w_j, "성희": w_s, "의산A": w_a, "의산B": w_b})
+        w_jojang, w_seong, w_a, w_b = get_workers_by_date(d)
+        if w_jojang: cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": w_jojang, "성희": w_seong, "의산A": w_a, "의산B": w_b})
     
-    if cal_list:
-        st.dataframe(pd.DataFrame(cal_list), use_container_width=True, hide_index=True)
-    else:
-        st.info("해당 기간에 C조 근무가 없습니다.")
-
-# 3. 비상 연락망 탭
-with tab3:
-    st.markdown('<div class="unified-title">보안팀 비상 연락망</div>', unsafe_allow_html=True)
-    
-    contact_html = """
-    <style>
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .card { height: 42px; border-radius: 4px; border: 1px solid #eee; text-align: center; cursor: pointer; background: #fff9db; }
-        .n { font-size: 13px; font-weight: bold; display: block; margin-top: 10px; }
-    </style>
-    <div class="grid">
-    """
-    for m in security_contacts:
-        contact_html += f'<div class="card" onclick="alert(\'{m["t"]}\')"><span class="n">{m["n"]}</span></div>'
-    contact_html += "</div>"
-    
-    components.html(contact_html, height=400)
+    df_cal = pd.DataFrame(cal_list)
+    if not df_cal.empty:
+        color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#E0F2FE", "이정석": "#FEE2E2"}
+        def style_cal(row):
+            styles = [''] * len(row)
+            if 'Sun' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
+            elif 'Sat' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
+            if focus != "안 함":
+                for idx, val in enumerate(row):
+                    if val == focus: styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold;'
+            return styles
+            
+        st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True, height=450)
