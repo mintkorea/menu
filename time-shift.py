@@ -3,28 +3,17 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 기본 설정 및 디자인 ---
-st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
-st.markdown("""
-    <style>
-    .block-container { padding-top: 1.5rem !important; max-width: 500px; margin: auto; }
-    .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
-    .title-sub { font-size: 14px !important; text-align: center; color: #666; margin-bottom: 15px; }
-    .worker-card { border: 2px solid #31333f; border-radius: 10px; padding: 8px; text-align: center; margin-bottom: 8px; }
-    .worker-name { font-weight: 700; color: #31333f; font-size: 15px; }
-    .worker-loc { font-size: 19px; font-weight: 800; color: #a64d79; }
-    /* 표 헤더 스타일 */
-    thead tr th { background-color: #f0f2f6 !important; font-size: 13px !important; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- [1] 설정 ---
+st.set_page_config(page_title="C조 근무 시스템", layout="wide")
 
 # --- [2] 07시 기준 날짜 및 근무자 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
+# 07시 이전이면 어제 날짜로 고정
 target_date = (now - timedelta(days=1)).date() if now.hour < 7 else now.date()
 PATTERN_START = datetime(2026, 3, 9).date()
 
-def get_workers_by_date(d):
+def get_workers(d):
     diff = (d - PATTERN_START).days
     if diff % 3 == 0:
         sc = diff // 3
@@ -34,16 +23,15 @@ def get_workers_by_date(d):
         else: return "재업", "태언", "태원", "정석"
     return "재업", "태원", "정석", "태언"
 
-w1, w2, w3, w4 = get_workers_by_date(target_date)
+w1, w2, w3, w4 = get_workers(target_date)
 
-# --- [3] 데이터프레임 생성 (2단 헤더 구조 재현) ---
-# 스크린샷처럼 성의회관(재업, 태원), 의학연구원(정석, 태언) 구조
-columns = [
+# --- [3] 데이터프레임 구성 (스크린샷의 2단 헤더) ---
+# 성의회관과 의학연구원으로 명확히 구분된 구조
+header = pd.MultiIndex.from_tuples([
     ('시간', ''), 
     ('성의회관', w1), ('성의회관', w2), 
     ('의학연구원', w3), ('의학연구원', w4)
-]
-df_columns = pd.MultiIndex.from_tuples(columns)
+])
 
 time_data = [
     ["07:00~08:00", "안내실", "로비", "로비", "휴게"], ["08:00~09:00", "안내실", "휴게", "휴게", "로비"],
@@ -58,36 +46,28 @@ time_data = [
     ["02:00~05:00", "휴게", "안내실", "로비", "휴게"], ["05:00~06:00", "안내실", "순찰", "로비", "순찰"],
     ["06:00~07:00", "안내실", "안내실", "휴게", "로비"]
 ]
-df_rt = pd.DataFrame(time_data, columns=df_columns)
+df = pd.DataFrame(time_data, columns=header)
 
-# --- [4] 현재 인덱스 탐색 ---
-def get_curr_idx():
-    h, m = now.hour, now.minute
-    val = h if h >= 7 else h + 24
-    if val == 25 and m < 40: return 16
-    for i, r in enumerate(time_data):
-        start_h = int(r[0].split(':')[0])
-        if start_h < 7: start_h += 24
-        if start_h <= val: curr = i
-    return curr
+# --- [4] 현재 시간 인덱스 계산 ---
+h = now.hour
+val = h if h >= 7 else h + 24
+curr_idx = 0
+for i, r in enumerate(time_data):
+    sh = int(r[0].split(':')[0])
+    if sh < 7: sh += 24
+    if sh <= val: curr_idx = i
 
-idx = get_curr_idx()
+# --- [5] 화면 출력 ---
+st.title("C조 실시간 근무 현황")
+st.write(f"기준 날짜: {target_date} ({now.strftime('%H:%M')})")
 
-# --- [5] 메인 화면 출력 ---
-st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="title-sub">{target_date.strftime("%m/%d")} 근무 ({now.strftime("%H:%M")})</div>', unsafe_allow_html=True)
+if st.button("📋 전체 시간표 보기"):
+    st.table(df)
 
-# 카드 레이아웃
-c1, c2 = st.columns(2)
-c3, c4 = st.columns(2)
-workers = [w1, w2, w3, w4]
-locs = time_data[idx][1:]
-for i, col in enumerate([c1, c2, c3, c4]):
-    col.markdown(f'<div class="worker-card"><div class="worker-name">황{workers[i] if i==0 else workers[i]}</div><div class="worker-loc">{locs[i]}</div></div>', unsafe_allow_html=True)
+st.markdown("### 🔽 현재 근무")
+# 스크린샷 00:03분 버전처럼 현재 시간대만 깔끔하게 강조된 표
+st.table(df.iloc[[curr_idx]].style.set_properties(**{'background-color': '#FFE5E5', 'font-weight': 'bold'}))
 
-with st.expander("📋 당일 전체 시간표 보기"):
-    st.table(df_rt)
-
-st.markdown("#### ▼ 현재 근무 및 다음 스케줄")
-# 현재 시간부터 끝까지(iloc[idx:]) 출력하며 현재 줄 강조
-st.table(df_rt.iloc[idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*5 if r.name == idx else ['']*5, axis=1))
+st.markdown(f"### 🗓 내일 근무 예정 ({ (target_date + timedelta(days=1)).strftime('%m/%d') })")
+# 내일 근무 첫 시간대 미리보기
+st.table(df.iloc[:2])
