@@ -3,33 +3,39 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (모바일 레이아웃 최적화) ---
+# --- [1] 설정 및 CSS (카드 폰트 확대 및 헤더 스타일) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
     .block-container { padding-top: 2rem !important; max-width: 500px; margin: auto; }
-    .unified-title { font-size: 22px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
-    .title-sub { font-size: 14px !important; text-align: center; margin-bottom: 15px; color: #666; }
+    .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
+    .title-sub { font-size: 15px !important; text-align: center; margin-bottom: 15px; color: #666; }
     
-    /* 카드 디자인 */
+    /* 카드 디자인: 폰트 크기 3씩 확대 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
     .status-card { 
-        border: 1.5px solid #2E4077; border-radius: 12px; padding: 12px 5px; 
+        border: 2px solid #2E4077; border-radius: 12px; padding: 15px 5px; 
         text-align: center; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .worker-name { font-size: 13px; font-weight: 600; color: #777; margin-bottom: 4px; }
-    .status-val { font-size: 16px; font-weight: 800; color: #C04B41; }
+    .worker-name { font-size: 17px !important; font-weight: 700; color: #555; margin-bottom: 5px; } /* 14->17 */
+    .status-val { font-size: 21px !important; font-weight: 900; color: #C04B41; } /* 18->21 */
     
+    /* 건물 구분 헤더 스타일 */
+    .b-header { 
+        display: flex; border: 1px solid #dee2e6; border-bottom: none; 
+        font-weight: bold; text-align: center; font-size: 15px; 
+        margin-top: 10px;
+    }
+    .b-section { width: 33.33%; padding: 8px 0; border-right: 1px solid #dee2e6; }
+    .b-section:last-child { border-right: none; }
+
     /* 메시지 카드 */
     .msg-card-full {
-        grid-column: span 2; border-radius: 12px; padding: 25px 15px;
-        text-align: center; font-size: 18px; font-weight: 800; line-height: 1.5;
+        grid-column: span 2; border-radius: 12px; padding: 30px 20px;
+        text-align: center; font-size: 21px; font-weight: 800; line-height: 1.5;
         margin-bottom: 15px; border: 2px solid #2E4077;
     }
-
-    /* 표 간격 조정 */
-    [data-testid="stDataFrame"] { width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -37,7 +43,6 @@ st.markdown("""
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 
-# 패턴 기준일 (사용자 데이터 기반)
 PATTERN_START = datetime(2026, 3, 9).date()
 
 def get_workers_by_date(target_date):
@@ -50,7 +55,6 @@ def get_workers_by_date(target_date):
         else: return "황재업", "이태원", ("이정석" if i2 else "김태언"), ("김태언" if i2 else "이정석")
     return None, None, None, None
 
-# 현재 근무일 판별 (새벽 7시 기준)
 if now.hour < 7:
     work_date = (now - timedelta(days=1)).date()
     is_work_start_day = get_workers_by_date(now.date())[0] is not None
@@ -100,7 +104,7 @@ with tab1:
     st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    # 카드 영역
+    # 카드 영역 (인사말/이름 카드)
     if is_work_start_day and now.hour < 7:
         st.markdown('<div class="msg-card-full" style="background:#F0FDF4; color:#166534;">오늘도 즐겁고 보람된<br>하루가 되도록 합시다.</div>', unsafe_allow_html=True)
     elif is_work_end_dawn and (now.hour == 6 and now.minute >= 40):
@@ -116,20 +120,34 @@ with tab1:
             </div>
         """, unsafe_allow_html=True)
 
+    # 시간표 영역
     show_all = st.checkbox("🕒 지난 시간표 포함", value=False)
+    
+    # [헤더 복구] 건물 구분 헤더 표출
+    st.markdown("""
+        <div class="b-header">
+            <div class="b-section">구분 (시간)</div>
+            <div class="b-section" style="background:#FFF2CC;">성의회관</div>
+            <div class="b-section" style="background:#D9EAD3;">의산연</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
     display_df = df_rt if show_all else df_rt.iloc[curr_idx:]
     
-    # 표 깨짐 방지를 위해 스타일을 단순화한 dataframe 사용
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    # 강조 스타일 함수
+    def row_style(row):
+        return ['background-color: #FFE5E5; font-weight: bold;' if row.name == curr_idx else '' for _ in row]
+
+    st.dataframe(display_df.style.apply(row_style, axis=1), use_container_width=True, hide_index=True)
 
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
-    
+    # ... (편성표 로직은 이전과 동일하게 유지)
     col1, col2 = st.columns(2)
-    with col1: s_date = st.date_input("📅 시작일", work_date)
-    with col2: focus_user = st.selectbox("👤 강조 대상", ["안 함", "황재업", "김태언", "이태원", "이정석"])
+    with col1: s_date = st.date_input("📅 시작일", work_date, key="tab2_date")
+    with col2: focus_user = st.selectbox("👤 강조 대상", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="tab2_user")
     
-    days = st.slider("📆 확인 일수", 7, 60, 31)
+    days = st.slider("📆 확인 일수", 7, 60, 31, key="tab2_slider")
     
     cal_data = []
     w_names = ['월', '화', '수', '목', '금', '토', '일']
@@ -141,12 +159,8 @@ with tab2:
     
     if cal_data:
         df_cal = pd.DataFrame(cal_data)
-        
         def highlight_focus(s):
             if focus_user != "안 함" and s == focus_user:
                 return 'background-color: #FFF2CC; color: black; font-weight: bold'
             return ''
-
         st.dataframe(df_cal.style.map(highlight_focus), use_container_width=True, hide_index=True, height=500)
-    else:
-        st.warning("선택한 기간에 C조 근무가 없습니다.")
