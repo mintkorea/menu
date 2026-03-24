@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS ---
+# --- [1] 설정 및 CSS (폰트 축소 및 개행 방지 집중) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
@@ -12,6 +12,7 @@ st.markdown("""
     .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 17.5px !important; text-align: center; margin-bottom: 20px; color: #555; font-weight: 500; }
     
+    /* 카드 디자인 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
     .status-card { 
         border: 2px solid #2E4077; border-radius: 10px; padding: 6px 0; 
@@ -25,17 +26,24 @@ st.markdown("""
     .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 표 스타일 (셀 너비 16.6% 균등화) */
+    /* 표 스타일 (⭐️ 폰트 축소 및 개행 방지 설정) */
     [data-testid="stTable"] { width: 100% !important; table-layout: fixed !important; }
     [data-testid="stTable"] td { 
-        width: 16.66% !important; padding: 2px 0 !important; font-size: 12px !important; 
-        line-height: 1.0 !important; height: 30px !important; text-align: center !important; 
+        width: 16.66% !important; 
+        padding: 2px 1px !important; /* 좌우 여백 최소화 */
+        font-size: 11px !important;   /* ⭐️ 폰트 더 축소 (12px -> 11px) */
+        line-height: 1.0 !important; 
+        height: 30px !important; 
+        text-align: center !important; 
+        white-space: nowrap !important; /* ⭐️ 절대 줄바꿈 금지 */
+        overflow: hidden !important;    /* 넘치면 숨김 */
+        text-overflow: clip !important; 
     }
     thead tr th:first-child, tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 날짜/시간 및 근무자 패턴 로직 ---
+# --- [2] 날짜/시간 및 근무자 패턴 로직 (동일) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -53,7 +61,7 @@ def get_workers_by_date(target_date):
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(now.date())
 is_work_day = jojang is not None
 
-# --- [3] 화면 구성 (Tab 시스템) ---
+# --- [3] 화면 구성 ---
 tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 
 with tab1:
@@ -83,15 +91,16 @@ with tab1:
         if h == 1 and m < 40: return 16
         if h == 1 and m >= 40: return 17
         for i, row in df_rt.iterrows():
-            sh, eh = int(row['From'].split(':')[0]), int(row['To'].split(':')[0])
-            if eh == 0: eh = 24
-            if sh <= h < eh: return i
+            try:
+                sh, eh = int(row['From'].split(':')[0]), int(row['To'].split(':')[0])
+                if eh == 0: eh = 24
+                if sh <= h < eh: return i
+            except: continue
         return 20
 
     curr_idx = get_rt_idx(now.hour, now.minute)
     curr_row = df_rt.iloc[curr_idx]
 
-    # 상단 요약 카드
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
@@ -101,16 +110,9 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 건물명 헤더
-    st.markdown(f"""
-        <div class="b-header">
-            <div class="b-section" style="background:#fff;">구분 (시간)</div>
-            <div class="b-section" style="background:#FFF2CC;">성의회관</div>
-            <div class="b-section" style="background:#D9EAD3;">의산연</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
 
-    # 하이라이트 행을 맨 위로 유지
+    # ⭐️ 현재 인덱스부터 끝까지 출력 (하이라이트 행 상단 고정)
     st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
@@ -124,9 +126,7 @@ with tab2:
     for i in range(dur):
         d = start_d + timedelta(days=i)
         w_jojang, w_seong, w_a, w_b = get_workers_by_date(d)
-        if w_jojang:
-            cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": w_jojang, "성희": w_seong, "의산A": w_a, "의산B": w_b})
-
+        if w_jojang: cal_list.append({"날짜": d.strftime("%m/%d(%a)"), "조장": w_jojang, "성희": w_seong, "의산A": w_a, "의산B": w_b})
     df_cal = pd.DataFrame(cal_list)
     if not df_cal.empty:
         color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#E0F2FE", "이정석": "#FEE2E2"}
@@ -139,5 +139,3 @@ with tab2:
                     if val == focus: styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold; color: black;'
             return styles
         st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True)
-    else:
-        st.info("해당 기간에 C조 근무일이 없습니다.")
