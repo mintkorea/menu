@@ -123,7 +123,7 @@ with tab1:
         nw = today
         while get_workers_by_date(nw)[0] is None: nw += timedelta(days=1)
         nj, ns, na, nb = get_workers_by_date(nw)
-        st.markdown(f'<div class="off-card"><div style="font-size:22px; font-weight:900; color:#C04B41;">오늘은 휴무입니다.</div><div style="margin-top:8px; font-weight:700;">다음 근무: {nw.strftime("%m/%d")}<br>성희: {nj}, {ns} / 의산: {na}, {nb}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="off-card"><div style="font-size:22px; font-weight:900; color:#C04B41;">오늘은 휴무입니다.</div><div style="margin-top:8px; font-weight:700;">다음 근무는 {nw.strftime("%m월 %d일")}입니다 <br>성의회관 : {nj}, {ns} / 의산연 : {na}, {nb}</div></div>', unsafe_allow_html=True)
     elif curr_idx != -1:
         c = combined_data[curr_idx]
         st.markdown(f'<div class="status-container"><div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{c[2]}</div></div><div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{c[3]}</div></div><div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{c[4]}</div></div><div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{c[5]}</div></div></div>', unsafe_allow_html=True)
