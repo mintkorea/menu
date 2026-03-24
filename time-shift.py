@@ -3,49 +3,46 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (표 헤더 이름 개행 방지 및 디자인) ---
+# --- [1] 설정 및 CSS (스크롤 제어 및 개행 방지) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
     .block-container { padding-top: 2.5rem !important; }
-    .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
-    .title-sub { font-size: 17.5px !important; text-align: center; margin-bottom: 20px; color: #555; }
+    .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
+    .title-sub { font-size: 16px !important; text-align: center; margin-bottom: 15px; color: #555; }
     
-    /* 상단 요약 카드 */
-    .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
-    .status-card { 
-        border: 2px solid #2E4077; border-radius: 10px; padding: 6px 0; 
-        text-align: center; background: #F8F9FA; min-height: 65px;
+    /* 🚨 편성표 스크롤 제어: 표가 너무 길어지지 않게 고정 🚨 */
+    div[data-testid="stDataFrame"] > div:first-child {
+        max-height: 450px !important; 
+        overflow-y: auto !important;
     }
-    .worker-name { font-size: 16px !important; font-weight: 700; color: #444; }
-    .status-val { font-size: 19px; font-weight: 900; color: #C04B41; }
+
+    /* 실시간 현황 카드 */
+    .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+    .status-card { 
+        border: 2px solid #2E4077; border-radius: 10px; padding: 5px 0; 
+        text-align: center; background: #F8F9FA; min-height: 60px;
+    }
+    .worker-name { font-size: 15px !important; font-weight: 700; color: #444; }
+    .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
     
     /* 건물 헤더 */
-    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 13px; }
-    .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
+    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 12px; }
+    .b-section { width: 33.33%; padding: 5px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 표 스타일 (헤더 '김태언' 개행 방지 최우선) */
+    /* 실시간 표 스타일 (개행 방지) */
     [data-testid="stTable"] { width: 100% !important; table-layout: fixed !important; }
-    
-    /* 헤더 이름 부분 폰트 및 자간 강제 조절 */
     [data-testid="stTable"] thead tr th {
         padding: 4px 1px !important;
         font-size: 10px !important; 
-        font-weight: bold !important;
-        text-align: center !important;
-        white-space: nowrap !important; /* 👈 절대 개행 방지 */
-        letter-spacing: -1.0px !important; /* 👈 자간 압축 */
+        white-space: nowrap !important;
+        letter-spacing: -1.0px !important;
     }
-
-    /* 본문 데이터 부분 */
     [data-testid="stTable"] td { 
-        width: 16.66% !important; 
-        padding: 4px 1px !important; 
+        padding: 3px 1px !important; 
         font-size: 10.5px !important; 
-        line-height: 1.0 !important; 
-        height: 30px !important; 
         text-align: center !important; 
         white-space: nowrap !important;
         letter-spacing: -0.5px !important;
@@ -54,7 +51,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 날짜/시간 및 근무자 패턴 로직 (사용자 원본) ---
+# --- [2] 로직 (기존 동일) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -127,9 +124,9 @@ with tab1:
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
-    with c1: start_d = st.date_input("📅 시작일", now.date(), key="cal_d_v3")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="cal_s_v3")
-    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="cal_sb_v3")
+    with c1: start_d = st.date_input("📅 시작일", now.date(), key="cal_d_v4")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="cal_s_v4")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="cal_sb_v4")
 
     cal_list = []
     for i in range(dur):
@@ -139,19 +136,17 @@ with tab2:
     
     df_cal = pd.DataFrame(cal_list)
     if not df_cal.empty:
-        # 🚨 [중요] 개인별 강조 색상 로직 🚨
         color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#E0F2FE", "이정석": "#FEE2E2"}
         
         def style_cal(row):
             styles = [''] * len(row)
-            # 주말 색상
             if 'Sun' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
             elif 'Sat' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
-            # 선택한 근무자 강조 (배경색 적용)
             if focus != "안 함":
                 for idx, val in enumerate(row):
                     if val == focus:
                         styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold; color: black;'
             return styles
             
+        # ⭐️ st.dataframe을 사용하여 고정 높이 안에서 스크롤 되도록 구현
         st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True)
