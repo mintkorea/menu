@@ -29,10 +29,13 @@ st.markdown("""
     .b-section { width: 33.33%; padding: 7px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    [data-testid="stTable"] table { margin-left: auto; margin-right: auto; width: 100% !important; }
+    [data-testid="stTable"] table { width: 100% !important; }
     [data-testid="stTable"] thead tr th { font-size: 10px !important; padding: 4px 1px !important; text-align: center !important; }
     [data-testid="stTable"] td { font-size: 10.5px !important; padding: 4px 1px !important; text-align: center !important; }
     thead tr th:first-child, tbody th { display:none; }
+    
+    /* 체크박스 스타일링 */
+    .stCheckbox { margin-bottom: 15px; padding-left: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -40,7 +43,7 @@ st.markdown("""
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 
-# 중요: 새벽 00:00 ~ 06:59까지는 '어제' 근무일로 간주하여 조원 명단 유지
+# 새벽 0~7시는 전날 근무일로 취급
 if now.hour < 7:
     work_date = (now - timedelta(days=1)).date()
 else:
@@ -61,7 +64,7 @@ def get_workers_by_date(target_date):
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
 if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
-# --- [3] 데이터 및 인덱스 추출 함수 ---
+# --- [3] 데이터 및 인덱스 추출 ---
 time_slots = [
     ["07:00", "08:00"], ["08:00", "09:00"], ["09:00", "10:00"], ["10:00", "11:00"],
     ["11:00", "12:00"], ["12:00", "13:00"], ["13:00", "14:00"], ["14:00", "15:00"],
@@ -89,13 +92,11 @@ df_rt = pd.DataFrame(combined, columns=["From", "To", jojang, seonghui, uisanA, 
 
 def get_current_idx(dt):
     curr_min = dt.hour * 60 + dt.minute
-    if dt.hour < 7: curr_min += 1440 # 새벽 시간은 24시간 더함
-    
+    if dt.hour < 7: curr_min += 1440
     for i, row in df_rt.iterrows():
         sh, sm = map(int, row['From'].split(':'))
         eh, em = map(int, row['To'].split(':'))
-        s_min = sh * 60 + sm
-        e_min = eh * 60 + em
+        s_min, e_min = sh * 60 + sm, eh * 60 + em
         if sh < 7: s_min += 1440
         if eh < 7 or (eh == 7 and em == 0 and sh < 7): e_min += 1440
         if s_min <= curr_min < e_min: return i
@@ -120,18 +121,21 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
+    # 1. 당일 전체 시간표 보기 옵션 추가
+    show_all = st.checkbox("🕒 지난 시간표 포함 (전체 보기)", value=False, key="check_all")
+
     st.markdown("""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
     
-    # 현재 시간 이후의 데이터만 표시
-    st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
+    display_df = df_rt if show_all else df_rt.iloc[curr_idx:]
+    st.table(display_df.style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold; color: black;']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns([1, 1, 1])
-    with c1: start_d = st.date_input("📅 시작일", work_date, key="date_selector_v2")
-    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="duration_slider_v2")
-    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="focus_member_v2")
+    with c1: start_d = st.date_input("📅 시작일", work_date, key="date_vfinal")
+    with c2: dur = st.slider("📆 일수", 7, 60, 31, key="dur_vfinal")
+    with c3: focus = st.selectbox("👤 강조", ["안 함", "황재업", "김태언", "이태원", "이정석"], key="focus_vfinal")
 
     cal_list = []
     weeks = ['월', '화', '수', '목', '금', '토', '일']
@@ -139,21 +143,32 @@ with tab2:
         d = start_d + timedelta(days=i)
         w_j, w_s, w_a, w_b = get_workers_by_date(d)
         if w_j:
-            date_label = f"{d.strftime('%m/%d')}({weeks[d.weekday()]})"
-            cal_list.append({"날짜": date_label, "조장": w_j, "성희": w_s, "의산A": w_a, "의산B": w_b})
+            cal_list.append({"날짜": f"{d.strftime('%m/%d')}({weeks[d.weekday()]})", "조장": w_j, "성희": w_s, "의산A": w_a, "의산B": w_b})
     
     if cal_list:
         df_cal = pd.DataFrame(cal_list)
-        color_map = {"황재업": "#D1FAE5", "김태언": "#FFF2CC", "이태원": "#E0F2FE", "이정석": "#FEE2E2"}
-        def style_cal(row):
+        
+        # 강조 색상 설정 (배경색과 글자색을 명시적으로 지정)
+        color_map = {
+            "황재업": "background-color: #D1FAE5; color: black;", # 연녹
+            "김태언": "background-color: #FFF2CC; color: black;", # 연황
+            "이태원": "background-color: #E0F2FE; color: black;", # 연청
+            "이정석": "background-color: #FEE2E2; color: black;"  # 연적
+        }
+
+        def style_fn(row):
             styles = [''] * len(row)
-            if '(일)' in row['날짜']: styles[0] = 'color: red; font-weight: bold'
-            elif '(토)' in row['날짜']: styles[0] = 'color: blue; font-weight: bold'
-            if focus != "안 함":
-                for idx, val in enumerate(row):
-                    if val == focus: styles[idx] = f'background-color: {color_map.get(focus)}; font-weight: bold; color: black;'
-            return styles
+            # 날짜 열 주말 색상
+            if '(일)' in row['날짜']: styles[0] = 'color: red; font-weight: bold;'
+            elif '(토)' in row['날짜']: styles[0] = 'color: blue; font-weight: bold;'
             
-        st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True, height=500)
+            # 선택한 근무자 강조 적용
+            if focus != "안 함":
+                for i in range(len(row)):
+                    if row.iloc[i] == focus:
+                        styles[i] = color_map.get(focus, '') + " font-weight: bold;"
+            return styles
+
+        st.dataframe(df_cal.style.apply(style_fn, axis=1), use_container_width=True, hide_index=True, height=500)
     else:
-        st.info("선택한 범위 내에 근무 데이터가 없습니다.")
+        st.info("데이터가 없습니다.")
