@@ -3,32 +3,30 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (탭 가독성 및 표 통합 최적화) ---
+# --- [1] 설정 및 CSS (여백 및 디자인 수정) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 1rem !important; max-width: 500px; margin: auto; }
+    /* 상단 여백 확보 (잘림 방지) */
+    .block-container { padding-top: 3.5rem !important; max-width: 500px; margin: auto; }
     
-    /* [수정] 탭 글씨 가독성 강화 */
+    /* 탭 가독성 강화 */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] {
         height: 45px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
-        padding: 0 20px; font-weight: 700; color: #333 !important; /* 글씨 검정색 강제 */
+        padding: 0 20px; font-weight: 700; color: #333 !important;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #2E4077 !important; color: white !important; /* 선택된 탭은 남색 배경/흰 글씨 */
+        background-color: #2E4077 !important; color: white !important;
     }
 
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 14px !important; text-align: center; margin-bottom: 15px; color: #666; }
     
-    /* 근무 상태 카드 */
+    /* 실시간 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
-    .status-card { 
-        border: 2px solid #2E4077; border-radius: 12px; padding: 12px 5px; 
-        text-align: center; background: white;
-    }
+    .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 12px 5px; text-align: center; background: white; }
     .worker-name { font-size: 16px !important; font-weight: 700; color: #555; }
     .status-val { font-size: 20px !important; font-weight: 900; color: #C04B41; }
     
@@ -37,18 +35,17 @@ st.markdown("""
         grid-column: span 2; border-radius: 12px; padding: 20px 15px;
         text-align: center; background: #FFF5F5; border: 2px solid #C04B41; margin-bottom: 15px;
     }
-    .off-title { font-size: 24px !important; font-weight: 900; color: #C04B41; margin-bottom: 8px; }
 
-    /* 통합 실시간 테이블 */
+    /* 통합 테이블 스타일 */
     .table-wrapper { width: 100%; margin-top: 10px; }
-    .custom-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
-    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; }
-    .b-header { font-weight: bold; font-size: 14px; }
+    .custom-table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: center; }
+    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 7px 1px; }
+    .b-header { font-weight: bold; font-size: 13.5px; }
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직부 (기존과 동일) ---
+# --- [2] 날짜 및 패턴 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -64,22 +61,37 @@ def get_workers_by_date(target_date):
     return None, None, None, None
 
 today = now.date()
-is_today_work = get_workers_by_date(today)[0] is not None
-is_yesterday_work = get_workers_by_date(today - timedelta(days=1))[0] is not None
-is_off_display = (is_yesterday_work and not is_today_work and now.hour >= 7) or (not is_yesterday_work and not is_today_work)
+work_date = (today - timedelta(days=1)) if now.hour < 7 else today
+jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
+if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
-# 시간표 데이터
+# --- [3] 시간표 데이터 (엑셀 원본 기준 수정) ---
+# 심야 시간대(23시~05시) 1시간 단위 분할 및 01:40 반영
 combined_data = [
-    ["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
-    ["09:00", "10:00", "순찰", "안내실", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "순찰"],
-    ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"],
-    ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"],
-    ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"],
-    ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"],
-    ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"],
-    ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"],
-    ["23:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"],
-    ["02:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"],
+    ["07:00", "08:00", "안내실", "로비", "로비", "휴게"],
+    ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
+    ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"],
+    ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], # 엑셀: 로비/순찰/휴게 혼합구간 반영
+    ["11:00", "12:00", "안내실", "중식", "로비", "중식"],
+    ["12:00", "13:00", "중식", "안내실", "중식", "로비"],
+    ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"],
+    ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"],
+    ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"],
+    ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"],
+    ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"],
+    ["18:00", "19:00", "안내실", "석식", "로비", "석식"],
+    ["19:00", "20:00", "안내실", "안내실", "석식", "로비"],
+    ["20:00", "21:00", "석식", "안내실", "로비", "휴게"],
+    ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"],
+    ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], # 22:30분 교대 포함 통합
+    ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], # 1시간 단위 분할 시작
+    ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"],
+    ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"],
+    ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], # 01:40 특별 표출
+    ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"],
+    ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"],
+    ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"],
+    ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"], # 05:00 교대 반영
     ["06:00", "07:00", "안내실", "안내실", "휴게", "로비"]
 ]
 
@@ -96,27 +108,27 @@ def get_current_idx(dt):
     return -1
 
 curr_idx = get_current_idx(now)
-work_date = (today - timedelta(days=1)) if now.hour < 7 else today
-jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
-if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
-# --- [3] UI 출력 ---
+# --- [4] UI 출력 ---
 tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 
 with tab1:
     st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    if is_off_display:
-        nw = today; 
+    # 휴무 로직
+    is_today_work = get_workers_by_date(today)[0] is not None
+    is_yesterday_work = get_workers_by_date(today - timedelta(days=1))[0] is not None
+    if (is_yesterday_work and not is_today_work and now.hour >= 7) or (not is_yesterday_work and not is_today_work):
+        nw = today
         while get_workers_by_date(nw)[0] is None: nw += timedelta(days=1)
         nj, ns, na, nb = get_workers_by_date(nw)
-        st.markdown(f'<div class="off-card"><div class="off-title">오늘은 휴무입니다.</div><div style="font-weight:700;">다음 근무: {nw.strftime("%m/%d")}<br>성희: {nj}, {ns} / 의산: {na}, {nb}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="off-card"><div style="font-size:22px; font-weight:900; color:#C04B41;">오늘은 휴무입니다.</div><div style="margin-top:8px; font-weight:700;">다음 근무: {nw.strftime("%m/%d")}<br>성희: {nj}, {ns} / 의산: {na}, {nb}</div></div>', unsafe_allow_html=True)
     elif curr_idx != -1:
         c = combined_data[curr_idx]
         st.markdown(f'<div class="status-container"><div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{c[2]}</div></div><div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{c[3]}</div></div><div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{c[4]}</div></div><div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{c[5]}</div></div></div>', unsafe_allow_html=True)
 
-    # 통합 실시간 시간표 (HTML)
+    # 통합 시간표
     html_table = f"""
     <div class="table-wrapper"><table class="custom-table">
         <tr class="b-header">
@@ -138,28 +150,22 @@ with tab2:
     c1, c2 = st.columns(2)
     with c1: s_date = st.date_input("📅 시작일", today)
     with c2: focus_u = st.selectbox("👤 강조 대상", ["안 함", "황재업", "김태언", "이태원", "이정석"])
-    days_cnt = st.slider("📆 확인 일수", 7, 60, 15)
-
+    
     cal_list = []
-    for i in range(days_cnt):
+    for i in range(31):
         d = s_date + timedelta(days=i)
         w1, w2, w3, w4 = get_workers_by_date(d)
         if w1:
-            weekday_str = ['월','화','수','목','금','토','일'][d.weekday()]
-            cal_list.append({"날짜": d.strftime('%m/%d'), "요일": weekday_str, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4})
+            wd = ['월','화','수','목','금','토','일'][d.weekday()]
+            cal_list.append({"날짜": d.strftime('%m/%d'), "요일": wd, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4})
     
     if cal_list:
         df = pd.DataFrame(cal_list)
-        # [수정] 요일 칼라 적용 및 강조 로직
         def style_df(row):
             styles = [''] * len(row)
-            # 일요일(빨간색), 토요일(파란색)
             if row['요일'] == '일': styles[1] = 'color: red; font-weight: bold'
             elif row['요일'] == '토': styles[1] = 'color: blue; font-weight: bold'
-            # 강조 대상 배경색
             for i, val in enumerate(row):
-                if focus_u != "안 함" and val == focus_u:
-                    styles[i] = 'background-color: #FFF2CC; font-weight: bold'
+                if focus_u != "안 함" and val == focus_u: styles[i] = 'background-color: #FFF2CC; font-weight: bold'
             return styles
-
         st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
