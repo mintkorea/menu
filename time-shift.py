@@ -1,56 +1,62 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import pytz
 
-# --- [1] 설정 및 CSS (스크린샷 스타일 반영) ---
+# --- [1] 설정 및 모바일 최적화 CSS ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 2rem !important; }
+    .block-container { padding-top: 1.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
     
-    /* 표 헤더 위쪽 건물명 섹션 */
-    .b-header-container {
-        display: flex;
-        margin-top: 20px;
-        border: 1px solid #dee2e6;
-        border-bottom: none;
-        font-weight: bold;
-        text-align: center;
+    /* 상단 요약 카드 스타일 (부활) */
+    .status-container { 
+        display: grid; grid-template-columns: repeat(2, 1fr); 
+        gap: 8px; margin-bottom: 15px; 
     }
-    .b-time { width: 150px; background: #fff; padding: 8px 0; border-right: 1px solid #dee2e6; }
-    .b-seongui { flex: 1; background: #FFF2CC; padding: 8px 0; border-right: 1px solid #dee2e6; }
-    .b-uysan { flex: 1; background: #D9EAD3; padding: 8px 0; }
+    .status-card { 
+        border: 2px solid #2E4077; border-radius: 10px; 
+        padding: 8px 0; text-align: center; background: #F8F9FA;
+        min-height: 65px; display: flex; flex-direction: column; justify-content: center;
+    }
+    .card-label { font-size: 13px; color: #666; margin-bottom: 2px; }
+    .status-val { font-size: 18px; font-weight: 800; color: #C04B41; }
 
-    /* 테이블 스타일 */
-    [data-testid="stTable"] { font-size: 15px !important; margin-top: 0px !important; }
-    thead tr th { background-color: #f8f9fa !important; color: #333 !important; text-align: center !important; }
+    /* 표 위쪽 건물명 헤더 */
+    .b-header-container {
+        display: flex; margin-top: 10px; border: 1px solid #dee2e6; border-bottom: none;
+        font-weight: bold; text-align: center; font-size: 14px;
+    }
+    .b-time { width: 100px; background: #fff; padding: 10px 0; border-right: 1px solid #dee2e6; }
+    .b-seongui { flex: 1.1; background: #FFF2CC; padding: 10px 0; border-right: 1px solid #dee2e6; }
+    .b-uysan { flex: 2; background: #D9EAD3; padding: 10px 0; }
+
+    /* 표 셀 크기 및 텍스트 정렬 최적화 */
+    [data-testid="stTable"] { font-size: 13px !important; }
+    [data-testid="stTable"] td, [data-testid="stTable"] th {
+        padding: 4px 2px !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        line-height: 1.2 !important;
+    }
+    /* From/To 열 너비 축소 */
+    [data-testid="stTable"] td:nth-child(2), [data-testid="stTable"] td:nth-child(3) { width: 45px !important; }
+    
     thead tr th:first-child { display:none; }
     tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 데이터 로직 및 함수 정의 (NameError 방지) ---
+# --- [2] 데이터 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 
-# 현재 근무자 명단 (패턴에 따라 동적으로 변하게 하려면 이전 get_workers 함수 사용)
-# 여기서는 예시로 스크린샷의 성함을 고정합니다.
-j_name, s_name, a_name, b_name = "황재업", "이태원", "이정석", "김태언"
+# 실시간 근무자 명단 (패턴에 따른 변수 할당)
+j_n, s_n, a_n, b_n = "황재업", "이태원", "이정석", "김태언"
 
-def get_curr_idx(h, m, df):
-    if h == 1 and m < 40: return 16
-    if h == 1 and m >= 40: return 17
-    for i, row in df.iterrows():
-        try:
-            sh, eh = int(row['From'].split(':')[0]), int(row['To'].split(':')[0])
-            if eh == 0 or eh < sh: eh = 24
-            if sh <= h < eh: return i
-        except: continue
-    return len(df) - 1
-
-# 전체 시간표 데이터
+# 시간대 및 위치 데이터 정의
 time_raw = [
     ["07:00", "08:00"], ["08:00", "09:00"], ["09:00", "10:00"], ["10:00", "11:00"],
     ["11:00", "12:00"], ["12:00", "13:00"], ["13:00", "14:00"], ["14:00", "15:00"],
@@ -71,18 +77,37 @@ loc_raw = [
     ["휴게", "안내실", "로비", "휴게"], ["안내실", "순찰", "로비", "순찰"], ["안내실", "안내실", "휴게", "로비"]
 ]
 
-# ⭐️ 수정: 열 헤더에 실근무자 성함 배치
 df_full = pd.DataFrame([t + l for t, l in zip(time_raw, loc_raw)], 
-                       columns=["From", "To", j_name, s_name, a_name, b_name])
+                       columns=["From", "To", j_n, s_n, a_n, b_n])
 
-# 현재 인덱스 찾기 및 데이터 필터링 (상단 고정)
-idx = get_curr_idx(now.hour, now.minute, df_full)
-df_display = df_full.iloc[idx:].copy()
+# 현재 인덱스 계산
+def get_idx(h, m):
+    if h == 1 and m < 40: return 16
+    if h == 1 and m >= 40: return 17
+    for i, row in df_full.iterrows():
+        sh = int(row['From'].split(':')[0])
+        eh = int(row['To'].split(':')[0])
+        if eh == 0 or eh < sh: eh = 24
+        if sh <= h < eh: return i
+    return 0
+
+curr_idx = get_idx(now.hour, now.minute)
+df_display = df_full.iloc[curr_idx:].copy()
 
 # --- [3] 화면 출력 ---
-st.title("🕒 C조 실시간 근무 현황")
+st.markdown("### 🕒 C조 실시간 근무 현황")
 
-# ⭐️ 표 바로 위에 건물명 헤더 배치 (스크린샷 구조)
+# 부활된 상단 요약 카드
+st.markdown(f"""
+    <div class="status-container">
+        <div class="status-card"><div class="card-label">{j_n}</div><div class="status-val">{df_full.iloc[curr_idx][j_n]}</div></div>
+        <div class="status-card"><div class="card-label">{s_n}</div><div class="status-val">{df_full.iloc[curr_idx][s_n]}</div></div>
+        <div class="status-card"><div class="card-label">{a_n}</div><div class="status-val">{df_full.iloc[curr_idx][a_n]}</div></div>
+        <div class="status-card"><div class="card-label">{b_n}</div><div class="status-val">{df_full.iloc[curr_idx][b_n]}</div></div>
+    </div>
+""", unsafe_allow_html=True)
+
+# 건물명 헤더
 st.markdown(f"""
     <div class="b-header-container">
         <div class="b-time">구분 (시간)</div>
@@ -91,5 +116,5 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 표 출력 (현재 행 하이라이트)
-st.table(df_display.style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == idx else ['']*len(r), axis=1))
+# 메인 표 (셀 크기 최적화 및 하이라이트)
+st.table(df_display.style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
