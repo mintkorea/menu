@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
@@ -43,4 +44,4 @@ time_data = [
     ["06:00", "07:00", "안내실", "안내실", "휴게", "로비"]
 ]
 df_rt = pd.DataFrame(time_data, columns=["From", "To", jojang, seonghui, uisanA, uisanB])
-st.table(df_rt) # 전체 데이터를 단순 출력하여 연결성 확인
+st.table(df_rt)
