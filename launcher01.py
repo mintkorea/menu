@@ -3,7 +3,7 @@ import json
 import os
 
 # 1. 페이지 설정
-st.set_page_config(page_title="성의 워크플레이스 허브", page_icon="🏫", layout="wide")
+st.set_page_config(page_title="성의교정 업무 포털", page_icon="🏫", layout="wide")
 DB_FILE = "app_data.json"
 
 # 2. 데이터 관리 함수
@@ -54,7 +54,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # 4. 메인 화면
-st.markdown('<div class="hub-title">🏫 성의교정 업무 통합 포털</div>', unsafe_allow_html=True)
+st.markdown('<div class="hub-title">🏫 성의교정 업무 포털</div>', unsafe_allow_html=True)
 
 for app in st.session_state.apps:
     st.markdown(f'''
