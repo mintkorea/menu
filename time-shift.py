@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (폰트 축소 및 개행 방지 집중) ---
+# --- [1] 설정 및 CSS (개행 방지 및 폰트 최적화) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
@@ -12,38 +12,36 @@ st.markdown("""
     .unified-title { font-size: 26px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 17.5px !important; text-align: center; margin-bottom: 20px; color: #555; font-weight: 500; }
     
-    /* 카드 디자인 */
+    /* 상단 요약 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
     .status-card { 
         border: 2px solid #2E4077; border-radius: 10px; padding: 6px 0; 
         text-align: center; background: #F8F9FA; min-height: 65px;
     }
-    .worker-name { font-size: 17px !important; font-weight: 700; color: #444; }
-    .status-val { font-size: 19px; font-weight: 900; color: #C04B41; }
+    .worker-name { font-size: 16px !important; font-weight: 700; color: #444; }
+    .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
     
     /* 건물 헤더 스타일 */
-    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 13px; }
-    .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
+    .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 12px; }
+    .b-section { width: 33.33%; padding: 5px 0; border-right: 1px solid #dee2e6; }
     .b-section:last-child { border-right: none; }
 
-    /* 표 스타일 (⭐️ 폰트 축소 및 개행 방지 설정) */
+    /* 표 스타일 (⭐️ 폰트 축소 및 개행 절대 방지) */
     [data-testid="stTable"] { width: 100% !important; table-layout: fixed !important; }
     [data-testid="stTable"] td { 
         width: 16.66% !important; 
-        padding: 2px 1px !important; /* 좌우 여백 최소화 */
-        font-size: 11px !important;   /* ⭐️ 폰트 더 축소 (12px -> 11px) */
-        line-height: 1.0 !important; 
-        height: 30px !important; 
+        padding: 4px 1px !important; /* 여백 최소화 */
+        font-size: 10.5px !important; /* ⭐️ 폰트 추가 축소로 개행 방지 */
+        line-height: 1.1 !important; 
         text-align: center !important; 
-        white-space: nowrap !important; /* ⭐️ 절대 줄바꿈 금지 */
-        overflow: hidden !important;    /* 넘치면 숨김 */
-        text-overflow: clip !important; 
+        white-space: nowrap !important; /* ⭐️ 한 줄 유지 강제 */
+        letter-spacing: -0.5px;         /* 글자 간격 좁힘 */
     }
     thead tr th:first-child, tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 날짜/시간 및 근무자 패턴 로직 (동일) ---
+# --- [2] 날짜/시간 및 근무자 패턴 로직 (사용자 원본) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -101,6 +99,7 @@ with tab1:
     curr_idx = get_rt_idx(now.hour, now.minute)
     curr_row = df_rt.iloc[curr_idx]
 
+    # 상단 요약 카드 (이름 고정)
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{curr_row[jojang]}</div></div>
@@ -110,9 +109,10 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown(f"""<div class="b-header"><div class="b-section">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
+    # 건물명 헤더
+    st.markdown(f"""<div class="b-header"><div class="b-section" style="background:#fff;">구분 (시간)</div><div class="b-section" style="background:#FFF2CC;">성의회관</div><div class="b-section" style="background:#D9EAD3;">의산연</div></div>""", unsafe_allow_html=True)
 
-    # ⭐️ 현재 인덱스부터 끝까지 출력 (하이라이트 행 상단 고정)
+    # 하이라이트 행 상단 배치
     st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
 
 with tab2:
