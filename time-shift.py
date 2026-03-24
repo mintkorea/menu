@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (표 통합 및 모바일 최적화) ---
+# --- [1] 설정 및 CSS (표 통합 및 줄바꿈 방지) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
@@ -12,22 +12,22 @@ st.markdown("""
     .unified-title { font-size: 22px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 14px !important; text-align: center; margin-bottom: 15px; color: #666; }
     
-    /* 요약 카드 스타일 */
+    /* 요약 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
     .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 8px 0; text-align: center; background: #F8F9FA; }
     .worker-name { font-size: 14px; font-weight: 700; color: #444; }
     .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
 
-    /* 통합 테이블: 줄바꿈 방지 및 헤더 고정 */
-    .custom-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
+    /* 통합 테이블: 헤더와 데이터 일체화 */
+    .custom-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; margin-top: 10px; }
     .custom-table th, .custom-table td { 
         border: 1px solid #dee2e6; padding: 6px 2px; text-align: center; 
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; overflow: hidden;
     }
     .header-row { background-color: #f8f9fa; font-weight: bold; }
     .highlight-row { background-color: #FFE5E5; font-weight: bold; }
     
-    /* 버튼 스타일 */
+    /* 버튼 */
     .stButton > button { width: 100%; border-radius: 8px; height: 3.5em; background-color: #1E3A5F; color: white; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
@@ -36,13 +36,13 @@ st.markdown("""
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 
-# 자정~07시 로직 적용
+# 자정~07시 이전이면 '어제' 날짜로 고정
 if now.hour < 7:
     target_date = (now - timedelta(days=1)).date()
-    display_msg = f"{target_date.strftime('%m/%d')} 야간 근무 (07시 종료)"
+    display_msg = f"{target_date.strftime('%m/%d')} 야간 (07시 종료)"
 else:
     target_date = now.date()
-    display_msg = f"{target_date.strftime('%m/%d')} 근무 현황"
+    display_msg = f"{target_date.strftime('%m/%d')} 근무"
 
 PATTERN_START = datetime(2026, 3, 9).date()
 
@@ -52,13 +52,13 @@ def get_workers_by_date(d):
         sc = diff // 3
         ci, i2 = (sc // 2) % 3, sc % 2 == 1
         if ci == 0: return "황재업", "김태언", ("이정석" if i2 else "이태원"), ("이태원" if i2 else "이정석")
-        elif ci == 1: return "황재업", "이정석", ("이태원" if i2 else "김태언"), ("김태언" if i2 else "이정석")
+        elif ci == 1: return "황재업", "이정석", ("이태원" if i2 else "김태언"), ("김태언" if i2 else "이태원")
         else: return "황재업", "이태원", ("이정석" if i2 else "김태언"), ("김태언" if i2 else "이정석")
     return "황재업", "김태언", "이태원", "이정석"
 
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(target_date)
 
-# --- [3] 데이터 및 테이블 함수 ---
+# --- [3] 데이터 및 테이블 생성 함수 ---
 time_data = [
     ["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
     ["09:00", "10:00", "순찰", "안내실", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "순찰"],
@@ -75,6 +75,7 @@ time_data = [
 df_rt = pd.DataFrame(time_data, columns=["From", "To", jojang, seonghui, uisanA, uisanB])
 
 def render_table(df, h_idx=None):
+    # 헤더와 데이터가 하나로 묶인 HTML 테이블 생성
     html = f"""<table class="custom-table">
         <tr class="header-row">
             <th style="width:24%">시간</th><th style="background:#FFF2CC">{jojang[:2]}</th><th style="background:#FFF2CC">{seonghui[:2]}</th>
@@ -85,7 +86,6 @@ def render_table(df, h_idx=None):
         html += f"<tr class='{cls}'><td>{r['From']}~{r['To']}</td><td>{r[jojang]}</td><td>{r[seonghui]}</td><td>{r[uisanA]}</td><td>{r[uisanB]}</td></tr>"
     return html + "</table>"
 
-# 현재 인덱스 찾기
 def get_idx(h, m):
     curr = h if h >= 7 else h + 24
     for i, r in df_rt.iterrows():
@@ -96,7 +96,7 @@ def get_idx(h, m):
 curr_idx = get_idx(now.hour, now.minute)
 
 # --- [4] 화면 출력 ---
-st.markdown(f'<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
+st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="title-sub">{display_msg} ({now.strftime("%H:%M")})</div>', unsafe_allow_html=True)
 
 # 요약 카드
@@ -105,4 +105,15 @@ st.markdown(f"""<div class="status-container">
     <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{c[jojang]}</div></div>
     <div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{c[seonghui]}</div></div>
     <div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{c[uisanA]}</div></div>
-    <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status
+    <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{c[uisanB]}</div></div>
+</div>""", unsafe_allow_html=True)
+
+@st.dialog("📅 전체 시간표")
+def show_all():
+    st.markdown(render_table(df_rt, curr_idx), unsafe_allow_html=True)
+
+if st.button("📋 당일 전체 시간표 크게 보기"):
+    show_all()
+
+st.markdown("**▼ 현재 근무 상세**")
+st.markdown(render_table(df_rt.iloc[curr_idx:curr_idx+1], curr_idx), unsafe_allow_html=True)
