@@ -1,9 +1,10 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 기본 설정 및 CSS ---
+# --- [1] 기본 설정 및 CSS (스크린샷 레이아웃 구현) ---
 st.set_page_config(page_title="C조 근무 시스템", layout="wide")
 st.markdown("""
     <style>
@@ -16,7 +17,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 07시 기준 날짜 로직 ---
+# --- [2] 07시 기준 날짜 로직 (날짜 튀는 현상 방지) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 target_date = (now - timedelta(days=1)).date() if now.hour < 7 else now.date()
@@ -34,7 +35,7 @@ def get_workers_by_date(d):
 
 j, s, a, b = get_workers_by_date(target_date)
 
-# --- [3] 시간표 데이터 ---
+# --- [3] 전체 시간표 데이터 ---
 time_data = [
     ["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
     ["09:00", "10:00", "순찰", "안내실", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "순찰"],
@@ -67,7 +68,7 @@ curr_idx = get_curr_idx()
 st.markdown(f'<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="title-sub">{target_date.strftime("%m/%d")} 근무 ({now.strftime("%H:%M")})</div>', unsafe_allow_html=True)
 
-# 카드형 레이아웃
+# 1. 상단 카드형 레이아웃 (지금 누가 어디에 있는지)
 row1 = st.columns(2)
 row2 = st.columns(2)
 curr_row = time_data[curr_idx]
@@ -81,10 +82,10 @@ for i, col in enumerate([row1[0], row1[1], row2[0], row2[1]]):
             </div>
             """, unsafe_allow_html=True)
 
-# 전체 시간표 확인 버튼
+# 2. 당일 전체 시간표 접이식 메뉴
 with st.expander("📋 당일 전체 시간표 확인하기"):
     st.table(df_rt)
 
-# 현재 근무 및 다음 스케줄
+# 3. 현재 근무 및 다음 스케줄 (iloc[curr_idx:] 를 사용하여 끊김 없이 출력)
 st.markdown("#### ▼ 현재 근무 및 다음 스케줄")
 st.table(df_rt.iloc[curr_idx:].style.apply(lambda r: ['background-color: #FFE5E5; font-weight: bold']*len(r) if r.name == curr_idx else ['']*len(r), axis=1))
