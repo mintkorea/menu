@@ -3,61 +3,46 @@ import pandas as pd
 from datetime import datetime
 import pytz
 
-# --- [1] 설정 및 CSS (줄간격 최소화 및 여백 조정) ---
+# --- [1] 설정 및 CSS (표 폰트 축소 및 줄간격 최적화) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 1. 상단 여백 중간값 조정 (기존 2.5rem ~ 직전 3.5rem 사이) */
-    .block-container { padding-top: 3rem !important; } 
+    /* 상단 여백: 기존(2.5)과 직전(3.5)의 중간인 3.0으로 조정 */
+    .block-container { padding-top: 3.0rem !important; } 
     
-    /* 2. 링크 메뉴 (실제 클릭 가능한 탭 스타일) */
-    .nav-container {
-        display: flex; justify-content: center; border-bottom: 2px solid #eee;
-        margin-bottom: 20px; padding-bottom: 0px;
-    }
-    .nav-item {
-        padding: 10px 15px; font-size: 15px; font-weight: bold; color: #888;
-        text-decoration: none; border-bottom: 3px solid transparent; transition: 0.3s;
-    }
-    .nav-item.active {
-        color: #C04B41; border-bottom: 3px solid #C04B41;
-    }
+    /* 링크 메뉴 스타일 */
+    .tab-menu { display: flex; justify-content: center; gap: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+    .tab-item { font-size: 15px; font-weight: bold; color: #888; text-decoration: none; }
+    .tab-active { color: #C04B41; border-bottom: 3px solid #C04B41; padding-bottom: 10px; }
 
-    /* 3. 타이틀 및 시간 (+2pt 확대 유지) */
+    /* 타이틀 및 시간 (+2pt 유지) */
     .title-area { text-align: center; margin-bottom: 15px; }
-    .main-title { font-size: 25px !important; font-weight: 800; margin-bottom: 5px; color: #333; }
+    .main-title { font-size: 25px !important; font-weight: 800; margin-bottom: 5px; }
     .sub-date { font-size: 17.5px !important; color: #555; font-weight: 500; }
 
-    /* 4. 카드 디자인 (높이 슬림화) */
+    /* 카드 부분 (슬림 높이) */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
-    .status-card { 
-        border: 2px solid #2E4077; border-radius: 10px; 
-        padding: 5px 0; text-align: center; background: #fff; 
-    }
+    .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 5px 0; text-align: center; background: #fff; }
     .card-name { font-size: 16px !important; font-weight: 700; color: #555; }
     .card-status { font-size: 18px !important; font-weight: 900; color: #C04B41; }
 
-    /* 5. 표 줄간격 극단적 축소 (중요) */
+    /* 표 내부 폰트 및 줄간격 (성명 폰트 축소) */
+    [data-testid="stTable"] td { 
+        padding: 2px 0 !important; 
+        font-size: 12px !important; /* ⭐️ 표 내 성명 폰트를 12px로 줄임 */
+        line-height: 1.0 !important;
+        height: 28px !important;
+        text-align: center !important; 
+    }
     .b-header { display: flex; border: 1px solid #dee2e6; border-bottom: none; font-weight: bold; text-align: center; font-size: 13px; }
     .b-section { width: 33.33%; padding: 6px 0; border-right: 1px solid #dee2e6; }
     
-    [data-testid="stTable"] { width: 100% !important; table-layout: fixed !important; margin-top: -1px; }
-    [data-testid="stTable"] td { 
-        width: 16.66% !important; text-align: center !important; 
-        vertical-align: middle !important; 
-        padding: 2px 0 !important; /* 줄간격 최소화 */
-        font-size: 13.5px !important; 
-        line-height: 1.0 !important; /* 글자 높이 압축 */
-        height: 30px !important; /* 행 높이 고정 */
-    }
-    
-    thead tr th:first-child { display:none; }
-    tbody th { display:none; }
+    thead tr th:first-child, tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 데이터 로직 (에러 방지) ---
+# --- [2] 데이터 및 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 date_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -82,15 +67,15 @@ curr_row = df_full.iloc[idx]
 
 # --- [3] 화면 출력 ---
 
-# 1. 링크 메뉴 (실제 버튼처럼 작동하도록 앵커 추가)
+# 1. 상단 링크 메뉴 (⭐️ 기존 링크 주소로 복구됨)
 st.markdown(f"""
-    <div class="nav-container">
-        <a href="#c-조-실시간-근무-현황" class="nav-item active">🕒 실시간 근무 현황</a>
-        <a href="https://your-link-here.com" target="_blank" class="nav-item">📅 월간 근무 편성표</a>
+    <div class="tab-menu">
+        <a href="https://mintkoreatimeshift.streamlit.app" class="tab-item tab-active">🕒 실시간 근무 현황</a>
+        <a href="https://mintkoreatimeshift.streamlit.app" class="tab-item">📅 월간 근무 편성표</a>
     </div>
 """, unsafe_allow_html=True)
 
-# 2. 타이틀 및 시간
+# 2. 타이틀 및 확대된 시간
 st.markdown(f"""
     <div class="title-area">
         <div class="main-title">C조 실시간 근무 현황</div>
@@ -98,7 +83,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 3. 요약 카드 (높이 축소)
+# 3. 요약 카드
 st.markdown(f"""
     <div class="status-container">
         <div class="status-card"><div class="card-name">{names[0]}</div><div class="card-status">{curr_row[names[0]]}</div></div>
@@ -108,7 +93,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 4. 건물 헤더 및 초슬림 표
+# 4. 건물 헤더 및 표
 st.markdown(f"""
     <div class="b-header">
         <div class="b-section" style="background:#fff;">구분 (시간)</div>
