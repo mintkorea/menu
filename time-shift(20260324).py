@@ -160,3 +160,4 @@ with tab2:
             return styles
             
         st.dataframe(df_cal.style.apply(style_cal, axis=1), use_container_width=True, hide_index=True, height=450)
+
