@@ -27,3 +27,4 @@ def render_unified_table(df, highlight_idx=None):
         """
     html += "</tbody></table></div>"
     return html
+
