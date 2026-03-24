@@ -3,59 +3,59 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 기본 설정 및 CSS ---
+# --- [1] 설정 및 CSS 개선 ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 축소 */
-    .block-container { padding-top: 1.5rem !important; }
+    /* 상단 여백을 2.5rem으로 늘려 타이틀 가독성 확보 */
+    .block-container { padding-top: 2.5rem !important; }
     
-    /* 타이틀 폰트 크기 동일하게 (28px) */
+    /* 타이틀 폰트 크기 및 스타일 통일 */
     .unified-title { 
         font-size: 28px !important; 
         font-weight: 800 !important;
         text-align: center; 
-        margin-bottom: 5px; 
+        margin-bottom: 8px; 
         color: #1E1E1E; 
     }
-    .title-sub { font-size: 16px !important; font-weight: 400; text-align: center; margin-bottom: 20px; color: #666; }
+    .title-sub { 
+        font-size: 16px !important; 
+        font-weight: 400; 
+        text-align: center; 
+        margin-bottom: 25px; 
+        color: #666; 
+    }
     
-    /* 카드 디자인: 이름 크기 강조 */
+    /* 카드 내 텍스트 크기 최적화 */
     .status-container { 
         display: grid; 
         grid-template-columns: repeat(2, 1fr); 
-        gap: 10px; 
+        gap: 12px; 
         margin-bottom: 20px; 
     }
     .status-card { 
         border: 2px solid #2E4077; 
         border-radius: 12px; 
-        padding: 12px 5px; 
+        padding: 15px 5px; 
         text-align: center; 
         background: #F8F9FA; 
     }
-    .name-label { font-size: 19px !important; font-weight: 800; color: #333; margin-bottom: 5px; }
+    .name-label { font-size: 18px !important; font-weight: 800; color: #333; margin-bottom: 5px; }
     .loc-label { font-size: 20px; font-weight: 800; color: #C04B41; }
     
-    .off-day-banner {
-        background-color: #FFF3CD; color: #856404; padding: 10px;
-        border-radius: 10px; text-align: center; font-weight: bold;
-        margin-bottom: 15px; border: 1px solid #FFEEBA;
-    }
-
+    /* 테이블 가독성 */
     [data-testid="stTable"], [data-testid="stDataFrame"] { font-size: 16px !important; }
     thead tr th:first-child { display:none; }
     tbody th { display:none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 날짜 및 시간/패턴 로직 ---
+# --- [2] 날짜/시간 및 근무자 패턴 로직 (이미지 기준 연동) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
 
-# 근무자 자동 추출 함수 (조회 시점의 날짜 기준)
 def get_workers_by_date(target_date):
     diff = (target_date - PATTERN_START).days
     if diff % 3 == 0:
@@ -76,15 +76,15 @@ tab1, tab2 = st.tabs(["🕒 실시간 근무 현황", "📅 월간 근무 편성
 # TAB 1: 실시간 근무 현황
 # ---------------------------------------------------------
 with tab1:
-    st.markdown(f'<div class="unified-title">C조 실시간 근무 현황</div>', unsafe_allow_html=True)
+    st.markdown('<div class="unified-title">C조 실시간 근무 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y년 %m월 %d일 %H:%M:%S")}</div>', unsafe_allow_html=True)
 
     if not is_work_day:
-        st.markdown('<div class="off-day-banner">📅 오늘은 C조 휴무일입니다.</div>', unsafe_allow_html=True)
-        # 휴무일인 경우 가장 최근/다음 근무자 정보를 예시로 표시하거나 공란 처리 가능
+        st.info("📅 오늘은 C조 휴무일입니다.")
+        # 휴무일에도 구성을 보여주기 위해 기본 인원 할당
         jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
-    # 근무 데이터 (1시간 단위)
+    # 이미지 데이터 기반 시간표 (1시간 단위 요약)
     time_data = [
         ["07:00", "08:00", "안내실", "로비", "로비", "휴게"],
         ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
@@ -123,7 +123,7 @@ with tab1:
 
     curr = get_rt_row(now.hour, now.minute)
 
-    # 근무 현황 카드 (실제 이름 연동)
+    # 현황 카드 (실명 자동 반영)
     st.markdown(f"""
         <div class="status-container">
             <div class="status-card"><div class="name-label">조장 ({jojang})</div><div class="loc-label">{curr['조장']}</div></div>
@@ -142,7 +142,7 @@ with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1, 1])
-    with col1: start_d = st.date_input("📅 시작 날짜", now.date(), key="cal_start")
+    with col1: start_d = st.date_input("📅 시작 날짜", now.date(), key="calendar_start")
     with col2: dur = st.slider("📆 조회 일수", 7, 100, 31)
     with col3: focus = st.selectbox("👤 강조 인원", ["안 함", "황재업", "김태언", "이태원", "이정석"])
 
