@@ -83,13 +83,13 @@ for i, row in filtered.iterrows():
     star = "★" if is_fav else "☆"
     
     # 폰트 및 데이터 매핑 (시트 컬럼명에 맞춰 조정 필요)
-    name = row.get('이름', '이름없음')
-    pos = row.get('직급', '')
     dept = row.get('부서', '')
-    work = row.get('업무', '')
+    name = row.get('성명', '이름없음')
+    pos = row.get('직함', '')
     ext = row.get('내선', '')
     mobile = row.get('휴대폰', '')
-    tel_link = str(mobile).replace("-", "")
+    work = row.get('업무', '')
+tel_link = str(mobile).replace("-", "")
 
     # 슬림 카드 레이아웃
     with st.container():
