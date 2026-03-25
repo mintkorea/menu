@@ -3,48 +3,47 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. 여백 및 간격 정밀 조정 CSS
+# 2. 여백 정밀 조정 CSS
 st.markdown("""
 <style>
-    /* 1. 상단 바(헤더) 공간을 완전히 제거하고 위로 밀착 */
+    /* 상단 바 및 기본 여백 제거 */
     header[data-testid="stHeader"] {
         display: none !important;
     }
     
-    /* 2. 메인 컨테이너의 상단 패딩을 0으로 고정 (최상단 여백 제거) */
-    [data-testid="stMainBlockContainer"], 
-    [data-testid="stAppViewBlockContainer"] {
-        padding-top: 0.5rem !important; /* 약간의 숨통만 틔우고 거의 밀착 */
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
         gap: 0rem !important;
     }
 
-    /* 3. 타이틀 설정: 잘림 방지 및 아래 여백 조정 */
+    /* 타이틀 설정 */
     .main-title {
         font-size: 1.8rem; 
         font-weight: 800;
         color: #000;
         text-align: center;
-        line-height: 1.4;      /* 잘림 방지를 위해 행간 확보 */
+        line-height: 1.5;      /* 잘림 방지 확보 */
         margin-top: 0px !important;
-        margin-bottom: 5px !important; /* 타이틀과 검색창 사이 간격 */
+        margin-bottom: 0px !important;
         padding: 0px !important;
     }
 
-    /* 4. 검색창 위아래 여백을 항목 간격(약 12px) 수준으로 조정 */
+    /* 검색창 영역 및 검색창과 결과 사이 간격 조정 */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
-        padding-top: 5px !important;  /* 타이틀 바로 아래 여백 */
-        padding-bottom: 12px !important; /* 검색창과 첫 항목(박현욱) 사이 여백 */
+        padding-top: 5px !important;   /* 타이틀과 검색창 사이 */
+        padding-bottom: 0px !important; /* 검색창 하단 기본 패딩 제거 */
     }
 
     .stTextInput { 
-        margin: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: -15px !important; /* 검색창과 결과 사이 간격을 50% 이상 강제 축소 */
     }
 
     .stTextInput input {
         border-radius: 4px !important;
         border: 1px solid #cccccc !important;
-        height: 42px !important;
+        height: 40px !important;
     }
 
     /* 연락처 카드 (항목 간 간격) */
@@ -52,7 +51,7 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 0px; /* 항목 위아래 여백 */
+        padding: 10px 0px; /* 항목 자체의 위아래 여백도 소폭 줄임 */
         border-bottom: 1px solid #eeeeee;
     }
 
@@ -78,16 +77,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 타이틀 출력
+# 타이틀
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 데이터 (검색 확인용)
+# 데이터
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리"},
 ]
 
-# 검색창 (라벨 공간 제거)
+# 검색창 (label_visibility 필수)
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
 # 리스트 출력
@@ -114,3 +113,4 @@ for p in data:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    
