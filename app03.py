@@ -1,53 +1,11 @@
 import streamlit as st
 
-# 1. 페이지 설정
+# [1] 페이지 설정 및 초기화
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (레이아웃 및 모바일 최적화)
-st.markdown("""
-<style>
-    header[data-testid="stHeader"] { display: none !important; }
-    [data-testid="stMainBlockContainer"] {
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-    }
-    .main-title {
-        font-size: 1.8rem; font-weight: 800; color: #000;
-        text-align: center; margin-bottom: 10px !important; line-height: 1.2;
-    }
-    /* 검색창 상하 간격 조정 */
-    div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
-        padding-top: 10px !important;    
-        padding-bottom: 15px !important; 
-    }
-    .contact-card {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 12px 0px; border-bottom: 1px solid #eeeeee;
-    }
-    .info-section { flex: 1; padding-right: 5px; min-width: 0; }
-    .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; white-space: nowrap; }
-    .pos-dept { font-size: 0.9rem; color: #555; white-space: nowrap; }
-    .work-text { 
-        font-size: 0.85rem; color: #777; margin-top: 4px; 
-        line-height: 1.3; word-break: keep-all;
-    }
-    .icon-section {
-        min-width: 70px; display: flex; justify-content: flex-end;
-        gap: 15px; margin-left: 10px;
-    }
-    .icon-link {
-        text-decoration: none !important; font-size: 1.3rem; 
-        font-weight: 800; color: #007bff !important; /* 클릭 강조를 위해 색상 부여 */
-        width: 30px; text-align: center;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
-
-# 3. 데이터셋 (출력 로직보다 반드시 위에 있어야 함)
-data = [
+# [2] 데이터 정의 (가장 먼저 선언)
+# 루프(for)에서 참조하기 전에 반드시 이 위치에 있어야 합니다.
+contact_data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
     {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"8193","mobile":"010-5072-0919","work":"예비군대대장, 민방위, 업무행정, 행사, 그룹웨어 ITC, 의무위원회, 기타서무"},
@@ -75,51 +33,69 @@ data = [
     {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안 소장"},
 ]
 
-# 4. 검색창
+# [3] CSS 스타일 적용
+st.markdown("""
+<style>
+    header[data-testid="stHeader"] { display: none !important; }
+    [data-testid="stMainBlockContainer"] { padding-top: 1rem !important; }
+    .main-title { font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 10px; }
+    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px; border-bottom: 1px solid #eeeeee; }
+    .info-section { flex: 1; min-width: 0; }
+    .name-row { display: flex; align-items: baseline; gap: 8px; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
+    .pos-dept { font-size: 0.9rem; color: #555; }
+    .work-text { font-size: 0.85rem; color: #777; margin-top: 4px; line-height: 1.3; }
+    .icon-section { min-width: 70px; display: flex; justify-content: flex-end; gap: 15px; }
+    .icon-link { text-decoration: none !important; font-size: 1.3rem; font-weight: 800; color: #007bff !important; width: 30px; text-align: center; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
+
+# [4] 검색 및 출력 로직
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-# 5. 리스트 출력
-for p in data:
-    # 검색 필터링 (대소문자 구분 없음)
-    search_targets = [p.get('name', ''), p.get('dept', ''), p.get('work', ''), p.get('pos', '')]
-    if query and not any(query.lower() in str(val).lower() for val in search_targets):
-        continue
+for person in contact_data:
+    # 검색어 필터링
+    name = person.get('name', '')
+    dept = person.get('dept', '')
+    work = person.get('work', '')
+    pos = person.get('pos', '')
     
-    # [데이터 전처리]
-    # 내선번호(T) 처리
+    if query:
+        search_str = f"{name}{dept}{work}{pos}".lower()
+        if query.lower() not in search_str:
+            continue
+
+    # 아이콘 태그 초기화
     t_tag = ""
-    ext_val = str(p.get('ext', '')).strip()
+    m_tag = ""
+    
+    # 내선번호(T) 생성 조건
+    ext_val = str(person.get('ext', '')).strip()
     if ext_val:
-        # 주상건 차장님만 02-2258, 나머지는 02-3147 (기존 로직 유지)
-        prefix = "022258" if p['name'] == "주상건" else "023147"
+        prefix = "022258" if name == "주상건" else "023147"
         t_tag = f'<a href="tel:{prefix}{ext_val}" class="icon-link">T</a>'
     
-    # 휴대폰(M) 처리
-    m_tag = ""
-    mobile_val = str(p.get('mobile', '')).replace('-', '').strip()
+    # 휴대폰(M) 생성 조건
+    mobile_val = str(person.get('mobile', '')).replace('-', '').strip()
     if mobile_val:
         m_tag = f'<a href="tel:{mobile_val}" class="icon-link">M</a>'
     
-    # 표시 텍스트 처리
-    pos = p.get('pos', '')
-    dept = p.get('dept', '')
+    # 텍스트 조립
     sep = " · " if pos and dept else ""
-    work_text = p.get('work', '')
-    work_html = f'<div class="work-text">- {work_text}</div>' if work_text else ""
+    work_display = f'<div class="work-text">- {work}</div>' if work else ""
 
-    # [최종 렌더링]
+    # 출력
     st.markdown(f"""
     <div class="contact-card">
         <div class="info-section">
             <div class="name-row">
-                <span class="name-text">{p['name']}</span>
+                <span class="name-text">{name}</span>
                 <span class="pos-dept">{pos}{sep}{dept}</span>
             </div>
-            {work_html}
+            {work_display}
         </div>
-        <div class="icon-section">
-            {t_tag}
-            {m_tag}
-        </div>
+        <div class="icon-section">{t_tag}{m_tag}</div>
     </div>
     """, unsafe_allow_html=True)
