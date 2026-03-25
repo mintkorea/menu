@@ -4,7 +4,7 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (버튼 증발 방지 및 강제 정렬)
+# 2. CSS 스타일 (버튼 크기 균등 배분 및 정렬)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
@@ -14,51 +14,57 @@ st.markdown("""
     div[data-testid="stTextInput"] input {
         border-radius: 10px !important;
         height: 45px !important;
+        border: 1px solid #ddd !important;
     }
 
-    /* 🔥 버튼 컨테이너: 양옆에 여백을 주어 버튼을 가운데로 모음 */
+    /* 🔥 버튼 컨테이너: 가로 정렬 강제 및 중앙 정렬 */
     div[data-testid="stHorizontalBlock"] {
-        padding: 0 15% !important; /* 좌우 15%씩 비워서 가운데로 몰기 */
-        gap: 10px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        padding: 0 5% !important; /* 양 옆 적당한 여백 */
     }
 
-    /* 모바일에서 버튼이 세로로 쌓이는 것 방지 */
-    div[data-testid="stHorizontalBlock"] > div {
-        flex: 1 1 auto !important;
+    /* 🔥 버튼 크기를 완전히 똑같이 고정 */
+    div[data-testid="column"] {
+        flex: 1 1 0% !important; /* 모든 컬럼이 동일한 너비 점유 */
         min-width: 0 !important;
     }
 
-    /* 버튼 공통 스타일 */
     .stButton > button {
         width: 100% !important;
-        height: 42px !important;
+        height: 48px !important; /* 터치하기 좋게 살짝 높임 */
         border-radius: 8px !important;
         font-weight: bold !important;
+        font-size: 16px !important;
         white-space: nowrap !important;
+        border: 1px solid #ddd !important;
     }
 
-    /* 검색 버튼 (파랑) */
+    /* 검색 버튼 스타일 (파랑) */
     div[data-testid="column"]:nth-child(1) button {
         background-color: #007bff !important;
         color: white !important;
+        border: none !important;
     }
 
-    /* 초기화 버튼 (회색) */
+    /* 초기화 버튼 스타일 (연회색) */
     div[data-testid="column"]:nth-child(2) button {
-        background-color: #f0f2f6 !important;
+        background-color: #ffffff !important;
         color: #333 !important;
     }
 
-    /* 리스트 카드 */
-    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
-    .name-text { font-weight: 700; font-size: 1.1rem; }
-    .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
-    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; }
-    .icon-link { text-decoration: none !important; font-size: 1.35rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
+    /* 리스트 카드 디자인 */
+    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #eee; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #111; }
+    .pos-dept { font-size: 0.85rem; color: #666; margin-left: 6px; }
+    .work-text { font-size: 0.82rem; color: #888; margin-top: 5px; line-height: 1.4; }
+    .icon-link { text-decoration: none !important; font-size: 1.4rem; font-weight: 800; color: #007bff !important; margin-left: 18px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:15px;">비상연락망</div>', unsafe_allow_html=True)
+st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:20px;">비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 데이터 로드
 @st.cache_data(ttl=300)
@@ -71,17 +77,17 @@ df = load_data(SHEET_URL)
 
 # 4. 초기화 함수
 def reset_all():
-    st.session_state["my_input_widget"] = ""
+    st.session_state["search_box"] = ""
 
 # 5. 검색 레이아웃
 query = st.text_input(
     "search",
     placeholder="🔍 검색 후 엔터 또는 버튼 클릭",
     label_visibility="collapsed",
-    key="my_input_widget"
+    key="search_box"
 )
 
-# 1:1 비율로 컬럼 생성
+# 1:1 비율로 컬럼을 생성하여 버튼 크기를 동일하게 맞춤
 col1, col2 = st.columns(2)
 with col1:
     if st.button("검색"):
@@ -115,6 +121,6 @@ if not df.empty:
                     </div>
                     <div class="work-text">{"- "+work if work.strip() else ""}</div>
                 </div>
-                <div style="display:flex;">{t_html}{m_html}</div>
+                <div style="display:flex; align-items:center;">{t_html}{m_html}</div>
             </div>
         """, unsafe_allow_html=True)
