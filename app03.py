@@ -3,84 +3,98 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 상단 여백 확보, 타이틀 중앙 정렬, 아이콘 간격 최소화
+# 2. CSS: 상단 여백 확보 및 초밀착 레이아웃
 st.markdown("""
 <style>
-    /* 상단 여백 충분히 확보 (타이틀 잘림 방지) */
+    /* 상단 여백 대폭 확보 및 배경색 고정 */
     .block-container { 
         padding-top: 5.5rem !important; 
         background-color: #ffffff; 
     }
     
-    /* 타이틀: 중앙 정렬 및 크기 확대 */
+    /* 타이틀: 중앙 정렬 및 폰트 확대 */
     .main-title {
-        font-size: 1.6rem; 
+        font-size: 1.7rem; 
         font-weight: 800;
         color: #000000;
         text-align: center;
-        margin-bottom: 0.8rem !important;
+        margin-bottom: 1.2rem !important;
     }
 
-    /* 검색창: 간격 밀착 */
+    /* 검색창: 슬림 디자인 및 간격 밀착 */
     .stTextInput { margin-top: -10px !important; margin-bottom: -30px !important; }
     .stTextInput input {
         border-radius: 4px !important;
-        border: 1px solid #cccccc !important;
-        height: 42px !important;
+        border: 1px solid #dddddd !important;
+        height: 40px !important;
     }
 
-    /* 카드 스타일: 이름과 아이콘 간격 극소화 */
+    /* 연락처 카드 레이아웃 (정보 85 : 아이콘 15) */
     .contact-card {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 14px 0px;
+        padding: 12px 0px;
         border-bottom: 1px solid #eeeeee;
     }
 
-    /* 정보 구역 (85%) */
     .info-section { flex: 0.85; }
     .name-row { display: flex; align-items: baseline; gap: 6px; }
     .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
-    .pos-dept { font-size: 1.0rem; color: #555; }
-    .work-text { font-size: 0.85rem; color: #888; margin-top: 2px; }
+    .pos-dept { font-size: 0.95rem; color: #555; }
+    .work-text { font-size: 0.8rem; color: #888; margin-top: 1px; line-height: 1.3; }
 
-    /* 아이콘 구역 (15%): 내선과 모바일 아이콘 차별화 및 간격 최소화 */
+    /* 아이콘 구역: [☎ | M] 간격 최소화 */
     .icon-section {
         flex: 0.15;
         display: flex;
         justify-content: flex-end;
-        gap: 15px; 
-        padding-right: 8px;
+        gap: 18px; 
+        padding-right: 10px;
     }
     
     .icon-link {
         text-decoration: none !important;
-        font-size: 1.4rem; 
+        font-size: 1.3rem; 
+        font-weight: 700;
         color: #000000 !important;
-        display: flex;
-        align-items: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 타이틀 출력
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터 로드
+# 3. 전체 데이터 반영 (이미지 명단 전체)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
-    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리 (본관, 의산연 등)"},
-    {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"8193","mobile":"010-5072-0919","work":"예비군, 민방위, 행사"},
-    {"dept":"총무팀","name":"주종호","pos":"과장","ext":"8202","mobile":"010-3324-1187","work":"보안, 미화, 대관"},
-    {"dept":"안전관리","name":"윤호열","pos":"UM","ext":"8199","mobile":"010-2623-7963","work":"소방방재, 시설관리"},
+    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
+    {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"8193","mobile":"010-5072-0919","work":"예비군대대장, 민방위, 병무행정, 행사, 그룹웨어 ITC, 의무위원회"},
+    {"dept":"총무팀","name":"주종호","pos":"과장","ext":"8202","mobile":"010-3324-1187","work":"보안, 미화, 대관, 게스트하우스, 인체유래물은행"},
+    {"dept":"총무팀","name":"강은희","pos":"대리","ext":"8206","mobile":"010-9127-1021","work":"의료원 직인/문서배부, 월례조회, 행사, 회의"},
+    {"dept":"총무팀","name":"김보라","pos":"선임","ext":"8192","mobile":"010-8073-0527","work":"명예교수실 점검 및 관리, 명예교수 차량등록, 부서운영비"},
+    {"dept":"총무팀","name":"노종현","pos":"책임","ext":"8195","mobile":"010-9425-3109","work":"행사, 회의자료취합, 단위기관장회의, 예비군대대"},
+    {"dept":"총무팀","name":"고규호","pos":"책임","ext":"8196","mobile":"010-3381-8870","work":"캘린더/다이어리, 인증평가, 대학정보공시, 시설안전점검"},
+    {"dept":"총무팀","name":"김두리","pos":"사원","ext":"8204","mobile":"010-9661-1257","work":"성의기숙사 사감"},
+    {"dept":"총무팀","name":"임세리","pos":"사원","ext":"8197","mobile":"010-3281-1229","work":"우편, 물품/비품청구, 정수기관리, 정보보호"},
+    {"dept":"총무팀","name":"김종식","pos":"사원","ext":"","mobile":"010-9256-6904","work":"업무지원"},
+    {"dept":"안전관리","name":"윤호열","pos":"UM","ext":"8199","mobile":"010-2623-7963","work":"소방/방재 인증평가, 시설/자산관리(옴니버스파크, 성의기숙사, 병원별관 등)"},
     {"dept":"안전관리","name":"주상건","pos":"차장","ext":"7135","mobile":"010-9496-6483","work":"시신기증 업무"},
-    {"dept":"비서실","name":"이경자","pos":"부장","ext":"8071","mobile":"010-6306-3652","work":"의무부총장 비서"},
-    {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안 협력업체 총괄"},
+    {"dept":"안전관리","name":"곽정승","pos":"과장","ext":"8194","mobile":"010-5218-6504","work":"사업계획, 예산, 주차/차량관리"},
+    {"dept":"안전관리","name":"박일용","pos":"과장","ext":"8201","mobile":"010-6205-7751","work":"계약(임대차, 용역 등), 사인물관리, 교원기숙사"},
+    {"dept":"안전관리","name":"이경종","pos":"부장","ext":"8203","mobile":"010-2623-7963","work":"교수업적평가(위원회관리), 문서분배, 그룹웨어 ITC"},
+    {"dept":"안전관리","name":"김준석","pos":"과장","ext":"8205","mobile":"010-9256-6904","work":"연구실 안전관리, 출입증등록, 연구원식당, 기타서무업무"},
+    {"dept":"비서실","name":"이경자","pos":"부장","ext":"8071","mobile":"010-6306-3652","work":"의무부총장, 기획조정실장 비서"},
+    {"dept":"비서실","name":"이상희","pos":"과장","ext":"8068","mobile":"010-3445-0623","work":"영성구현실장, 사무처장 비서"},
+    {"dept":"비서실","name":"박은영","pos":"과장","ext":"8069","mobile":"010-5348-6849","work":"의과대학장 비서"},
+    {"dept":"의산연 별관","name":"주용덕","pos":"","ext":"","mobile":"010-2021-9541","work":""},
+    {"dept":"의산연 별관","name":"김승배","pos":"","ext":"","mobile":"010-8704-2591","work":""},
+    {"dept":"의산연 별관","name":"안정진","pos":"","ext":"","mobile":"010-4925-2926","work":""},
+    {"dept":"협력업체","name":"신성휴","pos":"소장","ext":"","mobile":"010-7161-2201","work":""},
+    {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안"},
 ]
 
 # 4. 검색창
-query = st.text_input("", placeholder="성함, 부서 또는 업무 검색 (예: 보안, 시설)")
+query = st.text_input("", placeholder="성함, 부서 또는 업무 검색 (예: 보안, 시설, 총무)")
 
 # 5. 리스트 출력
 filtered_data = [
@@ -90,8 +104,9 @@ filtered_data = [
 
 st.markdown('<div class="list-container">', unsafe_allow_html=True)
 for p in filtered_data:
+    # 내선번호 자동완성 (02-3147-XXXX)
     ext_val = p['ext']
-    ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ext_val
+    ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ""
     mob_tel = p['mobile'].replace('-', '')
     
     st.markdown(f"""
@@ -101,11 +116,11 @@ for p in filtered_data:
                 <span class="name-text">{p['name']}</span>
                 <span class="pos-dept">{p['pos']} · {p['dept']}</span>
             </div>
-            <div class="work-text">- {p['work']}</div>
+            <div class="work-text">{"- " + p['work'] if p['work'] else ""}</div>
         </div>
         <div class="icon-section">
-            {"<a href='tel:"+ext_tel+"' class='icon-link' title='내선'>☎</a>" if ext_val != '-' else ""}
-            <a href="tel:{mob_tel}" class="icon-link" title='휴대폰'>📱</a>
+            {"<a href='tel:"+ext_tel+"' class='icon-link'>☎</a>" if ext_tel else ""}
+            <a href="tel:{mob_tel}" class="icon-link">M</a>
         </div>
     </div>
     """, unsafe_allow_html=True)
