@@ -4,37 +4,31 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (가운데 정렬 및 간격 조절)
+# 2. CSS 스타일 (버튼 증발 방지 및 강제 정렬)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding: 1rem 0.8rem !important; }
     
-    /* 검색창 디자인 */
+    /* 검색창 스타일 */
     div[data-testid="stTextInput"] input {
         border-radius: 10px !important;
         height: 45px !important;
-        border: 1px solid #ddd !important;
     }
 
-    /* 🔥 버튼 컨테이너: 양끝으로 벌어지지 않게 설정 */
+    /* 🔥 버튼 컨테이너: 양옆에 여백을 주어 버튼을 가운데로 모음 */
     div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: center !important; /* 가운데 정렬 */
-        gap: 8px !important;               /* 버튼 사이 간격 좁힘 */
-        flex-wrap: nowrap !important;
+        padding: 0 15% !important; /* 좌우 15%씩 비워서 가운데로 몰기 */
+        gap: 10px !important;
     }
 
-    /* 각 컬럼 너비 설정 */
-    div[data-testid="column"] {
-        width: auto !important;             /* 내용만큼만 차지 */
-        min-width: 100px !important;       /* 최소 너비 확보 */
-        max-width: 150px !important;       /* 너무 벌어지지 않게 제한 */
-        flex: 1 !important;
+    /* 모바일에서 버튼이 세로로 쌓이는 것 방지 */
+    div[data-testid="stHorizontalBlock"] > div {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
     }
 
-    /* 버튼 스타일 */
+    /* 버튼 공통 스타일 */
     .stButton > button {
         width: 100% !important;
         height: 42px !important;
@@ -47,17 +41,15 @@ st.markdown("""
     div[data-testid="column"]:nth-child(1) button {
         background-color: #007bff !important;
         color: white !important;
-        border: none !important;
     }
 
-    /* 초기화 버튼 (연회색) */
+    /* 초기화 버튼 (회색) */
     div[data-testid="column"]:nth-child(2) button {
         background-color: #f0f2f6 !important;
         color: #333 !important;
-        border: 1px solid #ddd !important;
     }
 
-    /* 연락처 카드 */
+    /* 리스트 카드 */
     .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
     .name-text { font-weight: 700; font-size: 1.1rem; }
     .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
@@ -68,7 +60,7 @@ st.markdown("""
 
 st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:15px;">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터 로드 (캐시 적용)
+# 3. 데이터 로드
 @st.cache_data(ttl=300)
 def load_data(url):
     csv_url = url.replace('/edit?usp=sharing', '/export?format=csv')
@@ -89,7 +81,7 @@ query = st.text_input(
     key="my_input_widget"
 )
 
-# 버튼 영역 (가운데 정렬 적용됨)
+# 1:1 비율로 컬럼 생성
 col1, col2 = st.columns(2)
 with col1:
     if st.button("검색"):
