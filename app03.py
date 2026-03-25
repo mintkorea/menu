@@ -4,7 +4,7 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (강력한 가로 배치 고정)
+# 2. CSS 스타일 (버튼 크기 강제 통일 및 중앙 밀착)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
@@ -14,53 +14,53 @@ st.markdown("""
     div[data-testid="stTextInput"] input {
         border-radius: 10px !important;
         height: 45px !important;
+        border: 1px solid #ddd !important;
     }
 
-    /* 🔥 핵심: columns 레이아웃을 무시하고 가로 정렬 강제 */
+    /* 🔥 핵심: 버튼 사이 간격을 좁히고 중앙으로 모음 */
     div[data-testid="stHorizontalBlock"] {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important; /* 정확히 50%씩 2열 고정 */
-        gap: 10px !important;
-        align-items: center !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important; /* 가운데 정렬 */
+        gap: 8px !important;                /* 버튼 사이 간격 좁힘 */
+        padding: 0 10px !important;
     }
 
-    /* 컬럼 자체의 마진이나 너비 초기화 */
+    /* 🔥 버튼 박스 크기를 완전히 똑같이 고정 */
     div[data-testid="column"] {
-        width: 100% !important;
-        flex: none !important;
+        flex: 0 1 140px !important;        /* 버튼 하나의 최대 너비를 140px로 제한 */
+        min-width: 0 !important;
     }
 
-    /* 버튼 스타일 통일 */
+    /* 버튼 공통 스타일 */
     .stButton > button {
         width: 100% !important;
-        height: 48px !important;
+        height: 44px !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 16px !important;
-        white-space: nowrap !important;
-        display: block !important;
+        font-size: 15px !important;
+        border: 1px solid #ddd !important;
     }
 
-    /* 검색 버튼 (파란색) */
+    /* 검색 버튼 (파랑) */
     div[data-testid="column"]:nth-child(1) button {
         background-color: #007bff !important;
         color: white !important;
         border: none !important;
     }
 
-    /* 초기화 버튼 (흰색 배경) */
+    /* 초기화 버튼 (흰색) */
     div[data-testid="column"]:nth-child(2) button {
         background-color: #ffffff !important;
         color: #333 !important;
-        border: 1px solid #ddd !important;
     }
 
-    /* 리스트 카드 디자인 */
+    /* 연락처 카드 */
     .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
     .name-text { font-weight: 700; font-size: 1.1rem; }
     .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
-    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; line-height: 1.4; }
-    .icon-link { text-decoration: none !important; font-size: 1.4rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
+    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; }
+    .icon-link { text-decoration: none !important; font-size: 1.35rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,17 +77,17 @@ df = load_data(SHEET_URL)
 
 # 4. 초기화 함수
 def reset_all():
-    st.session_state["search_widget"] = ""
+    st.session_state["search_input"] = ""
 
 # 5. 검색 레이아웃
 query = st.text_input(
     "search",
     placeholder="🔍 검색어 입력 후 엔터",
     label_visibility="collapsed",
-    key="search_widget"
+    key="search_input"
 )
 
-# 🔥 이 블록이 CSS Grid의 영향을 받아 무조건 1:1 가로 배치가 됩니다.
+# 버튼 영역
 col1, col2 = st.columns(2)
 with col1:
     if st.button("검색"):
