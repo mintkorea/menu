@@ -4,7 +4,7 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (가로 정렬 강제 고정)
+# 2. CSS 스타일 (가운데 정렬 및 간격 조절)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
@@ -17,28 +17,30 @@ st.markdown("""
         border: 1px solid #ddd !important;
     }
 
-    /* 🔥 핵심: 모바일에서 columns가 세로로 변하는 것을 방지 */
+    /* 🔥 버튼 컨테이너: 양끝으로 벌어지지 않게 설정 */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
-        flex-direction: row !important; /* 무조건 가로 정렬 */
-        flex-wrap: nowrap !important;   /* 줄바꿈 금지 */
-        gap: 10px !important;
+        flex-direction: row !important;
+        justify-content: center !important; /* 가운데 정렬 */
+        gap: 8px !important;               /* 버튼 사이 간격 좁힘 */
+        flex-wrap: nowrap !important;
     }
 
-    /* 컬럼 너비를 50%씩 강제 고정 */
+    /* 각 컬럼 너비 설정 */
     div[data-testid="column"] {
-        width: 50% !important;
-        flex: 1 1 50% !important;
-        min-width: 0 !important;
+        width: auto !important;             /* 내용만큼만 차지 */
+        min-width: 100px !important;       /* 최소 너비 확보 */
+        max-width: 150px !important;       /* 너무 벌어지지 않게 제한 */
+        flex: 1 !important;
     }
 
     /* 버튼 스타일 */
     .stButton > button {
         width: 100% !important;
-        height: 45px !important;
+        height: 42px !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        white-space: nowrap !important; /* 텍스트 줄바꿈 방지 */
+        white-space: nowrap !important;
     }
 
     /* 검색 버튼 (파랑) */
@@ -66,7 +68,7 @@ st.markdown("""
 
 st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:15px;">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터 로드
+# 3. 데이터 로드 (캐시 적용)
 @st.cache_data(ttl=300)
 def load_data(url):
     csv_url = url.replace('/edit?usp=sharing', '/export?format=csv')
@@ -82,14 +84,13 @@ def reset_all():
 # 5. 검색 레이아웃
 query = st.text_input(
     "search",
-    placeholder="🔍 검색 후 엔터 또는 검색 버튼",
+    placeholder="🔍 검색 후 엔터 또는 버튼 클릭",
     label_visibility="collapsed",
     key="my_input_widget"
 )
 
-# columns를 생성 (CSS에서 이 블록을 강제로 가로 정렬함)
+# 버튼 영역 (가운데 정렬 적용됨)
 col1, col2 = st.columns(2)
-
 with col1:
     if st.button("검색"):
         st.rerun()
@@ -125,4 +126,3 @@ if not df.empty:
                 <div style="display:flex;">{t_html}{m_html}</div>
             </div>
         """, unsafe_allow_html=True)
-        
