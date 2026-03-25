@@ -10,9 +10,9 @@ st.markdown("""
     padding:14px;
     border-radius:14px;
     margin-bottom:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
-/* 한 줄 구조 핵심 */
 .row {
     display:flex;
     justify-content:space-between;
@@ -20,7 +20,6 @@ st.markdown("""
     gap:10px;
 }
 
-/* 왼쪽 영역 */
 .left {
     display:flex;
     align-items:center;
@@ -34,7 +33,12 @@ st.markdown("""
     color:#ffc107;
 }
 
-/* 텍스트 */
+.name-wrap {
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
 .name {
     font-weight:700;
     font-size:1rem;
@@ -51,7 +55,6 @@ st.markdown("""
     margin-top:4px;
 }
 
-/* 오른쪽 버튼 */
 .right {
     display:flex;
     gap:6px;
@@ -59,19 +62,12 @@ st.markdown("""
 }
 
 .tel-btn {
-    padding:4px 8px;
+    padding:5px 9px;
     border-radius:8px;
     font-size:0.75rem;
     text-decoration:none;
     background:#e9ecef;
     color:#333;
-}
-
-/* 줄바꿈 방지 핵심 */
-.name-wrap {
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -79,23 +75,33 @@ st.markdown("""
 st.title("📞 성의교정 비상연락망")
 
 # ---------------- 데이터 ----------------
-data = [
-    {"name":"박현욱","pos":"팀장","dept":"총무팀","ext":"02-3147-8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
-    {"name":"김종래","pos":"차장","dept":"총무팀","ext":"02-3147-8191","mobile":"010-9056-3701","work":"시설 관리"},
-    {"name":"장영섭","pos":"차장","dept":"총무팀","ext":"02-3147-8193","mobile":"010-5072-0919","work":"예비군"},
-]
+def get_data():
+    return [
+        {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"02-3147-8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
+        {"dept":"총무팀","name":"김종래","pos":"차장","ext":"02-3147-8191","mobile":"010-9056-3701","work":"시설 및 자산관리"},
+        {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"02-3147-8193","mobile":"010-5072-0919","work":"예비군, 민방위"},
+        {"dept":"총무팀","name":"주종호","pos":"과장","ext":"02-3147-8202","mobile":"010-3324-1187","work":"보안, 대관"},
+        {"dept":"총무팀","name":"강은희","pos":"대리","ext":"02-3147-8206","mobile":"010-9127-1021","work":"문서배부, 행사"},
+        {"dept":"총무팀","name":"김보라","pos":"선임","ext":"02-3147-8192","mobile":"010-8073-0527","work":"차량등록, 운영비"},
+        {"dept":"안전관리","name":"주상건","pos":"차장","ext":"02-2258-7135","mobile":"010-9496-6483","work":"시신기증"},
+        {"dept":"비서실","name":"이경자","pos":"부장","ext":"02-3147-8071","mobile":"010-6306-3652","work":"비서"},
+    ]
+
+data = get_data()
 
 # ---------------- 상태 ----------------
 if "fav" not in st.session_state:
     st.session_state.fav = set()
 
 # ---------------- 검색 ----------------
-search = st.text_input("🔍 검색")
+search = st.text_input("🔍 검색 (이름/부서/업무)")
 
 filtered = data
 if search:
     s = search.lower()
     filtered = [x for x in data if s in str(x).lower()]
+
+st.caption(f"{len(filtered)}명")
 
 # ---------------- 출력 ----------------
 for i, c in enumerate(filtered):
@@ -106,30 +112,30 @@ for i, c in enumerate(filtered):
     # 카드 시작
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    # ----------- 한 줄 (핵심) -----------
-    st.markdown(f"""
-    <div class="row">
-        
-        <div class="left">
-            <div class="star">{star}</div>
-            <div class="name-wrap">
-                <div class="name">{c['name']}</div>
-                <div class="sub">{c['pos']} · {c['dept']}</div>
-            </div>
-        </div>
+    # ⭐ 한 줄 (HTML 들여쓰기 절대 금지)
+    html = f"""<div class="row">
 
-        <div class="right">
-            <a class="tel-btn" href="tel:{c['ext'].replace('-','')}">내선</a>
-            <a class="tel-btn" href="tel:{c['mobile'].replace('-','')}">휴대폰</a>
-        </div>
-
+<div class="left">
+    <div class="star">{star}</div>
+    <div class="name-wrap">
+        <div class="name">{c['name']}</div>
+        <div class="sub">{c['pos']} · {c['dept']}</div>
     </div>
-    """, unsafe_allow_html=True)
+</div>
 
-    # ----------- 업무 -----------    
+<div class="right">
+    <a class="tel-btn" href="tel:{c['ext'].replace('-','')}">내선</a>
+    <a class="tel-btn" href="tel:{c['mobile'].replace('-','')}">휴대폰</a>
+</div>
+
+</div>"""
+
+    st.markdown(html, unsafe_allow_html=True)
+
+    # 업무
     st.markdown(f'<div class="work">{c["work"]}</div>', unsafe_allow_html=True)
 
-    # ⭐ 즐겨찾기 버튼 (보이지 않게 위에 덮기)
+    # ⭐ 즐겨찾기 버튼 (숨은 버튼)
     if st.button("⭐", key=f"fav{i}"):
         if is_fav:
             st.session_state.fav.remove(c["name"])
