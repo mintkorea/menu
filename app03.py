@@ -3,7 +3,7 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (상단 밀착, 간격 1:1, 아이콘 너비 최소화)
+# 2. CSS 스타일 (상단 밀착, 간격 1:1, 아이콘 너비 최적화)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
@@ -23,7 +23,7 @@ st.markdown("""
         padding-bottom: 20px !important; 
     }
 
-    /* 카드 레이아웃 */
+    /* 카드 레이아웃: 업무 내용 공간 극대화 */
     .contact-card {
         display: flex; justify-content: space-between; align-items: center;
         padding: 10px 0px; border-bottom: 1px solid #eeeeee;
@@ -51,7 +51,7 @@ st.markdown("""
 
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터셋 (이미지 데이터 기반)
+# 3. 데이터셋 (내선 없는 인원 포함 전수 반영)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
@@ -63,7 +63,7 @@ data = [
     {"dept":"총무팀","name":"고규호","pos":"책임","ext":"8196","mobile":"010-3381-8870","work":"캘린더/다이어리, 인증평가, 대학정보공시, 시설안전점검"},
     {"dept":"총무팀","name":"김두리","pos":"사원","ext":"8204","mobile":"010-9661-1257","work":"성의기숙사 사감"},
     {"dept":"총무팀","name":"임세리","pos":"사원","ext":"8197","mobile":"010-3281-1229","work":"우편, 물품/비품청구, 정수기관리, 정보보호"},
-    {"dept":"총무팀","name":"김종식","pos":"사원","ext":"","mobile":"010-9256-6904","work":"업무지원"},
+    {"dept":"총무팀","name":"김종식","pos":"사원","ext":"","mobile":"010-9256-6904","work":"업무지원"}, # 내선 없음
     {"dept":"안전관리","name":"윤호열","pos":"UM","ext":"8199","mobile":"010-2623-7963","work":"소방/방재 인증평가, 시설/자산관리(옴니버스파크, 성의기숙사, 병원별관 등)"},
     {"dept":"안전관리","name":"주상건","pos":"차장","ext":"7135","mobile":"010-9496-6483","work":"시신기증 업무"},
     {"dept":"안전관리","name":"곽정승","pos":"과장","ext":"8194","mobile":"010-5218-6504","work":"사업계획, 예산, 주차/차량관리"},
@@ -73,7 +73,7 @@ data = [
     {"dept":"비서실","name":"이경자","pos":"부장","ext":"8071","mobile":"010-6306-3652","work":"의무부총장, 기획조정실장 비서"},
     {"dept":"비서실","name":"이상희","pos":"과장","ext":"8068","mobile":"010-3445-0623","work":"영성구현실장, 사무처장 비서"},
     {"dept":"비서실","name":"박은영","pos":"과장","ext":"8069","mobile":"010-5348-6849","work":"의과대학장 비서"},
-    {"dept":"의산연 별관","name":"주용덕","pos":"","ext":"","mobile":"010-2021-9541","work":""},
+    {"dept":"의산연 별관","name":"주용덕","pos":"","ext":"","mobile":"010-2021-9541","work":""}, # 내선/직함/업무 없음
     {"dept":"의산연 별관","name":"김승배","pos":"","ext":"","mobile":"010-8704-2591","work":""},
     {"dept":"의산연 별관","name":"안정진","pos":"","ext":"","mobile":"010-4925-2926","work":""},
     {"dept":"협력업체","name":"신성휴","pos":"소장","ext":"","mobile":"010-7161-2201","work":"미화 소장"},
@@ -83,28 +83,29 @@ data = [
 # 4. 검색창
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-# 5. 리스트 출력
+# 5. 리스트 출력 루프
 for p in data:
     if query and not any(query.lower() in str(val).lower() for val in p.values()):
         continue
     
-    # 전화번호 전처리
+    # 내선 번호 유무에 따른 전화번호 생성
     ext_val = p.get('ext', '')
     ext_tel = f"023147{ext_val}" if (ext_val and ext_val.isdigit()) else ""
-    if p['name'] == "주상건": ext_tel = "0222587135"
+    if p['name'] == "주상건": ext_tel = "0222587135" # 주상건 차장 예외 처리
+    
     mob_tel = p['mobile'].replace('-', '') if p.get('mobile') else ""
     
-    # 데이터가 비어있을 경우 표시할 텍스트 처리
-    pos_display = p['pos'] if p['pos'] else ""
-    dept_display = p['dept'] if p['dept'] else ""
+    # 텍스트 유무에 따른 표시 로직 (HTML 깨짐 방지 핵심)
+    pos_display = p.get('pos', '')
+    dept_display = p.get('dept', '')
     connector = " · " if (pos_display and dept_display) else ""
-    work_display = f"- {p['work']}" if p['work'] else ""
+    work_display = f"- {p['work']}" if p.get('work') else ""
 
-    # 아이콘 태그 생성 (데이터가 있을 때만)
+    # 아이콘 태그 생성 (내선 T는 데이터가 있을 때만 생성)
     t_tag = f'<a href="tel:{ext_tel}" class="icon-link">T</a>' if ext_tel else ''
     m_tag = f'<a href="tel:{mob_tel}" class="icon-link">M</a>' if mob_tel else ''
     
-    # 최종 렌더링 (가장 안전한 f-string 구조)
+    # 안전한 렌더링
     st.markdown(f"""
         <div class="contact-card">
             <div class="info-section">
