@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # 1. 페이지 설정
-st.set_page_config(page_title="성의교정 연락망", layout="wide")
+st.set_page_config(page_title="성의교정 충무팀 연락망", layout="wide")
 
 # 2. CSS 스타일
 st.markdown("""
@@ -21,7 +21,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">충무팀 비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 구글 시트 데이터 로드 함수
 @st.cache_data(ttl=600)  # 10분마다 데이터 갱신
