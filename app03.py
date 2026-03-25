@@ -4,44 +4,41 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (모바일 세로 쌓임 방지 및 버튼 크기 강제 통일)
+# 2. CSS 스타일 (강력한 가로 배치 고정)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding: 1rem 0.8rem !important; }
     
-    /* 검색창 */
+    /* 검색창 디자인 */
     div[data-testid="stTextInput"] input {
         border-radius: 10px !important;
         height: 45px !important;
     }
 
-    /* 🔥 핵심: 모바일에서도 절대 세로로 쌓이지 않게 강제 고정 */
+    /* 🔥 핵심: columns 레이아웃을 무시하고 가로 정렬 강제 */
     div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important; /* 가로 방향 고정 */
-        flex-wrap: nowrap !important;   /* 줄바꿈 금지 */
-        align-items: center !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important; /* 정확히 50%씩 2열 고정 */
         gap: 10px !important;
-        width: 100% !important;
+        align-items: center !important;
     }
 
-    /* 🔥 두 버튼의 부모 컬럼 너비를 정확히 50%씩 배분 */
+    /* 컬럼 자체의 마진이나 너비 초기화 */
     div[data-testid="column"] {
-        width: 50% !important; 
-        flex: 1 1 50% !important; 
-        min-width: 0 !important; /* 너비 감소 허용 */
+        width: 100% !important;
+        flex: none !important;
     }
 
-    /* 버튼 공통 스타일 */
+    /* 버튼 스타일 통일 */
     .stButton > button {
         width: 100% !important;
-        height: 45px !important;
+        height: 48px !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 15px !important;
-        white-space: nowrap !important; /* 텍스트 줄바꿈 금지 */
-        padding: 0 !important;
+        font-size: 16px !important;
+        white-space: nowrap !important;
+        display: block !important;
     }
 
     /* 검색 버튼 (파란색) */
@@ -51,19 +48,19 @@ st.markdown("""
         border: none !important;
     }
 
-    /* 초기화 버튼 (흰색/회색 테두리) */
+    /* 초기화 버튼 (흰색 배경) */
     div[data-testid="column"]:nth-child(2) button {
         background-color: #ffffff !important;
         color: #333 !important;
         border: 1px solid #ddd !important;
     }
 
-    /* 리스트 카드 */
+    /* 리스트 카드 디자인 */
     .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
     .name-text { font-weight: 700; font-size: 1.1rem; }
     .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
-    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; }
-    .icon-link { text-decoration: none !important; font-size: 1.35rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
+    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; line-height: 1.4; }
+    .icon-link { text-decoration: none !important; font-size: 1.4rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -90,7 +87,7 @@ query = st.text_input(
     key="search_widget"
 )
 
-# 컬럼 생성 (CSS에서 강제로 가로 50:50으로 고정함)
+# 🔥 이 블록이 CSS Grid의 영향을 받아 무조건 1:1 가로 배치가 됩니다.
 col1, col2 = st.columns(2)
 with col1:
     if st.button("검색"):
