@@ -1,47 +1,125 @@
+import streamlit as st
+
+# 1. 페이지 설정
+st.set_page_config(page_title="성의교정 연락망", layout="wide")
+
+# 2. CSS 스타일 (레이아웃 및 모바일 최적화)
+st.markdown("""
+<style>
+    header[data-testid="stHeader"] { display: none !important; }
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+    }
+    .main-title {
+        font-size: 1.8rem; font-weight: 800; color: #000;
+        text-align: center; margin-bottom: 10px !important; line-height: 1.2;
+    }
+    /* 검색창 상하 간격 조정 */
+    div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
+        padding-top: 10px !important;    
+        padding-bottom: 15px !important; 
+    }
+    .contact-card {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 12px 0px; border-bottom: 1px solid #eeeeee;
+    }
+    .info-section { flex: 1; padding-right: 5px; min-width: 0; }
+    .name-row { display: flex; align-items: baseline; gap: 8px; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; white-space: nowrap; }
+    .pos-dept { font-size: 0.9rem; color: #555; white-space: nowrap; }
+    .work-text { 
+        font-size: 0.85rem; color: #777; margin-top: 4px; 
+        line-height: 1.3; word-break: keep-all;
+    }
+    .icon-section {
+        min-width: 70px; display: flex; justify-content: flex-end;
+        gap: 15px; margin-left: 10px;
+    }
+    .icon-link {
+        text-decoration: none !important; font-size: 1.3rem; 
+        font-weight: 800; color: #007bff !important; /* 클릭 강조를 위해 색상 부여 */
+        width: 30px; text-align: center;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
+
+# 3. 데이터셋 (출력 로직보다 반드시 위에 있어야 함)
+data = [
+    {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
+    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
+    {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"8193","mobile":"010-5072-0919","work":"예비군대대장, 민방위, 업무행정, 행사, 그룹웨어 ITC, 의무위원회, 기타서무"},
+    {"dept":"총무팀","name":"주종호","pos":"과장","ext":"8202","mobile":"010-3324-1187","work":"보안, 미화, 대관, 게스트하우스, 인체유래물은행"},
+    {"dept":"총무팀","name":"강은희","pos":"대리","ext":"8206","mobile":"010-9127-1021","work":"의료원 직인/문서배부, 월례조회, 행사, 회의"},
+    {"dept":"총무팀","name":"김보라","pos":"선임","ext":"8192","mobile":"010-8073-0527","work":"명예교수실 점검 및 관리, 명예교수 차량등록, 부서운영비"},
+    {"dept":"총무팀","name":"노종현","pos":"책임","ext":"8195","mobile":"010-9425-3109","work":"행사, 회의자료취합, 단위기관장회의, 예비군대대"},
+    {"dept":"총무팀","name":"고규호","pos":"책임","ext":"8196","mobile":"010-3381-8870","work":"캘린더/다이어리, 인증평가, 대학정보공시, 시설안전점검"},
+    {"dept":"총무팀","name":"김두리","pos":"사원","ext":"8204","mobile":"010-9661-1257","work":"성의기숙사 사감"},
+    {"dept":"총무팀","name":"임세리","pos":"사원","ext":"8197","mobile":"010-3281-1229","work":"우편, 물품/비품청구, 정수기관리, 정보보호"},
+    {"dept":"총무팀","name":"김종식","pos":"사원","ext":"","mobile":"010-9256-6904","work":"업무지원"},
+    {"dept":"안전관리","name":"윤호열","pos":"UM","ext":"8199","mobile":"010-2623-7963","work":"소방/방재 인증평가, 시설/자산관리(옴니버스파크, 성의기숙사, 병원별관 등)"},
+    {"dept":"안전관리","name":"주상건","pos":"차장","ext":"7135","mobile":"010-9496-6483","work":"시신기증 업무"},
+    {"dept":"안전관리","name":"곽정승","pos":"과장","ext":"8194","mobile":"010-5218-6504","work":"사업계획, 예산, 주차/차량관리"},
+    {"dept":"안전관리","name":"박일용","pos":"과장","ext":"8201","mobile":"010-6205-7751","work":"계약(임대차, 용역 등), 사인물관리, 교원기숙사"},
+    {"dept":"안전관리","name":"이경종","pos":"부장","ext":"8203","mobile":"010-2623-7963","work":"교수업적평가(위원회관리), 문서분배, 그룹웨어 ITC"},
+    {"dept":"안전관리","name":"김준석","pos":"과장","ext":"8205","mobile":"010-9256-6904","work":"연구실 안전관리, 출입증등록, 연구원식당, 기타서무업무"},
+    {"dept":"비서실","name":"이경자","pos":"부장","ext":"8071","mobile":"010-6306-3652","work":"의무부총장, 기획조정실장 비서"},
+    {"dept":"비서실","name":"이상희","pos":"과장","ext":"8068","mobile":"010-3445-0623","work":"영성구현실장, 사무처장 비서"},
+    {"dept":"비서실","name":"박은영","pos":"과장","ext":"8069","mobile":"010-5348-6849","work":"의과대학장 비서"},
+    {"dept":"의산연 별관","name":"주용덕","pos":"","ext":"","mobile":"010-2021-9541","work":""},
+    {"dept":"의산연 별관","name":"김승배","pos":"","ext":"","mobile":"010-8704-2591","work":""},
+    {"dept":"의산연 별관","name":"안정진","pos":"","ext":"","mobile":"010-4925-2926","work":""},
+    {"dept":"협력업체","name":"신성휴","pos":"소장","ext":"","mobile":"010-7161-2201","work":"미화 소장"},
+    {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안 소장"},
+]
+
+# 4. 검색창
+query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
+
 # 5. 리스트 출력
 for p in data:
-    # 검색 필터링 (기존 동일)
+    # 검색 필터링 (대소문자 구분 없음)
     search_targets = [p.get('name', ''), p.get('dept', ''), p.get('work', ''), p.get('pos', '')]
     if query and not any(query.lower() in str(val).lower() for val in search_targets):
         continue
     
-    # [사전 처리 1] 내선번호(T) 처리 - 로직 강화
+    # [데이터 전처리]
+    # 내선번호(T) 처리
     t_tag = ""
-    ext_val = str(p.get('ext', '')).strip() # 공백 제거 및 문자열 변환
-    
-    if ext_val: # 내선번호가 실제로 존재할 때만 생성
-        # 번호 체계 설정
+    ext_val = str(p.get('ext', '')).strip()
+    if ext_val:
+        # 주상건 차장님만 02-2258, 나머지는 02-3147 (기존 로직 유지)
         prefix = "022258" if p['name'] == "주상건" else "023147"
-        full_ext = f"{prefix}{ext_val}"
-        t_tag = f'<a href="tel:{full_ext}" class="icon-link" style="text-decoration:none;">T</a>'
+        t_tag = f'<a href="tel:{prefix}{ext_val}" class="icon-link">T</a>'
     
-    # [사전 처리 2] 휴대폰(M) 처리
+    # 휴대폰(M) 처리
     m_tag = ""
     mobile_val = str(p.get('mobile', '')).replace('-', '').strip()
     if mobile_val:
-        m_tag = f'<a href="tel:{mobile_val}" class="icon-link" style="text-decoration:none;">M</a>'
+        m_tag = f'<a href="tel:{mobile_val}" class="icon-link">M</a>'
     
-    # [사전 처리 3] 텍스트 정보
+    # 표시 텍스트 처리
     pos = p.get('pos', '')
     dept = p.get('dept', '')
     sep = " · " if pos and dept else ""
     work_text = p.get('work', '')
-    work_display = f'<div class="work-text">- {work_text}</div>' if work_text else ""
+    work_html = f'<div class="work-text">- {work_text}</div>' if work_text else ""
 
-    # [최종 출력] f-string 구조 단순화
-    html_content = f"""
+    # [최종 렌더링]
+    st.markdown(f"""
     <div class="contact-card">
         <div class="info-section">
             <div class="name-row">
                 <span class="name-text">{p['name']}</span>
                 <span class="pos-dept">{pos}{sep}{dept}</span>
             </div>
-            {work_display}
+            {work_html}
         </div>
         <div class="icon-section">
             {t_tag}
             {m_tag}
         </div>
     </div>
-    """
-    st.markdown(html_content, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
