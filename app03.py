@@ -3,7 +3,7 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (상단 밀착, 간격 1:1, 아이콘 공간 최적화)
+# 2. CSS 스타일 (상단 밀착, 간격 1:1, 아이콘 너비 최소화)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
@@ -23,7 +23,7 @@ st.markdown("""
         padding-bottom: 20px !important; 
     }
 
-    /* 카드 레이아웃: 업무 내용 공간 극대화 */
+    /* 카드 레이아웃 */
     .contact-card {
         display: flex; justify-content: space-between; align-items: center;
         padding: 10px 0px; border-bottom: 1px solid #eeeeee;
@@ -51,7 +51,7 @@ st.markdown("""
 
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터셋 (이미지 전수 반영)
+# 3. 데이터셋 (이미지 데이터 기반)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
@@ -83,34 +83,40 @@ data = [
 # 4. 검색창
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-# 5. 리스트 출력 루프
+# 5. 리스트 출력
 for p in data:
     if query and not any(query.lower() in str(val).lower() for val in p.values()):
         continue
     
-    # 전화번호 처리
+    # 전화번호 전처리
     ext_val = p.get('ext', '')
-    ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ""
+    ext_tel = f"023147{ext_val}" if (ext_val and ext_val.isdigit()) else ""
     if p['name'] == "주상건": ext_tel = "0222587135"
-    mob_tel = p['mobile'].replace('-', '')
+    mob_tel = p['mobile'].replace('-', '') if p.get('mobile') else ""
     
-    # 조건부 T 아이콘 생성
+    # 데이터가 비어있을 경우 표시할 텍스트 처리
+    pos_display = p['pos'] if p['pos'] else ""
+    dept_display = p['dept'] if p['dept'] else ""
+    connector = " · " if (pos_display and dept_display) else ""
+    work_display = f"- {p['work']}" if p['work'] else ""
+
+    # 아이콘 태그 생성 (데이터가 있을 때만)
     t_tag = f'<a href="tel:{ext_tel}" class="icon-link">T</a>' if ext_tel else ''
-    m_tag = f'<a href="tel:{mob_tel}" class="icon-link">M</a>'
+    m_tag = f'<a href="tel:{mob_tel}" class="icon-link">M</a>' if mob_tel else ''
     
-    # 최종 결과물 렌더링
-    st.write(f'''
+    # 최종 렌더링 (가장 안전한 f-string 구조)
+    st.markdown(f"""
         <div class="contact-card">
             <div class="info-section">
                 <div class="name-row">
                     <span class="name-text">{p['name']}</span>
-                    <span class="pos-dept">{p['pos']} · {p['dept']}</span>
+                    <span class="pos-dept">{pos_display}{connector}{dept_display}</span>
                 </div>
-                <div class="work-text">{("- " + p['work']) if p['work'] else ""}</div>
+                <div class="work-text">{work_display}</div>
             </div>
             <div class="icon-section">
                 {t_tag}
                 {m_tag}
             </div>
         </div>
-    ''', unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
