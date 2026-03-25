@@ -3,15 +3,15 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 상단 밀착 및 검색창 주변 여백 미세 조정
+# 2. CSS: 간격 1:1 동기화 및 상단 밀착
 st.markdown("""
 <style>
-    /* 상단 헤더 숨기기 */
+    /* 상단 헤더 제거 */
     header[data-testid="stHeader"] {
         display: none !important;
     }
     
-    /* 최상단 여백 제거 */
+    /* 최상단 여백 최소화 */
     [data-testid="stMainBlockContainer"] {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
@@ -24,14 +24,15 @@ st.markdown("""
         font-weight: 800;
         color: #000;
         text-align: center;
-        margin-bottom: 0px !important;
+        margin: 0px !important;
         padding: 0px !important;
+        line-height: 1.2;
     }
 
-    /* 검색창 상하 여백 조정 (축구장 폐쇄, 적정 간격 확보) */
+    /* 검색창 상단과 하단 간격을 동일하게 조정 (약 20px) */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
-        padding-top: 15px !important;    /* 타이틀 ~ 검색창 사이 */
-        padding-bottom: 20px !important; /* 검색창 ~ 첫 결과(박현욱) 사이 */
+        padding-top: 20px !important;    /* 타이틀 ~ 검색창 사이 간격 */
+        padding-bottom: 20px !important; /* 검색창 ~ 박현욱 사이 간격 */
     }
 
     .stTextInput { 
@@ -110,7 +111,7 @@ data = [
 # 4. 검색창
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-# 5. 결과 리스트 출력
+# 5. 리스트 출력
 for p in data:
     if query and not any(query.lower() in str(val).lower() for val in p.values()):
         continue
@@ -121,7 +122,7 @@ for p in data:
     
     mob_tel = p['mobile'].replace('-', '')
     
-    contact_html = f"""
+    st.markdown(f"""
     <div class="contact-card">
         <div class="info-section">
             <div class="name-row">
@@ -135,5 +136,4 @@ for p in data:
             <a href="tel:{mob_tel}" class="icon-link">M</a>
         </div>
     </div>
-    """
-    st.markdown(contact_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
