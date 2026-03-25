@@ -3,37 +3,35 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 상단 잘림 방지 및 초정밀 간격 조정
+# 2. CSS: 간격 정밀 조정
 st.markdown("""
 <style>
-    /* 1. 전체 여백 초기화 및 상단 여백 강제 확보 */
-    header {visible: hidden;}
+    /* 상단 여백 한 줄 축소 (6rem -> 4.5rem) */
+    header {visibility: hidden;}
     .main .block-container {
-        padding-top: 6rem !important; /* 여백을 더 키움 */
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-top: 4.5rem !important; 
         background-color: #ffffff;
     }
     
-    /* 2. 타이틀: 중앙 정렬 및 크기 고정 */
+    /* 타이틀: 중앙 정렬 및 아래 여백 절반 축소 (1.5rem -> 0.7rem) */
     .main-title {
         font-size: 1.8rem; 
         font-weight: 800;
         color: #000000;
         text-align: center;
-        margin-bottom: 1.5rem !important;
+        margin-bottom: 0.7rem !important;
         letter-spacing: -0.5px;
     }
 
-    /* 3. 검색창: 타이틀과 더 밀착 */
-    .stTextInput { margin-top: -15px !important; margin-bottom: -35px !important; }
+    /* 검색창: 타이틀과의 거리 유지 */
+    .stTextInput { margin-top: 0px !important; margin-bottom: -30px !important; }
     .stTextInput input {
         border-radius: 4px !important;
         border: 1px solid #cccccc !important;
         height: 42px !important;
     }
 
-    /* 4. 연락처 카드: 정보(90%) : 아이콘(10%) 비율로 밀착 */
+    /* 연락처 카드: 정보와 아이콘 사이 간격 확보 (비율 조정 75:25) */
     .contact-card {
         display: flex;
         justify-content: space-between;
@@ -42,18 +40,23 @@ st.markdown("""
         border-bottom: 1px solid #eeeeee;
     }
 
-    .info-section { flex: 0.9; }
+    /* 업무 내용과 아이콘 사이 간격 확보를 위해 폭 조정 */
+    .info-section { 
+        flex: 0.75; 
+        padding-right: 15px; /* 텍스트와 아이콘 사이 여백 추가 */
+    }
+    
     .name-row { display: flex; align-items: baseline; gap: 8px; }
     .name-text { font-weight: 700; font-size: 1.15rem; color: #000; }
     .pos-dept { font-size: 1.0rem; color: #555; }
     .work-text { font-size: 0.85rem; color: #888; margin-top: 3px; line-height: 1.4; }
 
-    /* 5. 아이콘 구역: ☎ | M 조합 및 간격 극소화 */
+    /* 아이콘 구역: 폭을 조금 넓혀 텍스트와 거리 두기 */
     .icon-section {
-        flex: 0.1;
+        flex: 0.25;
         display: flex;
         justify-content: flex-end;
-        gap: 22px; 
+        gap: 20px; 
         padding-right: 5px;
     }
     
