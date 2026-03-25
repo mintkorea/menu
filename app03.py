@@ -2,6 +2,24 @@ import streamlit as st
 
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
+# ---------------- 상태 ----------------
+if "fav" not in st.session_state:
+    st.session_state.fav = set()
+
+# ---------------- 즐겨찾기 클릭 처리 ----------------
+query = st.query_params
+
+if "fav" in query:
+    name = query["fav"]
+
+    if name in st.session_state.fav:
+        st.session_state.fav.remove(name)
+    else:
+        st.session_state.fav.add(name)
+
+    st.query_params.clear()
+    st.rerun()
+
 # ---------------- CSS ----------------
 st.markdown("""
 <style>
@@ -89,10 +107,6 @@ def get_data():
 
 data = get_data()
 
-# ---------------- 상태 ----------------
-if "fav" not in st.session_state:
-    st.session_state.fav = set()
-
 # ---------------- 검색 ----------------
 search = st.text_input("🔍 검색 (이름/부서/업무)")
 
@@ -104,19 +118,19 @@ if search:
 st.caption(f"{len(filtered)}명")
 
 # ---------------- 출력 ----------------
-for i, c in enumerate(filtered):
+for c in filtered:
 
     is_fav = c["name"] in st.session_state.fav
     star = "★" if is_fav else "☆"
 
-    # 카드 시작
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    # ⭐ 한 줄 (HTML 들여쓰기 절대 금지)
     html = f"""<div class="row">
 
 <div class="left">
-    <div class="star">{star}</div>
+    <a href="?fav={c['name']}" style="text-decoration:none;">
+        <span class="star">{star}</span>
+    </a>
     <div class="name-wrap">
         <div class="name">{c['name']}</div>
         <div class="sub">{c['pos']} · {c['dept']}</div>
@@ -132,15 +146,6 @@ for i, c in enumerate(filtered):
 
     st.markdown(html, unsafe_allow_html=True)
 
-    # 업무
     st.markdown(f'<div class="work">{c["work"]}</div>', unsafe_allow_html=True)
-
-    # ⭐ 즐겨찾기 버튼 (숨은 버튼)
-    if st.button("⭐", key=f"fav{i}"):
-        if is_fav:
-            st.session_state.fav.remove(c["name"])
-        else:
-            st.session_state.fav.add(c["name"])
-        st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
