@@ -4,28 +4,53 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (모바일 최적화 및 검색창 디자인)
+# 2. CSS 스타일 (버튼을 검색창 안으로 강제 견인)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding: 1rem 0.8rem !important; }
     
-    /* 검색창을 둥글게 만들고 돋보기 아이콘 느낌 부여 */
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+    /* 검색창 둥글게 디자인 */
+    div[data-testid="stTextInput"] input {
         border-radius: 25px !important;
         height: 45px !important;
+        padding-right: 45px !important; /* X 버튼이 텍스트 안 가리게 여백 */
+        border: 1px solid #ddd !important;
     }
-    
-    /* 연락처 카드 디자인 */
-    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px; border-bottom: 1px solid #eee; width: 100%; }
+
+    /* 버튼을 검색창 오른쪽 끝으로 강제 이동 (핵심 레이아웃) */
+    div[data-testid="column"]:nth-child(2) {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-left: -55px !important; /* 검색창 안으로 밀어넣기 */
+        margin-top: 2px !important;    /* 위아래 중앙 맞춤 */
+        z-index: 999 !important;       /* 검색창보다 위에 보이게 */
+        min-width: 45px !important;
+    }
+
+    /* X 버튼 모양 (글자만 보이게) */
+    div[data-testid="column"]:nth-child(2) button {
+        background: transparent !important;
+        border: none !important;
+        color: #aaa !important;
+        font-size: 20px !important;
+        font-weight: bold !important;
+        box-shadow: none !important;
+        height: 45px !important;
+        width: 45px !important;
+    }
+
+    /* 카드 디자인 */
+    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
     .name-text { font-weight: 700; font-size: 1.1rem; }
-    .pos-dept { font-size: 0.85rem; color: #666; margin-left: 4px; }
-    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; line-height: 1.3; }
-    .icon-link { text-decoration: none !important; font-size: 1.3rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
+    .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
+    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; }
+    .icon-link { text-decoration: none !important; font-size: 1.35rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:15px;">비상연락망</div>', unsafe_allow_html=True)
+st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:20px;">비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 데이터 로드
 @st.cache_data(ttl=300)
@@ -36,35 +61,43 @@ def load_data(url):
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0/edit?usp=sharing"
 df = load_data(SHEET_URL)
 
-# 4. 검색창 구현 (X 버튼이 내장된 selectbox 활용)
-# 사용자가 직접 입력할 수 있도록 검색 기능을 활성화한 selectbox입니다.
-if not df.empty:
-    # 검색 후보군 (성함 위주로 보여주되, 실제 검색은 전체 필드 대상)
-    options = [""] + sorted(df['성명'].unique().tolist())
-    
-    search_query = st.selectbox(
-        "검색",
-        options=options,
-        index=0,
-        placeholder="🔍 성함, 부서, 업무 검색...",
-        label_visibility="collapsed"
-    )
+# 4. 세션 관리
+if "search_query" not in st.session_state:
+    st.session_state.search_query = ""
 
-    # 5. 리스트 출력
-    term = search_query.lower() if search_query else ""
-    
+# 5. 검색 레이아웃 (columns를 쓰되 CSS로 억지로 겹침)
+col1, col2 = st.columns([0.99, 0.01])
+
+with col1:
+    search_input = st.text_input(
+        "search",
+        value=st.session_state.search_query,
+        placeholder="🔍 성함, 부서, 업무 검색",
+        label_visibility="collapsed",
+        key="main_search"
+    )
+    st.session_state.search_query = search_input
+
+with col2:
+    # X 버튼 클릭 시 초기화
+    if st.button("✕"):
+        st.session_state.search_query = ""
+        st.rerun()
+
+# 6. 결과 출력
+if not df.empty:
+    term = st.session_state.search_query.lower()
     for _, row in df.iterrows():
         name, dept, pos = str(row['성명']), str(row['부서']), str(row['직함'])
         ext, mobile, work = str(row['내선']), str(row['휴대폰']), str(row['담당업무'])
 
-        # 검색 로직: 이름뿐만 아니라 부서, 업무로도 검색 가능하게 설정
         if term and term not in f"{name}{dept}{work}{pos}".lower():
             continue
 
-        t_num = ext.replace("-", "").strip()
-        m_num = mobile.replace("-", "").strip()
-        t_html = f'<a href="tel:{t_num}" class="icon-link">T</a>' if t_num else ""
-        m_html = f'<a href="tel:{m_num}" class="icon-link">M</a>' if m_num else ""
+        t_clean = ext.replace("-", "").strip()
+        m_clean = mobile.replace("-", "").strip()
+        t_html = f'<a href="tel:{t_clean}" class="icon-link">T</a>' if t_clean else ""
+        m_html = f'<a href="tel:{m_clean}" class="icon-link">M</a>' if m_clean else ""
         sep = " · " if pos and dept else ""
         
         st.markdown(f"""
@@ -79,5 +112,3 @@ if not df.empty:
                 <div style="display:flex;">{t_html}{m_html}</div>
             </div>
         """, unsafe_allow_html=True)
-else:
-    st.info("데이터를 불러오는 중입니다...")
