@@ -15,25 +15,18 @@ st.markdown("""
     border-radius:14px;
     margin-bottom:10px;
     box-shadow:0 2px 6px rgba(0,0,0,0.05);
-    position:relative;
 }
 
 .row {
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
 }
 
 .left {
     display:flex;
     align-items:center;
     gap:8px;
-}
-
-.star {
-    font-size:18px;
-    color:#ffc107;
 }
 
 .name {
@@ -65,15 +58,13 @@ st.markdown("""
     color:#333;
 }
 
-/* ⭐ 버튼 숨기기 (핵심) */
+/* ⭐ 버튼을 별처럼 */
 button[kind="secondary"] {
-    position:absolute;
-    left:14px;
-    top:14px;
-    width:20px;
-    height:20px;
-    opacity:0;
-    z-index:10;
+    border:none !important;
+    background:transparent !important;
+    font-size:18px !important;
+    padding:0 !important;
+    margin-right:4px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -103,32 +94,30 @@ for i, c in enumerate(filtered):
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    # ⭐ UI (보이는 별)
-    st.markdown(f"""<div class="row">
+    col1, col2 = st.columns([0.7, 0.3])
 
-<div class="left">
-    <span class="star">{star}</span>
-    <div>
-        <div class="name">{c['name']}</div>
-        <div class="sub">{c['pos']} · {c['dept']}</div>
-    </div>
-</div>
+    with col1:
+        c1, c2 = st.columns([0.1, 0.9])
 
-<div class="right">
-    <a class="tel-btn" href="tel:{c['ext'].replace('-','')}">내선</a>
-    <a class="tel-btn" href="tel:{c['mobile'].replace('-','')}">휴대폰</a>
-</div>
+        # ⭐ 진짜 버튼
+        with c1:
+            if st.button(star, key=f"fav{i}"):
+                if is_fav:
+                    st.session_state.fav.remove(c["name"])
+                else:
+                    st.session_state.fav.add(c["name"])
+                st.rerun()
 
-</div>""", unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"**{c['name']}**")
+            st.caption(f"{c['pos']} · {c['dept']}")
 
-    # ⭐ 실제 클릭 영역 (투명 버튼)
-    if st.button("⭐", key=f"fav{i}"):
-        if is_fav:
-            st.session_state.fav.remove(c["name"])
-        else:
-            st.session_state.fav.add(c["name"])
-        st.rerun()
+        st.markdown(f'<div class="work">{c["work"]}</div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="work">{c["work"]}</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <a class="tel-btn" href="tel:{c['ext'].replace('-','')}">내선</a>
+        <a class="tel-btn" href="tel:{c['mobile'].replace('-','')}">휴대폰</a>
+        """, unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
