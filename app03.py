@@ -4,17 +4,56 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (모바일 버튼 가로 배치 고정)
+# 2. CSS 스타일 (가로 정렬 강제 고정)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding: 1rem 0.8rem !important; }
-    div[data-testid="stTextInput"] input { border-radius: 10px !important; height: 45px !important; }
     
-    /* 버튼 레이아웃 고정 */
-    .stButton > button { width: 100% !important; height: 45px !important; border-radius: 8px !important; font-weight: bold !important; }
-    div[data-testid="column"]:nth-child(1) button { background-color: #007bff !important; color: white !important; border: none !important; }
-    div[data-testid="column"]:nth-child(2) button { background-color: #f0f2f6 !important; color: #333 !important; border: 1px solid #ddd !important; }
+    /* 검색창 디자인 */
+    div[data-testid="stTextInput"] input {
+        border-radius: 10px !important;
+        height: 45px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    /* 🔥 핵심: 모바일에서 columns가 세로로 변하는 것을 방지 */
+    div[data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important; /* 무조건 가로 정렬 */
+        flex-wrap: nowrap !important;   /* 줄바꿈 금지 */
+        gap: 10px !important;
+    }
+
+    /* 컬럼 너비를 50%씩 강제 고정 */
+    div[data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 0 !important;
+    }
+
+    /* 버튼 스타일 */
+    .stButton > button {
+        width: 100% !important;
+        height: 45px !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        white-space: nowrap !important; /* 텍스트 줄바꿈 방지 */
+    }
+
+    /* 검색 버튼 (파랑) */
+    div[data-testid="column"]:nth-child(1) button {
+        background-color: #007bff !important;
+        color: white !important;
+        border: none !important;
+    }
+
+    /* 초기화 버튼 (연회색) */
+    div[data-testid="column"]:nth-child(2) button {
+        background-color: #f0f2f6 !important;
+        color: #333 !important;
+        border: 1px solid #ddd !important;
+    }
 
     /* 연락처 카드 */
     .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
@@ -38,33 +77,29 @@ df = load_data(SHEET_URL)
 
 # 4. 초기화 함수
 def reset_all():
-    st.session_state["my_input_widget"] = "" # 검색창 비우기
+    st.session_state["my_input_widget"] = ""
 
-# 5. 검색창 레이아웃
-# 엔터를 치면 'my_input_widget'에 즉시 값이 저장됩니다.
+# 5. 검색 레이아웃
 query = st.text_input(
     "search",
-    placeholder="🔍 이름, 부서, 업무 검색 후 엔터",
+    placeholder="🔍 검색 후 엔터 또는 검색 버튼",
     label_visibility="collapsed",
     key="my_input_widget"
 )
 
-# 버튼 영역
+# columns를 생성 (CSS에서 이 블록을 강제로 가로 정렬함)
 col1, col2 = st.columns(2)
+
 with col1:
-    # 버튼은 사실상 시각적인 가이드 역할 + 강제 새로고침 역할
     if st.button("검색"):
-        st.rerun() 
+        st.rerun()
 
 with col2:
-    # 초기화 버튼을 누르면 reset_all 함수가 실행되어 검색창이 비워짐
     st.button("초기화", on_click=reset_all)
 
 # 6. 리스트 출력
 if not df.empty:
-    # 이제 '검색' 버튼을 따로 누르지 않아도 엔터만 치면 위젯의 값이 바로 term이 됩니다.
     term = query.lower()
-    
     for _, row in df.iterrows():
         name, dept, pos = str(row['성명']), str(row['부서']), str(row['직함'])
         ext, mobile, work = str(row['내선']), str(row['휴대폰']), str(row['담당업무'])
@@ -90,3 +125,4 @@ if not df.empty:
                 <div style="display:flex;">{t_html}{m_html}</div>
             </div>
         """, unsafe_allow_html=True)
+        
