@@ -37,7 +37,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">충무팀 비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 데이터셋
 contact_data = [
