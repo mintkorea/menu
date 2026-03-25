@@ -3,20 +3,37 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일
+# 2. CSS 스타일 (아이콘 영역 최적화)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding-top: 1rem !important; }
-    .main-title { font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 20px; }
-    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px; border-bottom: 1px solid #eeeeee; width: 100%; }
-    .info-section { flex: 1; min-width: 0; overflow: hidden; }
-    .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
-    .pos-dept { font-size: 0.9rem; color: #555; }
-    .work-text { font-size: 0.85rem; color: #777; margin-top: 4px; line-height: 1.3; }
-    .icon-section { min-width: 70px; display: flex; justify-content: flex-end; gap: 15px; flex-shrink: 0; }
-    .icon-link { text-decoration: none !important; font-size: 1.2rem; font-weight: 800; color: #007bff !important; }
+    .main-title { font-size: 1.6rem; font-weight: 800; text-align: center; margin-bottom: 15px; }
+    
+    .contact-card { 
+        display: flex; justify-content: space-between; align-items: center; 
+        padding: 10px 0px; border-bottom: 1px solid #eeeeee; width: 100%; 
+    }
+    
+    /* 정보 영역: 더 넓게 확보 */
+    .info-section { flex: 1; min-width: 0; padding-right: 10px; }
+    .name-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap; }
+    .name-text { font-weight: 700; font-size: 1.05rem; color: #000; white-space: nowrap; }
+    .pos-dept { font-size: 0.85rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .work-text { font-size: 0.8rem; color: #777; margin-top: 3px; line-height: 1.3; word-break: keep-all; }
+    
+    /* 아이콘 영역: 너비 축소 및 간격 조정 */
+    .icon-section { 
+        min-width: 55px; /* 70px -> 55px로 축소 */
+        display: flex; justify-content: flex-end; 
+        gap: 8px; /* 15px -> 8px로 축소 */
+        flex-shrink: 0; 
+    }
+    .icon-link { 
+        text-decoration: none !important; font-size: 1.15rem; 
+        font-weight: 800; color: #007bff !important; 
+        width: 24px; text-align: center; 
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,7 +78,7 @@ for p in contact_data:
     if query and query.lower() not in f"{name}{dept}{work}{pos}".lower():
         continue
 
-    # T(내선), M(휴대폰) 아이콘 생성 (조건부)
+    # T(내선), M(휴대폰) 아이콘 생성
     t_html = ""
     ext_val = str(p.get('ext', '')).strip()
     if ext_val:
@@ -73,11 +90,11 @@ for p in contact_data:
     if mobile_val:
         m_html = f'<a href="tel:{mobile_val}" class="icon-link">M</a>'
 
-    # 텍스트 정보 구성
+    # 텍스트 구성
     sep = " · " if pos and dept else ""
     work_html = f'<div class="work-text">- {work}</div>' if work else ""
 
-    # [핵심 수정] HTML을 한 줄로 구성하여 깨짐 방지
+    # 한 줄 HTML 카드 렌더링
     card_html = (
         f'<div class="contact-card">'
         f'<div class="info-section">'
