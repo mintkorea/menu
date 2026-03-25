@@ -4,45 +4,19 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (모바일 최적화)
+# 2. CSS 스타일 (모바일 버튼 가로 배치 고정)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding: 1rem 0.8rem !important; }
-
-    /* 검색창 디자인 */
-    div[data-testid="stTextInput"] input {
-        border-radius: 10px !important;
-        height: 45px !important;
-        border: 1px solid #ddd !important;
-    }
-
-    /* 버튼 영역 가로 배치 고정 */
-    [data-testid="column"] { width: 100% !important; }
+    div[data-testid="stTextInput"] input { border-radius: 10px !important; height: 45px !important; }
     
-    /* 버튼 스타일 */
-    .stButton > button {
-        width: 100% !important;
-        height: 45px !important;
-        border-radius: 8px !important;
-        font-weight: bold !important;
-    }
+    /* 버튼 레이아웃 고정 */
+    .stButton > button { width: 100% !important; height: 45px !important; border-radius: 8px !important; font-weight: bold !important; }
+    div[data-testid="column"]:nth-child(1) button { background-color: #007bff !important; color: white !important; border: none !important; }
+    div[data-testid="column"]:nth-child(2) button { background-color: #f0f2f6 !important; color: #333 !important; border: 1px solid #ddd !important; }
 
-    /* 검색 버튼 (파랑) */
-    div[data-testid="column"]:nth-child(1) button {
-        background-color: #007bff !important;
-        color: white !important;
-        border: none !important;
-    }
-
-    /* 초기화 버튼 (연회색) */
-    div[data-testid="column"]:nth-child(2) button {
-        background-color: #f0f2f6 !important;
-        color: #333 !important;
-        border: 1px solid #ddd !important;
-    }
-
-    /* 리스트 카드 스타일 */
+    /* 연락처 카드 */
     .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
     .name-text { font-weight: 700; font-size: 1.1rem; }
     .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
@@ -62,40 +36,34 @@ def load_data(url):
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0/edit?usp=sharing"
 df = load_data(SHEET_URL)
 
-# 4. 초기화 함수 (핵심!)
+# 4. 초기화 함수
 def reset_all():
-    # 1. 필터링용 세션 상태 비우기
-    st.session_state["search_word"] = ""
-    # 2. 위젯(st.text_input)의 내부 값 강제 비우기
-    st.session_state["my_input_widget"] = ""
+    st.session_state["my_input_widget"] = "" # 검색창 비우기
 
-# 5. 세션 상태 초기화
-if "search_word" not in st.session_state:
-    st.session_state["search_word"] = ""
-
-# 6. 검색창 및 버튼 레이아웃
-# 검색어 입력 (key를 지정해야 강제 초기화가 가능합니다)
+# 5. 검색창 레이아웃
+# 엔터를 치면 'my_input_widget'에 즉시 값이 저장됩니다.
 query = st.text_input(
     "search",
-    placeholder="🔍 이름, 부서, 업무 검색",
+    placeholder="🔍 이름, 부서, 업무 검색 후 엔터",
     label_visibility="collapsed",
     key="my_input_widget"
 )
 
-# 버튼 가로 배치 (모바일에서 한 줄로 나옴)
+# 버튼 영역
 col1, col2 = st.columns(2)
-
 with col1:
+    # 버튼은 사실상 시각적인 가이드 역할 + 강제 새로고침 역할
     if st.button("검색"):
-        st.session_state["search_word"] = query
+        st.rerun() 
 
 with col2:
-    # on_click을 사용하여 페이지가 그려지기 전에 세션을 먼저 비웁니다.
+    # 초기화 버튼을 누르면 reset_all 함수가 실행되어 검색창이 비워짐
     st.button("초기화", on_click=reset_all)
 
-# 7. 리스트 출력
+# 6. 리스트 출력
 if not df.empty:
-    term = st.session_state["search_word"].lower()
+    # 이제 '검색' 버튼을 따로 누르지 않아도 엔터만 치면 위젯의 값이 바로 term이 됩니다.
+    term = query.lower()
     
     for _, row in df.iterrows():
         name, dept, pos = str(row['성명']), str(row['부서']), str(row['직함'])
@@ -122,4 +90,3 @@ if not df.empty:
                 <div style="display:flex;">{t_html}{m_html}</div>
             </div>
         """, unsafe_allow_html=True)
-        
