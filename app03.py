@@ -6,17 +6,26 @@ st.set_page_config(page_title="성의교정 연락망", layout="wide")
 if "fav" not in st.session_state:
     st.session_state.fav = set()
 
-# ---------------- 즐겨찾기 클릭 처리 ----------------
+# ---------------- 즐겨찾기 처리 ----------------
 query = st.query_params
 
 if "fav" in query:
     name = query["fav"]
 
-    if name in st.session_state.fav:
-        st.session_state.fav.remove(name)
-    else:
-        st.session_state.fav.add(name)
+    # ⭐ 리스트 처리 (핵심)
+    if isinstance(name, list):
+        name = name[0]
 
+    fav_set = st.session_state.fav.copy()
+
+    if name in fav_set:
+        fav_set.remove(name)
+    else:
+        fav_set.add(name)
+
+    st.session_state.fav = fav_set
+
+    # ⭐ query 제거
     st.query_params.clear()
     st.rerun()
 
@@ -101,6 +110,11 @@ def get_data():
         {"dept":"총무팀","name":"주종호","pos":"과장","ext":"02-3147-8202","mobile":"010-3324-1187","work":"보안, 대관"},
         {"dept":"총무팀","name":"강은희","pos":"대리","ext":"02-3147-8206","mobile":"010-9127-1021","work":"문서배부, 행사"},
         {"dept":"총무팀","name":"김보라","pos":"선임","ext":"02-3147-8192","mobile":"010-8073-0527","work":"차량등록, 운영비"},
+        {"dept":"총무팀","name":"노종현","pos":"책임","ext":"02-3147-8195","mobile":"010-9425-3109","work":"행사, 회의자료"},
+        {"dept":"총무팀","name":"고규호","pos":"책임","ext":"02-3147-8196","mobile":"010-3381-8870","work":"캘린더, 인증평가"},
+        {"dept":"총무팀","name":"김두리","pos":"사원","ext":"02-3147-8204","mobile":"010-9661-1257","work":"기숙사"},
+        {"dept":"총무팀","name":"임세리","pos":"사원","ext":"02-3147-8197","mobile":"010-3281-1229","work":"우편, 정수기"},
+        {"dept":"총무팀","name":"김종식","pos":"사원","ext":"-","mobile":"010-9256-6904","work":"업무지원"},
         {"dept":"안전관리","name":"주상건","pos":"차장","ext":"02-2258-7135","mobile":"010-9496-6483","work":"시신기증"},
         {"dept":"비서실","name":"이경자","pos":"부장","ext":"02-3147-8071","mobile":"010-6306-3652","work":"비서"},
     ]
@@ -138,7 +152,7 @@ for c in filtered:
 </div>
 
 <div class="right">
-    <a class="tel-btn" href="tel:{c['ext'].replace('-','')}">내선</a>
+    {"<a class='tel-btn' href='tel:"+c['ext'].replace('-','')+"'>내선</a>" if c['ext'] != "-" else ""}
     <a class="tel-btn" href="tel:{c['mobile'].replace('-','')}">휴대폰</a>
 </div>
 
