@@ -3,25 +3,25 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 상단 여백 확보, 타이틀 중앙, 아이콘 간격 최소화
+# 2. CSS: 상단 여백 확보, 타이틀 중앙 정렬, 아이콘 간격 최소화
 st.markdown("""
 <style>
     /* 상단 여백 충분히 확보 (타이틀 잘림 방지) */
     .block-container { 
-        padding-top: 5rem !important; 
+        padding-top: 5.5rem !important; 
         background-color: #ffffff; 
     }
     
-    /* 타이틀: 중앙 정렬 및 5포인트 확대 */
+    /* 타이틀: 중앙 정렬 및 크기 확대 */
     .main-title {
-        font-size: 1.8rem; 
+        font-size: 1.6rem; 
         font-weight: 800;
         color: #000000;
         text-align: center;
         margin-bottom: 0.8rem !important;
     }
 
-    /* 검색창: 간격 밀착 및 검색어 표시 */
+    /* 검색창: 간격 밀착 */
     .stTextInput { margin-top: -10px !important; margin-bottom: -30px !important; }
     .stTextInput input {
         border-radius: 4px !important;
@@ -34,24 +34,24 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 15px 0px;
+        padding: 14px 0px;
         border-bottom: 1px solid #eeeeee;
     }
 
     /* 정보 구역 (85%) */
     .info-section { flex: 0.85; }
-    .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.15rem; color: #000; }
-    .pos-dept { font-size: 1.0rem; color: #666; }
-    .work-text { font-size: 0.85rem; color: #999; margin-top: 2px; }
+    .name-row { display: flex; align-items: baseline; gap: 6px; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
+    .pos-dept { font-size: 1.0rem; color: #555; }
+    .work-text { font-size: 0.85rem; color: #888; margin-top: 2px; }
 
-    /* 아이콘 구역 (15%): 흑백 심플 아이콘 및 간격 최소화 */
+    /* 아이콘 구역 (15%): 내선과 모바일 아이콘 차별화 및 간격 최소화 */
     .icon-section {
         flex: 0.15;
         display: flex;
         justify-content: flex-end;
         gap: 15px; 
-        padding-right: 5px;
+        padding-right: 8px;
     }
     
     .icon-link {
@@ -104,8 +104,8 @@ for p in filtered_data:
             <div class="work-text">- {p['work']}</div>
         </div>
         <div class="icon-section">
-            {"<a href='tel:"+ext_tel+"' class='icon-link'>TEL</a>" if ext_val != '-' else ""}
-            <a href="tel:{mob_tel}" class="icon-link">MOB</a>
+            {"<a href='tel:"+ext_tel+"' class='icon-link' title='내선'>☎</a>" if ext_val != '-' else ""}
+            <a href="tel:{mob_tel}" class="icon-link" title='휴대폰'>📱</a>
         </div>
     </div>
     """, unsafe_allow_html=True)
