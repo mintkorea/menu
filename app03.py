@@ -3,35 +3,35 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 간격 정밀 조정
+# 2. CSS: 여백 및 간격 정밀 교정
 st.markdown("""
 <style>
-    /* 상단 여백 한 줄 축소 (6rem -> 4.5rem) */
+    /* 상단 여백 한 줄 축소 및 헤더 제거 */
     header {visibility: hidden;}
     .main .block-container {
-        padding-top: 4.5rem !important; 
+        padding-top: 3.5rem !important; 
         background-color: #ffffff;
     }
     
-    /* 타이틀: 중앙 정렬 및 아래 여백 절반 축소 (1.5rem -> 0.7rem) */
+    /* 타이틀: 중앙 정렬 및 아래 여백 반으로 축소 */
     .main-title {
         font-size: 1.8rem; 
         font-weight: 800;
         color: #000000;
         text-align: center;
-        margin-bottom: 0.7rem !important;
-        letter-spacing: -0.5px;
+        margin-bottom: 0.5rem !important; /* 여백 최소화 */
+        letter-spacing: -1px;
     }
 
-    /* 검색창: 타이틀과의 거리 유지 */
-    .stTextInput { margin-top: 0px !important; margin-bottom: -30px !important; }
+    /* 검색창: 타이틀 아래 배치 최적화 */
+    .stTextInput { margin-top: 5px !important; margin-bottom: -30px !important; }
     .stTextInput input {
         border-radius: 4px !important;
         border: 1px solid #cccccc !important;
         height: 42px !important;
     }
 
-    /* 연락처 카드: 정보와 아이콘 사이 간격 확보 (비율 조정 75:25) */
+    /* 연락처 카드: 텍스트와 아이콘 영역 분리 */
     .contact-card {
         display: flex;
         justify-content: space-between;
@@ -40,24 +40,24 @@ st.markdown("""
         border-bottom: 1px solid #eeeeee;
     }
 
-    /* 업무 내용과 아이콘 사이 간격 확보를 위해 폭 조정 */
+    /* 텍스트 영역: 아이콘과 겹치지 않게 오른쪽 마진 강제 확보 */
     .info-section { 
-        flex: 0.75; 
-        padding-right: 15px; /* 텍스트와 아이콘 사이 여백 추가 */
+        flex: 1; 
+        padding-right: 40px; /* 업무 내용과 아이콘 사이 확실한 거리 확보 */
+        overflow: hidden;
     }
     
     .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.15rem; color: #000; }
-    .pos-dept { font-size: 1.0rem; color: #555; }
-    .work-text { font-size: 0.85rem; color: #888; margin-top: 3px; line-height: 1.4; }
+    .name-text { font-weight: 700; font-size: 1.15rem; color: #000; white-space: nowrap; }
+    .pos-dept { font-size: 1.0rem; color: #555; white-space: nowrap; }
+    .work-text { font-size: 0.85rem; color: #888; margin-top: 4px; line-height: 1.4; word-break: keep-all; }
 
-    /* 아이콘 구역: 폭을 조금 넓혀 텍스트와 거리 두기 */
+    /* 아이콘 영역: 고정 폭을 주어 텍스트가 밀고 들어오지 못하게 함 */
     .icon-section {
-        flex: 0.25;
+        min-width: 85px; /* 아이콘 두 개가 들어갈 고정 폭 */
         display: flex;
         justify-content: flex-end;
         gap: 20px; 
-        padding-right: 5px;
     }
     
     .icon-link {
@@ -65,32 +65,39 @@ st.markdown("""
         font-size: 1.4rem; 
         font-weight: 700;
         color: #000000 !important;
-        display: flex;
-        align-items: center;
+        display: inline-block;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 중앙 타이틀
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터 로드 (이미지 명단 전수 반영)
+# 3. 이미지 명단 데이터 전체 (누락 없이 반영)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
-    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의산연, 성의회관 등)"},
-    {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"8193","mobile":"010-5072-0919","work":"예비군대대장, 민방위, 병무행정, 행사, 그룹웨어 ITC"},
+    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
+    {"dept":"총무팀","name":"장영섭","pos":"차장","ext":"8193","mobile":"010-5072-0919","work":"예비군대대장, 민방위, 병무행정, 행사, 그룹웨어 ITC, 의무위원회, 기타서무"},
     {"dept":"총무팀","name":"주종호","pos":"과장","ext":"8202","mobile":"010-3324-1187","work":"보안, 미화, 대관, 게스트하우스, 인체유래물은행"},
-    {"dept":"총무팀","name":"강은희","pos":"대리","ext":"8206","mobile":"010-9127-1021","work":"의료원 직인/문서배부, 월례조회, 행사"},
-    {"dept":"총무팀","name":"김보라","pos":"선임","ext":"8192","mobile":"010-8073-0527","work":"명예교수실 관리, 차량등록, 부서운영비"},
+    {"dept":"총무팀","name":"강은희","pos":"대리","ext":"8206","mobile":"010-9127-1021","work":"의료원 직인/문서배부, 월례조회, 행사, 회의"},
+    {"dept":"총무팀","name":"김보라","pos":"선임","ext":"8192","mobile":"010-8073-0527","work":"명예교수실 점검 및 관리, 명예교수 차량등록, 부서운영비"},
     {"dept":"총무팀","name":"노종현","pos":"책임","ext":"8195","mobile":"010-9425-3109","work":"행사, 회의자료취합, 단위기관장회의, 예비군대대"},
-    {"dept":"총무팀","name":"고규호","pos":"책임","ext":"8196","mobile":"010-3381-8870","work":"캘린더/다이어리, 인증평가, 대학정보공시"},
+    {"dept":"총무팀","name":"고규호","pos":"책임","ext":"8196","mobile":"010-3381-8870","work":"캘린더/다이어리, 인증평가, 대학정보공시, 시설안전점검"},
     {"dept":"총무팀","name":"김두리","pos":"사원","ext":"8204","mobile":"010-9661-1257","work":"성의기숙사 사감"},
     {"dept":"총무팀","name":"임세리","pos":"사원","ext":"8197","mobile":"010-3281-1229","work":"우편, 물품/비품청구, 정수기관리, 정보보호"},
-    {"dept":"안전관리","name":"윤호열","pos":"UM","ext":"8199","mobile":"010-2623-7963","work":"소방/방재 인증평가, 시설관리(옴니버스파크 등)"},
+    {"dept":"총무팀","name":"김종식","pos":"사원","ext":"","mobile":"010-9256-6904","work":"업무지원"},
+    {"dept":"안전관리","name":"윤호열","pos":"UM","ext":"8199","mobile":"010-2623-7963","work":"소방/방재 인증평가, 시설/자산관리(옴니버스파크, 성의기숙사, 병원별관 등)"},
     {"dept":"안전관리","name":"주상건","pos":"차장","ext":"7135","mobile":"010-9496-6483","work":"시신기증 업무"},
     {"dept":"안전관리","name":"곽정승","pos":"과장","ext":"8194","mobile":"010-5218-6504","work":"사업계획, 예산, 주차/차량관리"},
-    {"dept":"안전관리","name":"박일용","pos":"과장","ext":"8201","mobile":"010-6205-7751","work":"계약, 사인물관리, 교원기숙사"},
+    {"dept":"안전관리","name":"박일용","pos":"과장","ext":"8201","mobile":"010-6205-7751","work":"계약(임대차, 용역 등), 사인물관리, 교원기숙사"},
+    {"dept":"안전관리","name":"이경종","pos":"부장","ext":"8203","mobile":"010-2623-7963","work":"교수업적평가(위원회관리), 문서분배, 그룹웨어 ITC"},
+    {"dept":"안전관리","name":"김준석","pos":"과장","ext":"8205","mobile":"010-9256-6904","work":"연구실 안전관리, 출입증등록, 연구원식당, 기타서무업무"},
     {"dept":"비서실","name":"이경자","pos":"부장","ext":"8071","mobile":"010-6306-3652","work":"의무부총장, 기획조정실장 비서"},
+    {"dept":"비서실","name":"이상희","pos":"과장","ext":"8068","mobile":"010-3445-0623","work":"영성구현실장, 사무처장 비서"},
+    {"dept":"비서실","name":"박은영","pos":"과장","ext":"8069","mobile":"010-5348-6849","work":"의과대학장 비서"},
+    {"dept":"의산연 별관","name":"주용덕","pos":"","ext":"","mobile":"010-2021-9541","work":""},
+    {"dept":"의산연 별관","name":"김승배","pos":"","ext":"","mobile":"010-8704-2591","work":""},
+    {"dept":"의산연 별관","name":"안정진","pos":"","ext":"","mobile":"010-4925-2926","work":""},
+    {"dept":"협력업체","name":"신성휴","pos":"소장","ext":"","mobile":"010-7161-2201","work":""},
     {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안"},
 ]
 
