@@ -3,7 +3,7 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 상단 여백 제거 및 검색창 여백 확대 (2배)
+# 2. CSS: 상단 밀착 및 검색창 주변 여백 미세 조정
 st.markdown("""
 <style>
     /* 상단 헤더 숨기기 */
@@ -11,7 +11,7 @@ st.markdown("""
         display: none !important;
     }
     
-    /* 최상단 여백 최소화 */
+    /* 최상단 여백 제거 */
     [data-testid="stMainBlockContainer"] {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
@@ -28,10 +28,10 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 검색창 상하 여백을 이전보다 2배로 확대 */
+    /* 검색창 상하 여백 조정 (축구장 폐쇄, 적정 간격 확보) */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
-        padding-top: 30px !important;    /* 타이틀과 검색창 사이 (확대) */
-        padding-bottom: 40px !important; /* 검색창과 첫 결과 사이 (확대) */
+        padding-top: 15px !important;    /* 타이틀 ~ 검색창 사이 */
+        padding-bottom: 20px !important; /* 검색창 ~ 첫 결과(박현욱) 사이 */
     }
 
     .stTextInput { 
@@ -41,7 +41,7 @@ st.markdown("""
     .stTextInput input {
         border-radius: 4px !important;
         border: 1px solid #cccccc !important;
-        height: 45px !important;
+        height: 42px !important;
     }
 
     /* 연락처 카드 스타일 */
@@ -78,7 +78,7 @@ st.markdown("""
 # 타이틀
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터셋 (이미지 데이터 전수 반영)
+# 3. 데이터셋
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
@@ -121,7 +121,6 @@ for p in data:
     
     mob_tel = p['mobile'].replace('-', '')
     
-    # HTML 문자열을 변수에 담아 깔끔하게 출력
     contact_html = f"""
     <div class="contact-card">
         <div class="info-section">
