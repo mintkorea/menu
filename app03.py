@@ -1,10 +1,28 @@
 import streamlit as st
 
-# [1] 페이지 설정 및 초기화
+# 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# [2] 데이터 정의 (가장 먼저 선언)
-# 루프(for)에서 참조하기 전에 반드시 이 위치에 있어야 합니다.
+# 2. CSS 스타일
+st.markdown("""
+<style>
+    header[data-testid="stHeader"] { display: none !important; }
+    [data-testid="stMainBlockContainer"] { padding-top: 1rem !important; }
+    .main-title { font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 20px; }
+    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px; border-bottom: 1px solid #eeeeee; width: 100%; }
+    .info-section { flex: 1; min-width: 0; overflow: hidden; }
+    .name-row { display: flex; align-items: baseline; gap: 8px; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
+    .pos-dept { font-size: 0.9rem; color: #555; }
+    .work-text { font-size: 0.85rem; color: #777; margin-top: 4px; line-height: 1.3; }
+    .icon-section { min-width: 70px; display: flex; justify-content: flex-end; gap: 15px; flex-shrink: 0; }
+    .icon-link { text-decoration: none !important; font-size: 1.2rem; font-weight: 800; color: #007bff !important; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
+
+# 3. 데이터셋
 contact_data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
@@ -33,69 +51,41 @@ contact_data = [
     {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안 소장"},
 ]
 
-# [3] CSS 스타일 적용
-st.markdown("""
-<style>
-    header[data-testid="stHeader"] { display: none !important; }
-    [data-testid="stMainBlockContainer"] { padding-top: 1rem !important; }
-    .main-title { font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 10px; }
-    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0px; border-bottom: 1px solid #eeeeee; }
-    .info-section { flex: 1; min-width: 0; }
-    .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
-    .pos-dept { font-size: 0.9rem; color: #555; }
-    .work-text { font-size: 0.85rem; color: #777; margin-top: 4px; line-height: 1.3; }
-    .icon-section { min-width: 70px; display: flex; justify-content: flex-end; gap: 15px; }
-    .icon-link { text-decoration: none !important; font-size: 1.3rem; font-weight: 800; color: #007bff !important; width: 30px; text-align: center; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
-
-# [4] 검색 및 출력 로직
+# 4. 검색창
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-for person in contact_data:
-    # 검색어 필터링
-    name = person.get('name', '')
-    dept = person.get('dept', '')
-    work = person.get('work', '')
-    pos = person.get('pos', '')
-    
-    if query:
-        search_str = f"{name}{dept}{work}{pos}".lower()
-        if query.lower() not in search_str:
-            continue
+# 5. 출력 로직
+for p in contact_data:
+    # 검색 필터
+    name, dept, work, pos = p.get('name',''), p.get('dept',''), p.get('work',''), p.get('pos','')
+    if query and query.lower() not in f"{name}{dept}{work}{pos}".lower():
+        continue
 
-    # 아이콘 태그 초기화
-    t_tag = ""
-    m_tag = ""
-    
-    # 내선번호(T) 생성 조건
-    ext_val = str(person.get('ext', '')).strip()
+    # T(내선), M(휴대폰) 아이콘 생성 (조건부)
+    t_html = ""
+    ext_val = str(p.get('ext', '')).strip()
     if ext_val:
         prefix = "022258" if name == "주상건" else "023147"
-        t_tag = f'<a href="tel:{prefix}{ext_val}" class="icon-link">T</a>'
-    
-    # 휴대폰(M) 생성 조건
-    mobile_val = str(person.get('mobile', '')).replace('-', '').strip()
-    if mobile_val:
-        m_tag = f'<a href="tel:{mobile_val}" class="icon-link">M</a>'
-    
-    # 텍스트 조립
-    sep = " · " if pos and dept else ""
-    work_display = f'<div class="work-text">- {work}</div>' if work else ""
+        t_html = f'<a href="tel:{prefix}{ext_val}" class="icon-link">T</a>'
 
-    # 출력
-    st.markdown(f"""
-    <div class="contact-card">
-        <div class="info-section">
-            <div class="name-row">
-                <span class="name-text">{name}</span>
-                <span class="pos-dept">{pos}{sep}{dept}</span>
-            </div>
-            {work_display}
-        </div>
-        <div class="icon-section">{t_tag}{m_tag}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    m_html = ""
+    mobile_val = str(p.get('mobile', '')).replace('-', '').strip()
+    if mobile_val:
+        m_html = f'<a href="tel:{mobile_val}" class="icon-link">M</a>'
+
+    # 텍스트 정보 구성
+    sep = " · " if pos and dept else ""
+    work_html = f'<div class="work-text">- {work}</div>' if work else ""
+
+    # [핵심 수정] HTML을 한 줄로 구성하여 깨짐 방지
+    card_html = (
+        f'<div class="contact-card">'
+        f'<div class="info-section">'
+        f'<div class="name-row"><span class="name-text">{name}</span><span class="pos-dept">{pos}{sep}{dept}</span></div>'
+        f'{work_html}'
+        f'</div>'
+        f'<div class="icon-section">{t_html}{m_html}</div>'
+        f'</div>'
+    )
+    
+    st.markdown(card_html, unsafe_allow_html=True)
