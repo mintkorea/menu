@@ -3,7 +3,7 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 간격 1:1 동기화 및 상단 밀착
+# 2. CSS: 간격 최적화 및 텍스트 공간 확보
 st.markdown("""
 <style>
     /* 상단 헤더 제거 */
@@ -29,14 +29,10 @@ st.markdown("""
         line-height: 1.2;
     }
 
-    /* 검색창 상단과 하단 간격을 동일하게 조정 (약 20px) */
+    /* 검색창 상단/하단 1:1 간격 (20px) */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
-        padding-top: 20px !important;    /* 타이틀 ~ 검색창 사이 간격 */
-        padding-bottom: 20px !important; /* 검색창 ~ 박현욱 사이 간격 */
-    }
-
-    .stTextInput { 
-        margin: 0px !important;
+        padding-top: 20px !important;    
+        padding-bottom: 20px !important; 
     }
 
     .stTextInput input {
@@ -50,28 +46,43 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 0px; 
+        padding: 10px 0px; 
         border-bottom: 1px solid #eeeeee;
     }
 
-    .info-section { flex: 0.8; padding-right: 10px; }
+    /* 텍스트 영역: 아이콘에 밀리지 않도록 공간 확보 */
+    .info-section { 
+        flex: 1;           /* 남은 공간을 모두 차지 */
+        padding-right: 5px; 
+    }
+    
     .name-row { display: flex; align-items: baseline; gap: 8px; }
     .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
-    .pos-dept { font-size: 0.95rem; color: #555; }
-    .work-text { font-size: 0.85rem; color: #888; margin-top: 4px; line-height: 1.4; }
+    .pos-dept { font-size: 0.9rem; color: #555; }
+    .work-text { 
+        font-size: 0.85rem; 
+        color: #777; 
+        margin-top: 2px; 
+        line-height: 1.3; 
+        word-break: keep-all; /* 단어 단위 줄바꿈으로 깔끔하게 */
+    }
 
+    /* 아이콘 섹션: 너비를 최소화하여 텍스트 공간을 넓힘 */
     .icon-section {
-        min-width: 85px; 
+        min-width: 65px;      /* 기존 85px에서 축소 */
         display: flex;
         justify-content: flex-end;
-        gap: 20px; 
+        gap: 12px;            /* 아이콘 사이 간격 축소 */
+        margin-left: 10px;
     }
     
     .icon-link {
         text-decoration: none !important;
-        font-size: 1.4rem; 
-        font-weight: 700;
-        color: #000000 !important;
+        font-size: 1.3rem; 
+        font-weight: 800;
+        color: #000 !important;
+        width: 25px;
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -115,11 +126,10 @@ query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색
 for p in data:
     if query and not any(query.lower() in str(val).lower() for val in p.values()):
         continue
-        
+    
     ext_val = p.get('ext', '')
     ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ""
     if p['name'] == "주상건": ext_tel = "0222587135"
-    
     mob_tel = p['mobile'].replace('-', '')
     
     st.markdown(f"""
@@ -132,7 +142,7 @@ for p in data:
             <div class="work-text">{"- " + p['work'] if p['work'] else ""}</div>
         </div>
         <div class="icon-section">
-            {"<a href='tel:"+ext_tel+"' class='icon-link'>☎</a>" if ext_tel else ""}
+            {"<a href='tel:"+ext_tel+"' class='icon-link'>T</a>" if ext_tel else ""}
             <a href="tel:{mob_tel}" class="icon-link">M</a>
         </div>
     </div>
