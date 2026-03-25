@@ -4,67 +4,70 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (버튼 크기 균등 배분 및 정렬)
+# 2. CSS 스타일 (모바일 세로 쌓임 방지 및 버튼 크기 강제 통일)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] { padding: 1rem 0.8rem !important; }
     
-    /* 검색창 스타일 */
+    /* 검색창 */
     div[data-testid="stTextInput"] input {
         border-radius: 10px !important;
         height: 45px !important;
-        border: 1px solid #ddd !important;
     }
 
-    /* 🔥 버튼 컨테이너: 가로 정렬 강제 및 중앙 정렬 */
+    /* 🔥 핵심: 모바일에서도 절대 세로로 쌓이지 않게 강제 고정 */
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
-        flex-direction: row !important;
-        justify-content: center !important;
-        gap: 12px !important;
-        padding: 0 5% !important; /* 양 옆 적당한 여백 */
+        flex-direction: row !important; /* 가로 방향 고정 */
+        flex-wrap: nowrap !important;   /* 줄바꿈 금지 */
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
     }
 
-    /* 🔥 버튼 크기를 완전히 똑같이 고정 */
+    /* 🔥 두 버튼의 부모 컬럼 너비를 정확히 50%씩 배분 */
     div[data-testid="column"] {
-        flex: 1 1 0% !important; /* 모든 컬럼이 동일한 너비 점유 */
-        min-width: 0 !important;
+        width: 50% !important; 
+        flex: 1 1 50% !important; 
+        min-width: 0 !important; /* 너비 감소 허용 */
     }
 
+    /* 버튼 공통 스타일 */
     .stButton > button {
         width: 100% !important;
-        height: 48px !important; /* 터치하기 좋게 살짝 높임 */
+        height: 45px !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 16px !important;
-        white-space: nowrap !important;
-        border: 1px solid #ddd !important;
+        font-size: 15px !important;
+        white-space: nowrap !important; /* 텍스트 줄바꿈 금지 */
+        padding: 0 !important;
     }
 
-    /* 검색 버튼 스타일 (파랑) */
+    /* 검색 버튼 (파란색) */
     div[data-testid="column"]:nth-child(1) button {
         background-color: #007bff !important;
         color: white !important;
         border: none !important;
     }
 
-    /* 초기화 버튼 스타일 (연회색) */
+    /* 초기화 버튼 (흰색/회색 테두리) */
     div[data-testid="column"]:nth-child(2) button {
         background-color: #ffffff !important;
         color: #333 !important;
+        border: 1px solid #ddd !important;
     }
 
-    /* 리스트 카드 디자인 */
-    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #eee; }
-    .name-text { font-weight: 700; font-size: 1.1rem; color: #111; }
-    .pos-dept { font-size: 0.85rem; color: #666; margin-left: 6px; }
-    .work-text { font-size: 0.82rem; color: #888; margin-top: 5px; line-height: 1.4; }
-    .icon-link { text-decoration: none !important; font-size: 1.4rem; font-weight: 800; color: #007bff !important; margin-left: 18px; }
+    /* 리스트 카드 */
+    .contact-card { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+    .name-text { font-weight: 700; font-size: 1.1rem; }
+    .pos-dept { font-size: 0.85rem; color: #666; margin-left: 5px; }
+    .work-text { font-size: 0.82rem; color: #888; margin-top: 4px; }
+    .icon-link { text-decoration: none !important; font-size: 1.35rem; font-weight: 800; color: #007bff !important; margin-left: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:20px;">비상연락망</div>', unsafe_allow_html=True)
+st.markdown('<div style="font-size:1.6rem; font-weight:800; text-align:center; margin-bottom:15px;">비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 데이터 로드
 @st.cache_data(ttl=300)
@@ -77,17 +80,17 @@ df = load_data(SHEET_URL)
 
 # 4. 초기화 함수
 def reset_all():
-    st.session_state["search_box"] = ""
+    st.session_state["search_widget"] = ""
 
 # 5. 검색 레이아웃
 query = st.text_input(
     "search",
-    placeholder="🔍 검색 후 엔터 또는 버튼 클릭",
+    placeholder="🔍 검색어 입력 후 엔터",
     label_visibility="collapsed",
-    key="search_box"
+    key="search_widget"
 )
 
-# 1:1 비율로 컬럼을 생성하여 버튼 크기를 동일하게 맞춤
+# 컬럼 생성 (CSS에서 강제로 가로 50:50으로 고정함)
 col1, col2 = st.columns(2)
 with col1:
     if st.button("검색"):
@@ -121,6 +124,6 @@ if not df.empty:
                     </div>
                     <div class="work-text">{"- "+work if work.strip() else ""}</div>
                 </div>
-                <div style="display:flex; align-items:center;">{t_html}{m_html}</div>
+                <div style="display:flex;">{t_html}{m_html}</div>
             </div>
         """, unsafe_allow_html=True)
