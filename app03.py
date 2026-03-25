@@ -3,84 +3,82 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 여백 및 간격 최소화 (상단 여백 제거 + 타이틀/검색창/결과 밀착)
+# 2. CSS: 상단 여백 제거 및 검색창 여백 확대 (2배)
 st.markdown("""
 <style>
-    /* 1. 상단 헤더 및 기본 여백 완전 제거 */
+    /* 상단 헤더 숨기기 */
     header[data-testid="stHeader"] {
         display: none !important;
     }
     
+    /* 최상단 여백 최소화 */
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0.5rem !important; /* 상단 잘림 방지용 최소 여백 */
+        padding-top: 1rem !important;
         padding-bottom: 0rem !important;
         gap: 0rem !important;
     }
 
-    /* 2. 타이틀: 아래 여백 제거 */
+    /* 타이틀 설정 */
     .main-title {
         font-size: 1.8rem; 
         font-weight: 800;
         color: #000;
         text-align: center;
-        line-height: 1.3;
-        margin-top: 0px !important;
         margin-bottom: 0px !important;
         padding: 0px !important;
     }
 
-    /* 3. 검색창: 상단 라벨 공간 제거 및 하단 간격 50% 축소 */
+    /* 검색창 상하 여백을 이전보다 2배로 확대 */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
-        padding-top: 5px !important;   /* 타이틀과의 간격 */
-        padding-bottom: 0px !important;
+        padding-top: 30px !important;    /* 타이틀과 검색창 사이 (확대) */
+        padding-bottom: 40px !important; /* 검색창과 첫 결과 사이 (확대) */
     }
 
     .stTextInput { 
-        margin-top: 0px !important;
-        margin-bottom: -25px !important; /* 결과 리스트와의 간격 50% 이상 축소 */
+        margin: 0px !important;
     }
 
     .stTextInput input {
         border-radius: 4px !important;
         border: 1px solid #cccccc !important;
-        height: 40px !important;
+        height: 45px !important;
     }
 
-    /* 4. 연락처 카드 스타일 */
+    /* 연락처 카드 스타일 */
     .contact-card {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 0px; 
+        padding: 12px 0px; 
         border-bottom: 1px solid #eeeeee;
     }
 
-    .info-section { flex: 0.8; padding-right: 10px; overflow: hidden; }
+    .info-section { flex: 0.8; padding-right: 10px; }
     .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; white-space: nowrap; }
-    .pos-dept { font-size: 0.95rem; color: #555; white-space: nowrap; }
-    .work-text { font-size: 0.85rem; color: #888; margin-top: 2px; line-height: 1.3; word-break: keep-all; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
+    .pos-dept { font-size: 0.95rem; color: #555; }
+    .work-text { font-size: 0.85rem; color: #888; margin-top: 4px; line-height: 1.4; }
 
     .icon-section {
-        min-width: 80px; 
+        min-width: 85px; 
         display: flex;
         justify-content: flex-end;
-        gap: 15px; 
+        gap: 20px; 
     }
     
     .icon-link {
         text-decoration: none !important;
-        font-size: 1.35rem; 
+        font-size: 1.4rem; 
         font-weight: 700;
         color: #000000 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 타이틀 표시
+# 타이틀
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 전체 데이터셋
+# 3. 데이터셋 (이미지 데이터 전수 반영)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
@@ -109,22 +107,22 @@ data = [
     {"dept":"협력업체","name":"이규용","pos":"소장","ext":"8300","mobile":"010-8883-6580","work":"보안 소장"},
 ]
 
-# 4. 검색창 (라벨 제거)
+# 4. 검색창
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-# 5. 리스트 출력
+# 5. 결과 리스트 출력
 for p in data:
     if query and not any(query.lower() in str(val).lower() for val in p.values()):
         continue
         
     ext_val = p.get('ext', '')
     ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ""
-    # 내선번호 예외 처리 (주상건 차장 02-2258-7135)
     if p['name'] == "주상건": ext_tel = "0222587135"
     
     mob_tel = p['mobile'].replace('-', '')
     
-    st.markdown(f"""
+    # HTML 문자열을 변수에 담아 깔끔하게 출력
+    contact_html = f"""
     <div class="contact-card">
         <div class="info-section">
             <div class="name-row">
@@ -138,4 +136,5 @@ for p in data:
             <a href="tel:{mob_tel}" class="icon-link">M</a>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(contact_html, unsafe_allow_html=True)
