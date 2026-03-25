@@ -4,52 +4,61 @@ import pandas as pd
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS 스타일 (현대적인 검색바 디자인)
+# 2. CSS 스타일 (타이틀 중앙 및 검색창 최적화)
 st.markdown("""
 <style>
-    /* 헤더 제거 및 여백 조정 */
     header[data-testid="stHeader"] { display: none !important; }
-    [data-testid="stMainBlockContainer"] { padding: 1.5rem 1rem !important; }
+    [data-testid="stMainBlockContainer"] { padding: 2rem 1rem !important; }
     
-    /* 🔍 검색창 입력칸 디자인 */
+    /* 🏆 타이틀 중앙 정렬 */
+    .centered-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 25px;
+        color: #1c1c1e;
+        letter-spacing: -1px;
+    }
+
+    /* 🔍 검색창 디자인 (중앙 집중형) */
+    div[data-testid="stTextInput"] {
+        max-width: 500px;
+        margin: 0 auto !important; /* 검색창 자체를 중앙으로 */
+    }
+    
     div[data-testid="stTextInput"] input {
-        border-radius: 12px !important; /* 부드러운 라운드 */
-        height: 48px !important;
-        border: 1.5px solid #eaeaea !important;
-        background-color: #f2f2f7 !important; /* iOS 스타일 배경색 */
+        border-radius: 15px !important;
+        height: 50px !important;
+        border: 1px solid #ddd !important;
+        background-color: #f2f2f7 !important;
         font-size: 16px !important;
-        padding-left: 15px !important;
-        transition: all 0.2s ease-in-out;
+        text-align: center; /* 입력 텍스트도 중앙 정렬 (선택 사항) */
     }
 
-    /* 클릭(포커스) 시 디자인 */
-    div[data-testid="stTextInput"] input:focus {
-        border-color: #007bff !important;
-        background-color: #ffffff !important;
-        box-shadow: 0 0 0 3px rgba(0,123,255,0.1) !important;
-    }
-
-    /* 연락처 카드 디자인 */
+    /* 연락처 카드 */
     .contact-card { 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
-        padding: 15px 5px; 
+        padding: 15px 0; 
         border-bottom: 1px solid #f0f0f0; 
+        max-width: 600px;
+        margin: 0 auto; /* 리스트도 중앙 정렬 느낌으로 */
     }
-    .name-text { font-weight: 700; font-size: 1.15rem; color: #1c1c1e; }
-    .pos-dept { font-size: 0.88rem; color: #8e8e93; margin-left: 6px; }
-    .work-text { font-size: 0.85rem; color: #636366; margin-top: 6px; line-height: 1.4; }
     
-    /* T/M 아이콘 링크 */
-    .icon-box { display: flex; gap: 12px; }
+    .name-text { font-weight: 700; font-size: 1.15rem; color: #1c1c1e; }
+    .pos-dept { font-size: 0.9rem; color: #8e8e93; margin-left: 6px; }
+    .work-text { font-size: 0.85rem; color: #636366; margin-top: 6px; }
+
+    /* 아이콘 버튼 */
+    .icon-box { display: flex; gap: 10px; }
     .icon-link { 
         text-decoration: none !important; 
-        font-size: 1.4rem; 
+        font-size: 1.3rem; 
         font-weight: 800; 
         color: #007bff !important;
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -59,8 +68,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 타이틀
-st.markdown('<div style="font-size:1.7rem; font-weight:800; letter-spacing:-0.5px; margin-bottom:20px;">연락처 검색</div>', unsafe_allow_html=True)
+# 중앙 타이틀 출력
+st.markdown('<div class="centered-title">성의교정 비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 데이터 로드
 @st.cache_data(ttl=300)
@@ -74,24 +83,23 @@ def load_data(url):
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1sGpEFXLNsZm76lRPuyS4vLGmTQGkAYtNHt1f03mx0h0/edit?usp=sharing"
 df = load_data(SHEET_URL)
 
-# 4. 검색창 (버튼 없이 심플하게)
+# 4. 검색창 (중앙 정렬됨)
 term = st.text_input(
     "search", 
-    placeholder="🔍 성함, 부서, 업무로 찾기", 
+    placeholder="🔍 성함 또는 부서 검색", 
     label_visibility="collapsed"
 ).lower()
 
+st.markdown('<div style="margin-bottom:20px;"></div>', unsafe_allow_html=True)
+
 # 5. 리스트 출력
 if not df.empty:
-    filtered_df = df.copy()
-    if term:
-        # 이름, 부서, 업무, 직함에서 모두 검색
-        mask = df.apply(lambda row: term in f"{row['성명']}{row['부서']}{row['담당업무']}{row['직함']}".lower(), axis=1)
-        filtered_df = df[mask]
-
-    for _, row in filtered_df.iterrows():
+    for _, row in df.iterrows():
         name, dept, pos = str(row['성명']), str(row['부서']), str(row['직함'])
         ext, mobile, work = str(row['내선']), str(row['휴대폰']), str(row['담당업무'])
+
+        if term and term not in f"{name}{dept}{work}{pos}".lower():
+            continue
 
         t_clean = ext.replace("-", "").strip()
         m_clean = mobile.replace("-", "").strip()
