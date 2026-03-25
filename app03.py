@@ -3,44 +3,41 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. 강력한 여백 제거 CSS (id와 특정 데이터 속성 타겟팅)
+# 2. 여백 최적화 CSS
 st.markdown("""
 <style>
-    /* 1. 최상단 헤더(회색선 등) 완전 제거 */
+    /* 1. 상단 투명 헤더 제거 */
     header[data-testid="stHeader"] {
         display: none !important;
     }
 
-    /* 2. 전체 컨테이너 패딩 제거 및 요소 간 간격(gap) 0으로 설정 */
+    /* 2. 전체 컨테이너 여백 조정 (타이틀이 안 잘리도록 상단 1rem 확보) */
     [data-testid="stAppViewBlockContainer"] {
-        padding-top: 0rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        gap: 0rem !important; /* 요소 사이의 기본 마진 제거 */
+        gap: 0rem !important; /* 위젯 간 간격 제거 */
     }
 
-    /* 3. 타이틀 마진 및 패딩 제거 */
+    /* 3. 타이틀 스타일: 잘림 방지를 위해 마진 대신 패딩 사용 */
     .main-title {
         font-size: 1.8rem; 
         font-weight: 800;
         color: #000000;
         text-align: center;
-        padding-top: 10px !important;
-        padding-bottom: 0px !important;
-        margin-bottom: -10px !important; /* 아래 요소와 강제 밀착 */
-        letter-spacing: -1px;
+        line-height: 1.2;      /* 줄 간격 확보로 잘림 방지 */
+        margin: 0px !important;
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
     }
 
-    /* 4. stTextInput(검색창) 주변의 모든 여백 제거 */
+    /* 4. 검색창(stTextInput) 여백 제거 */
+    /* 위젯 자체의 패딩과 상단 라벨 공간 삭제 */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
         padding-top: 0px !important;
-        margin-top: -10px !important;
     }
-
+    
     .stTextInput { 
-        padding-top: 0px !important;
-        padding-bottom: 10px !important;
+        margin-top: -5px !important; /* 타이틀과 더 밀착 */
     }
 
     .stTextInput input {
@@ -58,11 +55,7 @@ st.markdown("""
         border-bottom: 1px solid #eeeeee;
     }
 
-    .info-section { 
-        flex: 0.8; 
-        padding-right: 10px; 
-    }
-    
+    .info-section { flex: 0.8; padding-right: 10px; }
     .name-row { display: flex; align-items: baseline; gap: 8px; }
     .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
     .pos-dept { font-size: 0.95rem; color: #555; }
@@ -84,26 +77,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 타이틀
+# 타이틀 표시
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 데이터 (중략 - 기존과 동일)
+# 데이터 (예시 일부)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
-    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
-    # ... 나머지 데이터는 동일하므로 생략 ...
+    {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리"},
 ]
 
-# 검색 기능 (레이블 제거를 위해 label_visibility="collapsed" 추가)
-query = st.text_input("검색", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
+# 검색창: label_visibility="collapsed"로 라벨 공간까지 완전히 제거
+query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
 # 리스트 출력
-filtered_data = [
-    item for item in data 
-    if any(query.lower() in str(val).lower() for val in item.values())
-] if query else data
-
-for p in filtered_data:
+for p in data:
+    if query and not any(query.lower() in str(val).lower() for val in p.values()):
+        continue
+        
     ext_val = p.get('ext', '')
     ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ""
     mob_tel = p['mobile'].replace('-', '')
