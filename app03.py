@@ -3,14 +3,13 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 간격 최적화 및 HTML 노출 방지용 스타일
+# 2. CSS 스타일 (상단 밀착, 간격 1:1, 아이콘 공간 최적화)
 st.markdown("""
 <style>
     header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
-        gap: 0rem !important;
     }
 
     .main-title {
@@ -18,24 +17,24 @@ st.markdown("""
         text-align: center; margin: 0px !important; line-height: 1.2;
     }
 
-    /* 검색창 상하 1:1 간격 */
+    /* 검색창 상하 간격 20px 동일 조정 */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
         padding-top: 20px !important;    
         padding-bottom: 20px !important; 
     }
 
-    /* 카드 레이아웃: 아이콘 공간 최소화 (업무 내용 2줄 확보) */
+    /* 카드 레이아웃: 업무 내용 공간 극대화 */
     .contact-card {
         display: flex; justify-content: space-between; align-items: center;
         padding: 10px 0px; border-bottom: 1px solid #eeeeee;
     }
-    .info-section { flex: 1; padding-right: 5px; }
+    .info-section { flex: 1; padding-right: 5px; min-width: 0; }
     .name-row { display: flex; align-items: baseline; gap: 8px; }
-    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
-    .pos-dept { font-size: 0.9rem; color: #555; }
+    .name-text { font-weight: 700; font-size: 1.1rem; color: #000; white-space: nowrap; }
+    .pos-dept { font-size: 0.9rem; color: #555; white-space: nowrap; }
     .work-text { 
         font-size: 0.85rem; color: #777; margin-top: 2px; 
-        line-height: 1.3; word-break: keep-all; 
+        line-height: 1.3; word-break: keep-all;
     }
 
     .icon-section {
@@ -52,7 +51,7 @@ st.markdown("""
 
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
-# 3. 데이터셋
+# 3. 데이터셋 (이미지 전수 반영)
 data = [
     {"dept":"총무팀","name":"박현욱","pos":"팀장","ext":"8190","mobile":"010-6245-0589","work":"부서업무 총괄"},
     {"dept":"총무팀","name":"김종래","pos":"차장","ext":"8191","mobile":"010-9056-3701","work":"시설 및 자산관리(대학본부, 의생명산업연구원, 성의회관 등)"},
@@ -84,33 +83,34 @@ data = [
 # 4. 검색창
 query = st.text_input("search", placeholder="성함, 부서 또는 업무 검색...", label_visibility="collapsed")
 
-# 5. 리스트 출력
+# 5. 리스트 출력 루프
 for p in data:
     if query and not any(query.lower() in str(val).lower() for val in p.values()):
         continue
     
+    # 전화번호 처리
     ext_val = p.get('ext', '')
     ext_tel = f"023147{ext_val}" if ext_val.isdigit() else ""
     if p['name'] == "주상건": ext_tel = "0222587135"
     mob_tel = p['mobile'].replace('-', '')
     
-    # T 아이콘(내선) 존재 여부에 따른 조건부 렌더링
-    t_link = f'<a href="tel:{ext_tel}" class="icon-link">T</a>' if ext_tel else ''
-    m_link = f'<a href="tel:{mob_tel}" class="icon-link">M</a>'
+    # 조건부 T 아이콘 생성
+    t_tag = f'<a href="tel:{ext_tel}" class="icon-link">T</a>' if ext_tel else ''
+    m_tag = f'<a href="tel:{mob_tel}" class="icon-link">M</a>'
     
-    # st.markdown 하나로 합쳐서 HTML 노출 원천 차단
-    st.markdown(f'''
-    <div class="contact-card">
-        <div class="info-section">
-            <div class="name-row">
-                <span class="name-text">{p['name']}</span>
-                <span class="pos-dept">{p['pos']} · {p['dept']}</span>
+    # 최종 결과물 렌더링
+    st.write(f'''
+        <div class="contact-card">
+            <div class="info-section">
+                <div class="name-row">
+                    <span class="name-text">{p['name']}</span>
+                    <span class="pos-dept">{p['pos']} · {p['dept']}</span>
+                </div>
+                <div class="work-text">{("- " + p['work']) if p['work'] else ""}</div>
             </div>
-            <div class="work-text">{"- " + p['work'] if p['work'] else ""}</div>
+            <div class="icon-section">
+                {t_tag}
+                {m_tag}
+            </div>
         </div>
-        <div class="icon-section">
-            {t_link}
-            {m_link}
-        </div>
-    </div>
     ''', unsafe_allow_html=True)
