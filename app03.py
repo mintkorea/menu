@@ -3,91 +3,53 @@ import streamlit as st
 # 1. 페이지 설정
 st.set_page_config(page_title="성의교정 연락망", layout="wide")
 
-# 2. CSS: 간격 최적화 및 텍스트 공간 확보
+# 2. CSS: 간격 최적화 및 HTML 노출 방지용 스타일
 st.markdown("""
 <style>
-    /* 상단 헤더 제거 */
-    header[data-testid="stHeader"] {
-        display: none !important;
-    }
-    
-    /* 최상단 여백 최소화 */
+    header[data-testid="stHeader"] { display: none !important; }
     [data-testid="stMainBlockContainer"] {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
         gap: 0rem !important;
     }
 
-    /* 타이틀 설정 */
     .main-title {
-        font-size: 1.8rem; 
-        font-weight: 800;
-        color: #000;
-        text-align: center;
-        margin: 0px !important;
-        padding: 0px !important;
-        line-height: 1.2;
+        font-size: 1.8rem; font-weight: 800; color: #000;
+        text-align: center; margin: 0px !important; line-height: 1.2;
     }
 
-    /* 검색창 상단/하단 1:1 간격 (20px) */
+    /* 검색창 상하 1:1 간격 */
     div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stTextInput"]) {
         padding-top: 20px !important;    
         padding-bottom: 20px !important; 
     }
 
-    .stTextInput input {
-        border-radius: 4px !important;
-        border: 1px solid #cccccc !important;
-        height: 42px !important;
-    }
-
-    /* 연락처 카드 스타일 */
+    /* 카드 레이아웃: 아이콘 공간 최소화 (업무 내용 2줄 확보) */
     .contact-card {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0px; 
-        border-bottom: 1px solid #eeeeee;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 0px; border-bottom: 1px solid #eeeeee;
     }
-
-    /* 텍스트 영역: 아이콘에 밀리지 않도록 공간 확보 */
-    .info-section { 
-        flex: 1;           /* 남은 공간을 모두 차지 */
-        padding-right: 5px; 
-    }
-    
+    .info-section { flex: 1; padding-right: 5px; }
     .name-row { display: flex; align-items: baseline; gap: 8px; }
     .name-text { font-weight: 700; font-size: 1.1rem; color: #000; }
     .pos-dept { font-size: 0.9rem; color: #555; }
     .work-text { 
-        font-size: 0.85rem; 
-        color: #777; 
-        margin-top: 2px; 
-        line-height: 1.3; 
-        word-break: keep-all; /* 단어 단위 줄바꿈으로 깔끔하게 */
+        font-size: 0.85rem; color: #777; margin-top: 2px; 
+        line-height: 1.3; word-break: keep-all; 
     }
 
-    /* 아이콘 섹션: 너비를 최소화하여 텍스트 공간을 넓힘 */
     .icon-section {
-        min-width: 65px;      /* 기존 85px에서 축소 */
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;            /* 아이콘 사이 간격 축소 */
-        margin-left: 10px;
+        min-width: 65px; display: flex; justify-content: flex-end;
+        gap: 12px; margin-left: 10px;
     }
-    
     .icon-link {
-        text-decoration: none !important;
-        font-size: 1.3rem; 
-        font-weight: 800;
-        color: #000 !important;
-        width: 25px;
-        text-align: center;
+        text-decoration: none !important; font-size: 1.3rem; 
+        font-weight: 800; color: #000 !important;
+        width: 25px; text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 타이틀
 st.markdown('<div class="main-title">비상연락망</div>', unsafe_allow_html=True)
 
 # 3. 데이터셋
@@ -132,7 +94,12 @@ for p in data:
     if p['name'] == "주상건": ext_tel = "0222587135"
     mob_tel = p['mobile'].replace('-', '')
     
-    st.markdown(f"""
+    # T 아이콘(내선) 존재 여부에 따른 조건부 렌더링
+    t_link = f'<a href="tel:{ext_tel}" class="icon-link">T</a>' if ext_tel else ''
+    m_link = f'<a href="tel:{mob_tel}" class="icon-link">M</a>'
+    
+    # st.markdown 하나로 합쳐서 HTML 노출 원천 차단
+    st.markdown(f'''
     <div class="contact-card">
         <div class="info-section">
             <div class="name-row">
@@ -142,8 +109,8 @@ for p in data:
             <div class="work-text">{"- " + p['work'] if p['work'] else ""}</div>
         </div>
         <div class="icon-section">
-            {"<a href='tel:"+ext_tel+"' class='icon-link'>T</a>" if ext_tel else ""}
-            <a href="tel:{mob_tel}" class="icon-link">M</a>
+            {t_link}
+            {m_link}
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
