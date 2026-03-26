@@ -8,10 +8,7 @@ st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 확보 (잘림 방지) */
     .block-container { padding-top: 3.5rem !important; max-width: 500px; margin: auto; }
-    
-    /* 탭 가독성 강화 */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; justify-content: center; }
     .stTabs [data-baseweb="tab"] {
         height: 40px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
@@ -20,23 +17,16 @@ st.markdown("""
     .stTabs [aria-selected="true"] {
         background-color: #2E4077 !important; color: white !important;
     }
-
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 14px !important; text-align: center; margin-bottom: 15px; color: #666; }
-    
-    /* 실시간 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 12px 5px; text-align: center; background: white; }
     .worker-name { font-size: 16px !important; font-weight: 700; color: #555; }
     .status-val { font-size: 20px !important; font-weight: 900; color: #C04B41; }
-    
-    /* 휴무 카드 */
     .off-card {
         grid-column: span 2; border-radius: 12px; padding: 20px 15px;
         text-align: center; background: #FFF5F5; border: 2px solid #C04B41; margin-bottom: 15px;
     }
-
-    /* 통합 테이블 스타일 */
     .table-wrapper { width: 100%; margin-top: 10px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: center; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 7px 1px; }
@@ -65,13 +55,12 @@ work_date = (today - timedelta(days=1)) if now.hour < 7 else today
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
 if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
-# --- [3] 시간표 데이터 (엑셀 원본 기준 수정) ---
-# 심야 시간대(23시~05시) 1시간 단위 분할 및 01:40 반영
+# --- [3] 시간표 데이터 ---
 combined_data = [
     ["07:00", "08:00", "안내실", "로비", "로비", "휴게"],
     ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
     ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"],
-    ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], # 엑셀: 로비/순찰/휴게 혼합구간 반영
+    ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"],
     ["11:00", "12:00", "안내실", "중식", "로비", "중식"],
     ["12:00", "13:00", "중식", "안내실", "중식", "로비"],
     ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"],
@@ -83,15 +72,15 @@ combined_data = [
     ["19:00", "20:00", "안내실", "안내실", "석식", "로비"],
     ["20:00", "21:00", "석식", "안내실", "로비", "휴게"],
     ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"],
-    ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], # 22:30분 교대 포함 통합
-    ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], # 1시간 단위 분할 시작
+    ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"],
+    ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"],
     ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"],
     ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"],
-    ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], # 01:40 특별 표출
+    ["01:40", "02:00", "안내실", "안내실", "로비", "로비"],
     ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"],
     ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"],
     ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"],
-    ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"], # 05:00 교대 반영
+    ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"],
     ["06:00", "07:00", "안내실", "안내실", "휴게", "로비"]
 ]
 
@@ -116,9 +105,9 @@ with tab1:
     st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    # 휴무 로직
     is_today_work = get_workers_by_date(today)[0] is not None
     is_yesterday_work = get_workers_by_date(today - timedelta(days=1))[0] is not None
+    
     if (is_yesterday_work and not is_today_work and now.hour >= 7) or (not is_yesterday_work and not is_today_work):
         nw = today
         while get_workers_by_date(nw)[0] is None: nw += timedelta(days=1)
@@ -128,7 +117,6 @@ with tab1:
         c = combined_data[curr_idx]
         st.markdown(f'<div class="status-container"><div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{c[2]}</div></div><div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{c[3]}</div></div><div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{c[4]}</div></div><div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{c[5]}</div></div></div>', unsafe_allow_html=True)
 
-    # 통합 시간표
     html_table = f"""
     <div class="table-wrapper"><table class="custom-table">
         <tr class="b-header">
@@ -147,16 +135,23 @@ with tab1:
 
 with tab2:
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
+    
+    # --- 슬라이더 및 설정 추가 ---
     c1, c2 = st.columns(2)
-    with c1: s_date = st.date_input("📅 시작일", today)
+    with c1: s_date = st.date_input("📅 시작 날짜", today)
     with c2: focus_u = st.selectbox("👤 강조 대상", ["안 함", "황재업", "김태언", "이태원", "이정석"])
     
+    # 기간 설정용 슬라이더
+    view_days = st.slider("📅 조회 기간 (일)", min_value=7, max_value=60, value=31, step=1)
+    
     cal_list = []
-    for i in range(31):
+    # 슬라이더에서 선택된 view_days 만큼 반복
+    for i in range(view_days):
         d = s_date + timedelta(days=i)
         w1, w2, w3, w4 = get_workers_by_date(d)
         if w1:
-            wd = ['월','화','수','목','금','토','일'][d.weekday()]
+            wd_list = ['월','화','수','목','금','토','일']
+            wd = wd_list[d.weekday()]
             cal_list.append({"날짜": d.strftime('%m/%d'), "요일": wd, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4})
     
     if cal_list:
@@ -169,3 +164,5 @@ with tab2:
                 if focus_u != "안 함" and val == focus_u: styles[i] = 'background-color: #FFF2CC; font-weight: bold'
             return styles
         st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
+    else:
+        st.info("선택한 범위 내에 근무일이 없습니다.")
