@@ -3,25 +3,32 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (간격 및 중앙 정렬 최적화) ---
+# --- [1] 설정 및 CSS (탭 최상단 배치 및 간격 최적화) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 적정 수준 조절 */
-    .block-container { padding-top: 1.5rem !important; max-width: 500px; margin: auto; }
+    /* 전체 여백 최소화 */
+    .block-container { padding-top: 1rem !important; max-width: 500px; margin: auto; }
     
-    /* 타이틀 및 날짜 중앙 정렬 */
-    .main-title { text-align: center; font-size: 22px; font-weight: 900; color: #2E4077; margin-bottom: 5px; }
-    .date-display { text-align: center; font-size: 14px; color: #666; margin-bottom: 15px; font-weight: 600; }
-
-    /* 탭 디자인 */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; margin-bottom: 10px; }
+    /* 탭 디자인 및 최상단 배치 */
+    .stTabs [data-baseweb="tab-list"] { 
+        gap: 8px; 
+        margin-bottom: 15px; 
+        position: sticky; 
+        top: 0; 
+        background: white; 
+        z-index: 999;
+    }
     .stTabs [data-baseweb="tab"] {
         height: 40px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
         padding: 0 15px; font-weight: 700; font-size: 14px;
     }
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
+
+    /* 타이틀 및 날짜 스타일 */
+    .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
+    .date-display { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; font-weight: 600; }
 
     /* 상태 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
@@ -29,16 +36,16 @@ st.markdown("""
     .worker-name { font-size: 12px; font-weight: 700; color: #555; }
     .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
     
-    /* 테이블 높이 최소화 (내용만큼만) */
+    /* 테이블 높이 최소화 */
     .table-scroll-container { 
         width: 100%; 
-        max-height: 350px; /* 높이를 조금 더 줄임 */
+        max-height: 280px; /* 높이를 더 줄여서 최소화 */
         overflow-y: auto; 
         border: 1px solid #dee2e6;
         border-radius: 5px;
     }
-    .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
-    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; }
+    .custom-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; table-layout: fixed; }
+    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 6px 1px; }
     .custom-table thead { position: sticky; top: 0; z-index: 10; background: white; }
     
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
@@ -48,7 +55,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 (시간 및 날짜) ---
+# --- [2] 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -69,7 +76,7 @@ work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date)
 if names[0] is None: names = ("황재업", "김태언", "이태원", "이정석")
 
-# --- [3] 데이터 및 인덱스 ---
+# 시간표 데이터
 data = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -83,15 +90,15 @@ def find_idx(dt):
     return -1
 curr_idx = find_idx(now)
 
-# --- [4] UI 출력 ---
-# 1. 타이틀 및 실시간 시간 중앙 정렬
-st.markdown(f'<div class="main-title">🛡️ C조 통합 근무 시스템</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="date-display">{now.strftime("%Y년 %m월 %d일 %H:%M:%S")}</div>', unsafe_allow_html=True)
-
+# --- [3] UI 출력 (순서 변경) ---
 tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 
 with tab1:
-    # 카드 영역
+    # 탭 아래에 타이틀과 날짜 배치
+    st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="date-display">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
+
+    # 상태 카드
     st.markdown(f'''<div class="status-container">
         <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][2]}</div></div>
         <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][3]}</div></div>
@@ -101,7 +108,6 @@ with tab1:
     
     show_all = st.checkbox("🔄 전체 시간표 보기", value=False)
     
-    # 테이블 로직
     d_rows = data.copy()
     hl = curr_idx
     if not show_all and curr_idx != -1:
@@ -111,6 +117,7 @@ with tab1:
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
     
+    # 테이블 출력 (최소화된 높이)
     st.markdown(f"""<div class="table-scroll-container"><table class="custom-table">
         <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" class="header-sub-seong">성의회관</th><th colspan="2" class="header-sub-uisan">의산연</th></tr>
         <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td class="header-sub-seong">{names[0]}</td><td class="header-sub-seong">{names[1]}</td><td class="header-sub-uisan">{names[2]}</td><td class="header-sub-uisan">{names[3]}</td></tr></thead>
