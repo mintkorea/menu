@@ -23,16 +23,16 @@ def crawl_recipe(url):
     except:
         return None
 
-# AI 분석 없이 재료만 표로 보여주는 임시 코드
-def simple_compare(results):
-    df_data = {
-        "항목": ["재료 목록"],
-        "레시피 1": [", ".join(results[0]['ingredients'][:5]) + "..."],
-        "레시피 2": [", ".join(results[1]['ingredients'][:5]) + "..."],
-        "레시피 3": [", ".join(results[2]['ingredients'][:5]) + "..."]
+def analyze_recipes_with_ai(recipe_list):
+    # AI 대신 데이터를 표 형식으로 직접 생성
+    data = {
+        "비교 항목": ["레시피 제목", "주요 재료 개수", "첫 번째 단계"],
+        "레시피 1": [recipe_list[0]['title'], f"{len(recipe_list[0]['ingredients'])}개", recipe_list[0]['steps'][0]],
+        "레시피 2": [recipe_list[1]['title'], f"{len(recipe_list[1]['ingredients'])}개", recipe_list[1]['steps'][0]],
+        "레시피 3": [recipe_list[2]['title'], f"{len(recipe_list[2]['ingredients'])}개", recipe_list[2]['steps'][0]]
     }
-    return pd.DataFrame(df_data)
-
+    df = pd.DataFrame(data)
+    return df.to_markdown(index=False) # 표 형식으로 반환
 # --- UI 레이아웃 ---
 st.title("🤖 AI 멀티 레시피 비교 엔진")
 
