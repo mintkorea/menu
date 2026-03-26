@@ -172,4 +172,3 @@ with tab2:
         st.dataframe(df_cal.style.apply(style_fn, axis=1), use_container_width=True, hide_index=True, height=500)
     else:
         st.info("데이터가 없습니다.")
-
