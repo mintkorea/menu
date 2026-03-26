@@ -3,32 +3,31 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (모바일 최적화) ---
+# --- [1] 설정 및 CSS (태그 노출 방지 및 디자인) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 2rem !important; max-width: 500px; margin: auto; }
+    .block-container { padding-top: 1.5rem !important; max-width: 500px; margin: auto; }
     
-    /* 카드 디자인 */
+    /* 상단 상태 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 10px 5px; text-align: center; background: white; }
-    .worker-name { font-size: 14px; font-weight: 700; color: #555; margin-bottom: 2px; }
+    .worker-name { font-size: 14px; font-weight: 700; color: #555; }
     .status-val { font-size: 18px; font-weight: 900; color: #C04B41; }
     
-    /* 📢 알림 바 */
-    .ready-msg { text-align: center; padding: 10px; background: #EEF2FF; border-radius: 10px; border: 1px solid #2E4077; margin-bottom: 15px; font-weight: 700; color: #2E4077; font-size: 14px; }
-
-    /* 📊 2단 헤더 테이블 디자인 */
+    /* 2단 헤더 테이블 */
     .table-wrapper { width: 100%; margin-top: 5px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 10px 2px; }
     
-    .header-main { background-color: #f8f9fa; font-weight: 800; font-size: 13px; }
+    .header-main { background-color: #f8f9fa; font-weight: 800; }
     .header-sub-seong { background-color: #FFF2CC; font-weight: 700; color: #856404; }
     .header-sub-uisan { background-color: #D9EAD3; font-weight: 700; color: #274e13; }
     
-    .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; outline: 2px solid #C04B41; position: relative; z-index: 1; }
+    /* 하이라이트 (근무 중일 때만) */
+    .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; outline: 2px solid #C04B41; }
+    .ready-msg { text-align: center; padding: 10px; background: #EEF2FF; border-radius: 10px; border: 1px solid #2E4077; margin-bottom: 15px; font-weight: 700; color: #2E4077; font-size: 14px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -48,7 +47,7 @@ def get_workers_by_date(target_date):
     return None, None, None, None
 
 today = now.date()
-# 현재 시각 기준 근무일 결정 (05:30분부터는 오늘자 근무 표시)
+# 05:30분부터는 오늘 주간 근무자 정보 로드
 is_early_morning = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_early_morning) else (today - timedelta(days=1))
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
@@ -88,7 +87,7 @@ tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 with tab1:
     st.markdown(f'<div style="text-align:right; font-size:12px; color:gray; margin-bottom:5px;">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    # 1. 상단 카드 (투입 전이면 "교대 대기")
+    # 1. 상단 실시간 카드
     if jojang:
         status_vals = combined_data[curr_idx][2:] if curr_idx != -1 else ["교대 대기"] * 4
         st.markdown(f'''
@@ -103,20 +102,32 @@ with tab1:
         if curr_idx == -1 and is_early_morning:
             st.markdown('<div class="ready-msg">📢 곧 주간 근무가 시작됩니다. (07:00 투입)</div>', unsafe_allow_html=True)
 
-    # 2. 보기 설정
+    # 2. 보기 설정 (체크박스)
     show_all = st.checkbox("🔄 전체 시간표 순서대로 보기", value=False)
 
-    # 3. 테이블 구성
+    # 3. 테이블 정렬 로직
     display_data = combined_data.copy()
     high_idx = curr_idx
 
     if not show_all and curr_idx != -1:
-        # 현재 시간 행을 맨 위로
+        # 현재 근무 행을 맨 위로
         display_data = [combined_data[curr_idx]] + [r for i, r in enumerate(combined_data) if i != curr_idx]
         high_idx = 0
+    elif curr_idx == -1:
+        high_idx = -1 # 투입 전이면 하이라이트 없음
 
-    # --- 핵심: unsafe_allow_html=True를 사용한 테이블 렌더링 ---
-    table_html = f"""
+    # 4. 2단 헤더 HTML 구성 (문자열 결합 방식)
+    table_body = ""
+    for i, r in enumerate(display_data):
+        row_cls = ' class="highlight-row"' if i == high_idx and high_idx != -1 else ""
+        table_body += f"""
+            <tr{row_cls}>
+                <td>{r[0]}</td><td>{r[1]}</td>
+                <td>{r[2]}</td><td>{r[3]}</td>
+                <td>{r[4]}</td><td>{r[5]}</td>
+            </tr>"""
+
+    full_table_html = f"""
     <div class="table-wrapper">
     <table class="custom-table">
         <thead>
@@ -125,27 +136,21 @@ with tab1:
                 <th colspan="2" style="background:#FFF2CC;">성의회관</th>
                 <th colspan="2" style="background:#D9EAD3;">의산연</th>
             </tr>
-            <tr style="background:#ffffff; font-weight:700; font-size:11px;">
+            <tr style="background:#ffffff; font-weight:700;">
                 <td style="width:18%;">From</td><td style="width:18%;">To</td>
                 <td class="header-sub-seong">{jojang}</td><td class="header-sub-seong">{seonghui}</td>
                 <td class="header-sub-uisan">{uisanA}</td><td class="header-sub-uisan">{uisanB}</td>
             </tr>
         </thead>
         <tbody>
+            {table_body}
+        </tbody>
+    </table>
+    </div>
     """
-    for i, r in enumerate(display_data):
-        row_cls = ' class="highlight-row"' if i == high_idx and high_idx != -1 else ""
-        table_html += f"""
-            <tr{row_cls}>
-                <td>{r[0]}</td><td>{r[1]}</td>
-                <td>{r[2]}</td><td>{r[3]}</td>
-                <td>{r[4]}</td><td>{r[5]}</td>
-            </tr>"""
-    table_html += "</tbody></table></div>"
     
-    st.markdown(table_html, unsafe_allow_html=True)
+    # 이 부분이 핵심입니다! 반드시 unsafe_allow_html=True가 있어야 합니다.
+    st.markdown(full_table_html, unsafe_allow_html=True)
 
 with tab2:
-    st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
-    # ... (편성표 코드는 이전과 동일하게 유지)
-    st.info("편성표 기능은 정상 작동 중입니다.")
+    st.info("편성표 탭입니다. 실시간 현황 탭을 확인해 주세요.")
