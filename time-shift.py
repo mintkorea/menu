@@ -18,20 +18,17 @@ st.markdown("""
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 14px !important; text-align: center; margin-bottom: 15px; color: #666; }
     
-    /* 실시간 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 12px 5px; text-align: center; background: white; }
     .worker-name { font-size: 14px !important; font-weight: 700; color: #555; }
     .status-val { font-size: 19px !important; font-weight: 900; color: #C04B41; }
     
-    /* 테이블 스타일 */
     .table-wrapper { width: 100%; margin-top: 5px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: center; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 2px; }
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; outline: 2px solid #C04B41; }
     
-    /* 준비 중 알림 */
-    .ready-msg { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 1px dashed #ccc; margin-bottom: 15px; font-weight: 700; color: #666; }
+    .ready-msg { text-align: center; padding: 10px; background: #EEF2FF; border-radius: 10px; border: 1px solid #2E4077; margin-bottom: 15px; font-weight: 700; color: #2E4077; font-size: 14px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -51,10 +48,16 @@ def get_workers_by_date(target_date):
     return None, None, None, None
 
 today = now.date()
-# 근무 기준일 (07시 이전은 전날 근무조)
-work_date = (today - timedelta(days=1)) if now.hour < 7 else today
+# 근무 기준일 결정 (05:30분부터는 오늘 주간 근무자를 미리 보여줌)
+is_early_morning = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
+work_date = today if (now.hour >= 7 or is_early_morning) else (today - timedelta(days=1))
+
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
-if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
+# 비번일 경우 다음 근무자 찾기
+if jojang is None:
+    temp_date = work_date
+    while get_workers_by_date(temp_date)[0] is None: temp_date += timedelta(days=1)
+    jojang, seonghui, uisanA, uisanB = get_workers_by_date(temp_date)
 
 # --- [3] 시간표 데이터 ---
 combined_data = [
@@ -70,7 +73,6 @@ combined_data = [
     ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"],
     ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"],
     ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]
-    # 06:00 ~ 07:00 사이는 데이터에서 제외하여 '준비 중' 상태 유도
 ]
 
 def get_current_idx(dt):
@@ -93,45 +95,42 @@ with tab1:
     st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    # 근무 여부 및 시간 체크
-    is_work_day = get_workers_by_date(work_date)[0] is not None
-    
-    if not is_work_day:
-        st.markdown('<div class="ready-msg">오늘은 비번(휴무)입니다.</div>', unsafe_allow_html=True)
-    elif curr_idx == -1:
-        # 투입 전 (예: 06:10분 등 데이터 범위 외 시간)
-        st.markdown('<div class="ready-msg">📢 현재는 근무 교대 준비 시간입니다.<br>(07:00부터 근무가 시작됩니다)</div>', unsafe_allow_html=True)
-    else:
-        # 정상 근무 중일 때만 카드 표시
-        c = combined_data[curr_idx]
+    # 상단 카드 표시 (근무 중이거나 출근 준비 중일 때)
+    if get_workers_by_date(work_date)[0] is not None:
+        status_text = "교대 대기" if curr_idx == -1 else combined_data[curr_idx][2] # 예시로 첫번째 인원 상태
+        
+        # 실제 근무 중이면 데이터에 맞게, 준비 중이면 "대기" 표시
+        def get_status(idx, col):
+            return combined_data[idx][col] if idx != -1 else "교대 대기"
+
         st.markdown(f'''
             <div class="status-container">
-                <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{c[2]}</div></div>
-                <div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{c[3]}</div></div>
-                <div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{c[4]}</div></div>
-                <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{c[5]}</div></div>
+                <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{get_status(curr_idx, 2)}</div></div>
+                <div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{get_status(curr_idx, 3)}</div></div>
+                <div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{get_status(curr_idx, 4)}</div></div>
+                <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{get_status(curr_idx, 5)}</div></div>
             </div>
         ''', unsafe_allow_html=True)
+        
+        if curr_idx == -1 and is_early_morning:
+            st.markdown('<div class="ready-msg">☕ 곧 주간 근무가 시작됩니다. (07:00 투입)</div>', unsafe_allow_html=True)
 
-    # 버튼 위치: 테이블 바로 위
-    show_all = st.checkbox("🔄 전체 시간표 보기 (시간 순서대로)", value=False)
+    # --- 체크박스 (테이블 바로 위) ---
+    show_all = st.checkbox("🔄 전체 시간표 순서대로 보기", value=False)
 
-    # 테이블 데이터 구성
+    # 테이블 정렬 및 하이라이트
     display_data = combined_data.copy()
     high_idx = curr_idx
 
     if not show_all and curr_idx != -1:
-        # 현재 시간 우선: 현재 행을 맨 위로
+        # 현재 시간 행을 맨 위로
         display_data = [combined_data[curr_idx]] + [r for i, r in enumerate(combined_data) if i != curr_idx]
         high_idx = 0
-    elif not show_all and curr_idx == -1:
-        # 투입 전이면서 '현재 우선' 모드면 하이라이트 없이 원본 출력
-        high_idx = -1
-
+    
     html_table = f"""
     <div class="table-wrapper"><table class="custom-table">
         <tr style="background:#f8f9fa; font-weight:bold;">
-            <th colspan="2">시간</th><th colspan="2" style="background:#FFF2CC;">성의회관</th><th colspan="2" style="background:#D9EAD3;">의산연</th>
+            <th colspan="2">시간</th><th colspan="2" style="background:#FFF2CC;">성희</th><th colspan="2" style="background:#D9EAD3;">의산</th>
         </tr>
     """
     for i, r in enumerate(display_data):
@@ -140,10 +139,10 @@ with tab1:
     st.markdown(html_table + "</table></div>", unsafe_allow_html=True)
 
 with tab2:
-    # (탭 2 내용은 이전과 동일하되 슬라이더 포함)
+    # 편성표 탭 (동일)
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    with c1: s_date = st.date_input("📅 시작일", today, key="cal_start")
+    with c1: s_date = st.date_input("📅 시작일", today, key="cal_start_final")
     with c2: focus_u = st.selectbox("👤 강조 대상", ["안 함", "황재업", "김태언", "이태원", "이정석"])
     view_days = st.slider("📅 조회 기간 (일)", 7, 60, 31)
     
