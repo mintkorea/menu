@@ -33,6 +33,7 @@ def analyze_recipes_with_ai(recipe_list):
     }
     df = pd.DataFrame(data)
     return df.to_markdown(index=False) # 표 형식으로 반환
+    
 # --- UI 레이아웃 ---
 st.title("🤖 AI 멀티 레시피 비교 엔진")
 
