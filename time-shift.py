@@ -3,22 +3,18 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (탭 최상단 배치 및 간격 최적화) ---
+# --- [1] 설정 및 CSS (상단 여백 1cm 및 개별 스크롤 최적화) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 전체 여백 최소화 */
-    .block-container { padding-top: 1rem !important; max-width: 500px; margin: auto; }
+    /* 상단 여백 1cm 확보 (약 2.5rem) */
+    .block-container { padding-top: 2.5rem !important; max-width: 500px; margin: auto; }
     
-    /* 탭 디자인 및 최상단 배치 */
+    /* 탭 디자인 */
     .stTabs [data-baseweb="tab-list"] { 
         gap: 8px; 
         margin-bottom: 15px; 
-        position: sticky; 
-        top: 0; 
-        background: white; 
-        z-index: 999;
     }
     .stTabs [data-baseweb="tab"] {
         height: 40px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
@@ -26,7 +22,7 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
 
-    /* 타이틀 및 날짜 스타일 */
+    /* 타이틀 및 날짜 */
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
     .date-display { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; font-weight: 600; }
 
@@ -36,10 +32,10 @@ st.markdown("""
     .worker-name { font-size: 12px; font-weight: 700; color: #555; }
     .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
     
-    /* 테이블 높이 최소화 */
+    /* 📜 공통 테이블 스크롤 컨테이너 (높이 최소화) */
     .table-scroll-container { 
         width: 100%; 
-        max-height: 280px; /* 높이를 더 줄여서 최소화 */
+        max-height: 280px; 
         overflow-y: auto; 
         border: 1px solid #dee2e6;
         border-radius: 5px;
@@ -52,6 +48,12 @@ st.markdown("""
     .header-sub-seong { background-color: #FFF2CC !important; font-weight: 700; color: #856404; }
     .header-sub-uisan { background-color: #D9EAD3 !important; font-weight: 700; color: #274e13; }
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
+
+    /* 근무편성표 전용 스크롤 영역 (Tab 2) */
+    .cal-scroll-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -90,15 +92,13 @@ def find_idx(dt):
     return -1
 curr_idx = find_idx(now)
 
-# --- [3] UI 출력 (순서 변경) ---
+# --- [3] UI 출력 ---
 tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 
 with tab1:
-    # 탭 아래에 타이틀과 날짜 배치
     st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="date-display">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    # 상태 카드
     st.markdown(f'''<div class="status-container">
         <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][2]}</div></div>
         <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][3]}</div></div>
@@ -117,14 +117,14 @@ with tab1:
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
     
-    # 테이블 출력 (최소화된 높이)
     st.markdown(f"""<div class="table-scroll-container"><table class="custom-table">
         <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" class="header-sub-seong">성의회관</th><th colspan="2" class="header-sub-uisan">의산연</th></tr>
         <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td class="header-sub-seong">{names[0]}</td><td class="header-sub-seong">{names[1]}</td><td class="header-sub-uisan">{names[2]}</td><td class="header-sub-uisan">{names[3]}</td></tr></thead>
         <tbody>{rows_html}</tbody></table></div>""", unsafe_allow_html=True)
 
 with tab2:
-    st.markdown("### 📅 근무 일정 조회")
+    st.markdown('<div class="main-title">📅 근무 일정 조회</div>', unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
     with col1: s_date = st.date_input("시작 날짜", today)
     with col2: focus_name = st.selectbox("본인 강조", ["없음", "황재업", "김태언", "이태원", "이정석"])
@@ -148,4 +148,8 @@ with tab2:
                 for i in range(2, 6):
                     if row.iloc[i] == focus_name: styles[i] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
             return styles
-        st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
+        
+        # 편성표 전용 스크롤 컨테이너 적용
+        st.markdown('<div class="cal-scroll-container">', unsafe_allow_html=True)
+        st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True, height=350)
+        st.markdown('</div>', unsafe_allow_html=True)
