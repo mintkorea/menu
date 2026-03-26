@@ -3,15 +3,13 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (상단 여백 증가 및 스크롤 제거) ---
+# --- [1] 설정 및 CSS (상단 여백 3.0rem 적용) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 20% 증가 (3.0rem) */
     .block-container { padding-top: 3.0rem !important; max-width: 500px; margin: auto; }
     
-    /* 탭 디자인 */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; margin-bottom: 15px; }
     .stTabs [data-baseweb="tab"] {
         height: 42px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
@@ -19,34 +17,21 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
 
-    /* 타이틀 및 날짜 */
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
     .date-display { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; font-weight: 600; }
 
-    /* 상태 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 8px 5px; text-align: center; background: white; }
     .worker-name { font-size: 12px; font-weight: 700; color: #555; }
     .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
     
-    /* 테이블 내부 스크롤 제거 (전체 스크롤 허용) */
-    .table-container { 
-        width: 100%; 
-        border: 1px solid #dee2e6;
-        border-radius: 5px;
-        margin-bottom: 20px;
-        overflow: visible !important; /* 내부 스크롤 방지 */
-    }
+    .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 20px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; table-layout: fixed; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; }
-    
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     .header-sub-seong { background-color: #FFF2CC !important; font-weight: 700; color: #856404; }
     .header-sub-uisan { background-color: #D9EAD3 !important; font-weight: 700; color: #274e13; }
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
-
-    /* 데이터프레임 스크롤 제거 */
-    .stDataFrame div { overflow: visible !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -68,10 +53,9 @@ def get_workers(target_date):
 today = now.date()
 is_prep = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
-names = get_workers(work_date)
-if names[0] is None: names = ("황재업", "김태언", "이태원", "이정석")
+names = get_workers(work_date) or ("황재업", "김태언", "이태원", "이정석")
 
-# 실시간 시간표 데이터
+# 시간표 데이터
 data = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -91,7 +75,6 @@ tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 with tab1:
     st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="date-display">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
-
     st.markdown(f'''<div class="status-container">
         <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][2]}</div></div>
         <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][3]}</div></div>
@@ -100,7 +83,6 @@ with tab1:
     </div>''', unsafe_allow_html=True)
     
     show_all = st.checkbox("🔄 전체 시간표 보기", value=False)
-    
     d_rows = data.copy()
     hl = curr_idx
     if not show_all and curr_idx != -1:
@@ -109,7 +91,6 @@ with tab1:
     elif curr_idx == -1: hl = -1
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
-    
     st.markdown(f"""<div class="table-container"><table class="custom-table">
         <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" class="header-sub-seong">성의회관</th><th colspan="2" class="header-sub-uisan">의산연</th></tr>
         <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td class="header-sub-seong">{names[0]}</td><td class="header-sub-seong">{names[1]}</td><td class="header-sub-uisan">{names[2]}</td><td class="header-sub-uisan">{names[3]}</td></tr></thead>
@@ -117,7 +98,6 @@ with tab1:
 
 with tab2:
     st.markdown('<div class="main-title">📅 근무 일정 조회</div>', unsafe_allow_html=True)
-    
     col1, col2 = st.columns(2)
     with col1: s_date = st.date_input("시작 날짜", today)
     with col2: focus_name = st.selectbox("본인 강조", ["없음", "황재업", "김태언", "이태원", "이정석"])
@@ -129,24 +109,24 @@ with tab2:
         w1, w2, w3, w4 = get_workers(d)
         if w1:
             wd = ['월','화','수','목','금','토','일'][d.weekday()]
-            # 날짜와 요일 병합 (예: 03/27(금))
-            date_str = f"{d.strftime('%m/%d')}({wd})"
-            cal_list.append({"날짜(요일)": date_str, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4, "_요일": wd})
+            cal_list.append({"날짜(요일)": f"{d.strftime('%m/%d')}({wd})", "조장": w1, "성희": w2, "의산A": w3, "의산B": w4, "raw_wd": wd})
     
     if cal_list:
         df = pd.DataFrame(cal_list)
+        # 키에러 방지를 위해 인덱스가 아닌 컬럼명 직접 참조
         def style_df(row):
             styles = [''] * len(row)
-            # 숨겨진 요일 정보를 활용해 색상 적용
-            if row['_요일'] == '일': styles[0] = 'color: red; font-weight: bold'
-            elif row['_요일'] == '토': styles[0] = 'color: blue; font-weight: bold'
+            if row['raw_wd'] == '일': styles[0] = 'color: red; font-weight: bold'
+            elif row['raw_wd'] == '토': styles[0] = 'color: blue; font-weight: bold'
             
             if focus_name != "없음":
-                for i in range(1, 5): # 조장~의산B 컬럼 확인
-                    if row.iloc[i] == focus_name: 
-                        styles[i] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
+                for col in ["조장", "성희", "의산A", "의산B"]:
+                    if row[col] == focus_name:
+                        # 컬럼 위치 찾기 (display_df 기준)
+                        idx = display_df.columns.get_loc(col)
+                        styles[idx] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
             return styles
         
-        # 보조 요일 컬럼은 제외하고 출력
-        display_df = df.drop(columns=['_요일'])
+        display_df = df.drop(columns=['raw_wd'])
+        # streamlit 데이터프레임의 내부 스크롤을 막기 위해 height를 크게 잡거나 지정하지 않음
         st.dataframe(display_df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
