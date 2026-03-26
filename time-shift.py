@@ -3,20 +3,27 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (탭 복구 및 테이블 높이 제한) ---
+# --- [1] 설정 및 CSS (UI 가림 방지 및 모바일 최적화) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
+    /* 탭 가림 방지를 위해 상단 여백 조정 */
     .block-container { padding-top: 1rem !important; max-width: 500px; margin: auto; }
     
-    /* 탭 디자인 */
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] {
-        height: 45px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
-        padding: 0 20px; font-weight: 700;
+    /* 탭 디자인 최적화 */
+    .stTabs [data-baseweb="tab-list"] { 
+        gap: 8px; 
+        margin-bottom: 10px;
     }
-    .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
+    .stTabs [data-baseweb="tab"] {
+        height: 40px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
+        padding: 0 15px; font-weight: 700; font-size: 14px;
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #2E4077 !important; 
+        color: white !important; 
+    }
 
     /* 상태 카드 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
@@ -24,20 +31,19 @@ st.markdown("""
     .worker-name { font-size: 13px; font-weight: 700; color: #555; }
     .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
     
-    /* 📊 테이블 높이 조절 및 스크롤 설정 */
+    /* 테이블 컨테이너 및 스크롤 */
     .table-scroll-container { 
         width: 100%; 
-        max-height: 400px; /* 테이블 최대 높이 고정 */
-        overflow-y: auto;   /* 세로 스크롤 활성화 */
+        max-height: 380px; 
+        overflow-y: auto; 
         border: 1px solid #dee2e6;
         border-radius: 5px;
     }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; }
     
-    /* 헤더 고정 (스크롤 시에도 헤더는 보이게) */
-    .custom-table thead { position: sticky; top: 0; z-index: 2; background: white; }
-    
+    /* 헤더 고정 */
+    .custom-table thead { position: sticky; top: 0; z-index: 10; background: white; }
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     .header-sub-seong { background-color: #FFF2CC !important; font-weight: 700; color: #856404; }
     .header-sub-uisan { background-color: #D9EAD3 !important; font-weight: 700; color: #274e13; }
@@ -47,7 +53,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 ---
+# --- [2] 날짜 및 패턴 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -60,12 +66,13 @@ def get_workers(target_date):
         if ci == 0: return "황재업", "김태언", ("이정석" if i2 else "이태원"), ("이태원" if i2 else "이정석")
         elif ci == 1: return "황재업", "이정석", ("이태원" if i2 else "김태언"), ("김태언" if i2 else "이태원")
         else: return "황재업", "이태원", ("이정석" if i2 else "김태언"), ("김태언" if i2 else "이정석")
-    return "정보없음", "정보없음", "정보없음", "정보없음"
+    return None, None, None, None
 
 today = now.date()
 is_prep = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date)
+if names[0] is None: names = ("황재업", "김태언", "이태원", "이정석") # 비번 대비 기본값
 
 # --- [3] 데이터 ---
 data = [
@@ -102,7 +109,6 @@ tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 with tab1:
     st.markdown(f'<p style="text-align:right; font-size:11px; color:gray; margin-bottom:5px;">{now.strftime("%m/%d %H:%M")}</p>', unsafe_allow_html=True)
 
-    # 상단 카드
     st.markdown(f'''
     <div class="status-container">
         <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][2]}</div></div>
@@ -117,7 +123,6 @@ with tab1:
 
     show_all = st.checkbox("🔄 전체 시간표 보기", value=False)
 
-    # 테이블 정렬 및 하이라이트
     display_rows = data.copy()
     hl = curr_idx
     if not show_all and curr_idx != -1:
@@ -125,12 +130,8 @@ with tab1:
         hl = 0
     elif curr_idx == -1: hl = -1
 
-    rows_html = ""
-    for i, r in enumerate(display_rows):
-        cls = ' class="highlight-row"' if i == hl and hl != -1 else ""
-        rows_html += f"<tr{cls}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>"
+    rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(display_rows)])
 
-    # 테이블 출력 (스크롤 컨테이너 적용)
     table_html = f"""
     <div class="table-scroll-container">
         <table class="custom-table">
@@ -153,4 +154,18 @@ with tab1:
     st.markdown(table_html, unsafe_allow_html=True)
 
 with tab2:
-    st.write("📅 근무 편성표 준비 중...")
+    st.subheader("📅 근무 편성표 (한달)")
+    view_days = 31
+    cal_data = []
+    for i in range(view_days):
+        d = today + timedelta(days=i)
+        w1, w2, w3, w4 = get_workers(d)
+        if w1:
+            wd = ['월','화','수','목','금','토','일'][d.weekday()]
+            cal_data.append({"날짜": d.strftime('%m/%d'), "요일": wd, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4})
+    
+    if cal_data:
+        df = pd.DataFrame(cal_data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.info("비번일 등 표시할 근무 정보가 없습니다.")
