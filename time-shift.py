@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (이름 폰트 확대 및 상단 여백) ---
+# --- [1] 설정 및 CSS (폰트 확대 및 상단 여백) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
@@ -18,12 +18,13 @@ st.markdown("""
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
 
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
-    .date-display { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; font-weight: 600; }
+    
+    /* 실시간 현황 날짜/시간 폰트 3pt 확대 (기존 13px -> 16px) */
+    .date-display { text-align: center; font-size: 16px; color: #555; margin-bottom: 15px; font-weight: 700; }
 
-    /* 실시간 현황 이름 폰트 3pt 확대 (기존 12px -> 15px) */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 8px 5px; text-align: center; background: white; }
-    .worker-name { font-size: 15px; font-weight: 800; color: #333; } /* 폰트 크기 업 */
+    .worker-name { font-size: 15px; font-weight: 800; color: #333; }
     .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
     
     .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 20px; }
@@ -74,7 +75,9 @@ tab1, tab2 = st.tabs(["🕒 실시간 현황", "📅 근무 편성표"])
 
 with tab1:
     st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
+    # 🛡️ 폰트 크기가 확대된 날짜 표시
     st.markdown(f'<div class="date-display">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
+    
     st.markdown(f'''<div class="status-container">
         <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][2]}</div></div>
         <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{"대기" if curr_idx == -1 else data[curr_idx][3]}</div></div>
@@ -109,32 +112,43 @@ with tab2:
         w1, w2, w3, w4 = get_workers(d)
         if w1:
             wd = ['월','화','수','목','금','토','일'][d.weekday()]
+            # 날짜와 요일 병합 (예: 03/27(금))
+            date_str = f"{d.strftime('%m/%d')}({wd})"
             cal_data.append({
-                "날짜(요일)": f"{d.strftime('%m/%d')}({wd})",
+                "날짜(요일)": date_str,
                 "조장": w1, "성희": w2, "의산A": w3, "의산B": w4,
-                "yo-il": wd  # 스타일 적용을 위한 숨김 데이터
+                "yo-il": wd  # 숨겨둔 조건용 데이터
             })
     
     if cal_data:
         df = pd.DataFrame(cal_data)
         
-        # 🛡️ KeyError 방지를 위해 명시적 컬럼 핸들링
-        def apply_styles(row):
-            styles = [''] * (len(row) - 1) # 'yo-il' 제외한 개수
-            # 요일 색상
+        # 🛡️ KeyError를 근본적으로 차단하는 안전한 스타일 함수
+        def apply_safe_styles(row):
+            styles = [''] * (len(row) - 1)  # 요일 데이터 제외한 개수
+            
+            # 요일 색상 (컬럼명으로 직접 접근)
             if row['yo-il'] == '일': styles[0] = 'color: red; font-weight: bold'
             elif row['yo-il'] == '토': styles[0] = 'color: blue; font-weight: bold'
+            
             # 본인 강조
             if focus_name != "없음":
-                for i, col in enumerate(["조장", "성희", "의산A", "의산B"]):
+                # 실제 데이터 컬럼명 순서대로 확인
+                target_cols = ["조장", "성희", "의산A", "의산B"]
+                for i, col in enumerate(target_cols):
                     if row[col] == focus_name:
+                        # 첫번째 칸(날짜) 다음부터 강조색 적용
                         styles[i+1] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
             return styles
 
-        # 실제 보여줄 데이터에서 스타일 적용 (yo-il은 조건용으로만 쓰고 버림)
+        # yo-il을 제외한 실제 화면에 보여줄 데이터만 스타일 적용
+        display_df = df.drop(columns=['yo-il'])
+        
+        # 🛡️ apply_styles에 subset을 명시적으로 전달하여 IndexError 방지
         st.dataframe(
-            df.style.apply(apply_styles, axis=1, subset=df.columns[:-1]), 
+            df.style.apply(apply_safe_styles, axis=1, subset=display_df.columns), 
             use_container_width=True, 
-            hide_index=True,
-            column_order=("날짜(요일)", "조장", "성희", "의산A", "의산B")
+            hide_index=True
         )
+    else:
+        st.warning("데이터를 불러올 수 없습니다.")
