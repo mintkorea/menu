@@ -3,12 +3,12 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (상단 여백 1cm 및 개별 스크롤 최적화) ---
+# --- [1] 설정 및 CSS (내부 스크롤 제거 및 전체 보기 최적화) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 1cm 확보 (약 2.5rem) */
+    /* 상단 여백 1cm 확보 */
     .block-container { padding-top: 2.5rem !important; max-width: 500px; margin: auto; }
     
     /* 탭 디자인 */
@@ -32,32 +32,28 @@ st.markdown("""
     .worker-name { font-size: 12px; font-weight: 700; color: #555; }
     .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
     
-    /* 📜 공통 테이블 스크롤 컨테이너 (높이 최소화) */
-    .table-scroll-container { 
+    /* 🚫 테이블 내부 스크롤 제거: 높이 제한 없음 */
+    .table-container { 
         width: 100%; 
-        max-height: 280px; 
-        overflow-y: auto; 
         border: 1px solid #dee2e6;
         border-radius: 5px;
+        margin-bottom: 20px;
     }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; table-layout: fixed; }
-    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 6px 1px; }
-    .custom-table thead { position: sticky; top: 0; z-index: 10; background: white; }
+    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; }
     
+    /* 헤더는 구분감 있게 유지 */
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     .header-sub-seong { background-color: #FFF2CC !important; font-weight: 700; color: #856404; }
     .header-sub-uisan { background-color: #D9EAD3 !important; font-weight: 700; color: #274e13; }
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
 
-    /* 근무편성표 전용 스크롤 영역 (Tab 2) */
-    .cal-scroll-container {
-        max-height: 400px;
-        overflow-y: auto;
-    }
+    /* 데이터프레임 스타일 조정 */
+    .stDataFrame { width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 ---
+# --- [2] 로직 (데이터 동일) ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -78,7 +74,6 @@ work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date)
 if names[0] is None: names = ("황재업", "김태언", "이태원", "이정석")
 
-# 시간표 데이터
 data = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -117,7 +112,8 @@ with tab1:
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
     
-    st.markdown(f"""<div class="table-scroll-container"><table class="custom-table">
+    # 📜 높이 제한 없이 모든 행을 출력
+    st.markdown(f"""<div class="table-container"><table class="custom-table">
         <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" class="header-sub-seong">성의회관</th><th colspan="2" class="header-sub-uisan">의산연</th></tr>
         <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td class="header-sub-seong">{names[0]}</td><td class="header-sub-seong">{names[1]}</td><td class="header-sub-uisan">{names[2]}</td><td class="header-sub-uisan">{names[3]}</td></tr></thead>
         <tbody>{rows_html}</tbody></table></div>""", unsafe_allow_html=True)
@@ -149,7 +145,5 @@ with tab2:
                     if row.iloc[i] == focus_name: styles[i] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
             return styles
         
-        # 편성표 전용 스크롤 컨테이너 적용
-        st.markdown('<div class="cal-scroll-container">', unsafe_allow_html=True)
-        st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True, height=350)
-        st.markdown('</div>', unsafe_allow_html=True)
+        # 📜 데이터프레임의 높이 제한(height)을 제거하여 전체 표시
+        st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
