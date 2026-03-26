@@ -6,7 +6,7 @@ from openai import OpenAI
 
 # 0. OpenAI 클라이언트 설정 (API 키 입력 필요)
 # 보안을 위해 st.secrets["OPENAI_API_KEY"] 사용을 권장합니다.
-client = OpenAI(api_key="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")
+client = OpenAI(api_key=st.secrets["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"])
 
 st.set_page_config(layout="wide", page_title="AI 레시피 비교 분석기")
 
