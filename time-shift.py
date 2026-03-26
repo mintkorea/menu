@@ -3,21 +3,18 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (내부 스크롤 제거 및 전체 보기 최적화) ---
+# --- [1] 설정 및 CSS (상단 여백 증가 및 스크롤 제거) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 1cm 확보 */
-    .block-container { padding-top: 2.5rem !important; max-width: 500px; margin: auto; }
+    /* 상단 여백 20% 증가 (3.0rem) */
+    .block-container { padding-top: 3.0rem !important; max-width: 500px; margin: auto; }
     
     /* 탭 디자인 */
-    .stTabs [data-baseweb="tab-list"] { 
-        gap: 8px; 
-        margin-bottom: 15px; 
-    }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; margin-bottom: 15px; }
     .stTabs [data-baseweb="tab"] {
-        height: 40px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
+        height: 42px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
         padding: 0 15px; font-weight: 700; font-size: 14px;
     }
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
@@ -32,28 +29,28 @@ st.markdown("""
     .worker-name { font-size: 12px; font-weight: 700; color: #555; }
     .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
     
-    /* 🚫 테이블 내부 스크롤 제거: 높이 제한 없음 */
+    /* 테이블 내부 스크롤 제거 (전체 스크롤 허용) */
     .table-container { 
         width: 100%; 
         border: 1px solid #dee2e6;
         border-radius: 5px;
         margin-bottom: 20px;
+        overflow: visible !important; /* 내부 스크롤 방지 */
     }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; table-layout: fixed; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; }
     
-    /* 헤더는 구분감 있게 유지 */
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     .header-sub-seong { background-color: #FFF2CC !important; font-weight: 700; color: #856404; }
     .header-sub-uisan { background-color: #D9EAD3 !important; font-weight: 700; color: #274e13; }
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
 
-    /* 데이터프레임 스타일 조정 */
-    .stDataFrame { width: 100% !important; }
+    /* 데이터프레임 스크롤 제거 */
+    .stDataFrame div { overflow: visible !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 (데이터 동일) ---
+# --- [2] 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -74,6 +71,7 @@ work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date)
 if names[0] is None: names = ("황재업", "김태언", "이태원", "이정석")
 
+# 실시간 시간표 데이터
 data = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -112,7 +110,6 @@ with tab1:
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
     
-    # 📜 높이 제한 없이 모든 행을 출력
     st.markdown(f"""<div class="table-container"><table class="custom-table">
         <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" class="header-sub-seong">성의회관</th><th colspan="2" class="header-sub-uisan">의산연</th></tr>
         <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td class="header-sub-seong">{names[0]}</td><td class="header-sub-seong">{names[1]}</td><td class="header-sub-uisan">{names[2]}</td><td class="header-sub-uisan">{names[3]}</td></tr></thead>
@@ -132,18 +129,24 @@ with tab2:
         w1, w2, w3, w4 = get_workers(d)
         if w1:
             wd = ['월','화','수','목','금','토','일'][d.weekday()]
-            cal_list.append({"날짜": d.strftime('%m/%d'), "요일": wd, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4})
+            # 날짜와 요일 병합 (예: 03/27(금))
+            date_str = f"{d.strftime('%m/%d')}({wd})"
+            cal_list.append({"날짜(요일)": date_str, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4, "_요일": wd})
     
     if cal_list:
         df = pd.DataFrame(cal_list)
         def style_df(row):
             styles = [''] * len(row)
-            if row['요일'] == '일': styles[1] = 'color: red; font-weight: bold'
-            elif row['요일'] == '토': styles[1] = 'color: blue; font-weight: bold'
+            # 숨겨진 요일 정보를 활용해 색상 적용
+            if row['_요일'] == '일': styles[0] = 'color: red; font-weight: bold'
+            elif row['_요일'] == '토': styles[0] = 'color: blue; font-weight: bold'
+            
             if focus_name != "없음":
-                for i in range(2, 6):
-                    if row.iloc[i] == focus_name: styles[i] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
+                for i in range(1, 5): # 조장~의산B 컬럼 확인
+                    if row.iloc[i] == focus_name: 
+                        styles[i] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
             return styles
         
-        # 📜 데이터프레임의 높이 제한(height)을 제거하여 전체 표시
-        st.dataframe(df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
+        # 보조 요일 컬럼은 제외하고 출력
+        display_df = df.drop(columns=['_요일'])
+        st.dataframe(display_df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
