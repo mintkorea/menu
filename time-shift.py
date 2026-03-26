@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (상단 여백 3.0rem 적용) ---
+# --- [1] 설정 및 CSS (이름 폰트 확대 및 상단 여백) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
@@ -20,10 +20,11 @@ st.markdown("""
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
     .date-display { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; font-weight: 600; }
 
+    /* 실시간 현황 이름 폰트 3pt 확대 (기존 12px -> 15px) */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 8px 5px; text-align: center; background: white; }
-    .worker-name { font-size: 12px; font-weight: 700; color: #555; }
-    .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
+    .worker-name { font-size: 15px; font-weight: 800; color: #333; } /* 폰트 크기 업 */
+    .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
     
     .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 20px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; table-layout: fixed; }
@@ -55,7 +56,6 @@ is_prep = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date) or ("황재업", "김태언", "이태원", "이정석")
 
-# 시간표 데이터
 data = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -103,30 +103,38 @@ with tab2:
     with col2: focus_name = st.selectbox("본인 강조", ["없음", "황재업", "김태언", "이태원", "이정석"])
     view_days = st.slider("조회 기간 (일)", 7, 60, 31)
 
-    cal_list = []
+    cal_data = []
     for i in range(view_days):
         d = s_date + timedelta(days=i)
         w1, w2, w3, w4 = get_workers(d)
         if w1:
             wd = ['월','화','수','목','금','토','일'][d.weekday()]
-            cal_list.append({"날짜(요일)": f"{d.strftime('%m/%d')}({wd})", "조장": w1, "성희": w2, "의산A": w3, "의산B": w4, "raw_wd": wd})
+            cal_data.append({
+                "날짜(요일)": f"{d.strftime('%m/%d')}({wd})",
+                "조장": w1, "성희": w2, "의산A": w3, "의산B": w4,
+                "yo-il": wd  # 스타일 적용을 위한 숨김 데이터
+            })
     
-    if cal_list:
-        df = pd.DataFrame(cal_list)
-        # 키에러 방지를 위해 인덱스가 아닌 컬럼명 직접 참조
-        def style_df(row):
-            styles = [''] * len(row)
-            if row['raw_wd'] == '일': styles[0] = 'color: red; font-weight: bold'
-            elif row['raw_wd'] == '토': styles[0] = 'color: blue; font-weight: bold'
-            
-            if focus_name != "없음":
-                for col in ["조장", "성희", "의산A", "의산B"]:
-                    if row[col] == focus_name:
-                        # 컬럼 위치 찾기 (display_df 기준)
-                        idx = display_df.columns.get_loc(col)
-                        styles[idx] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
-            return styles
+    if cal_data:
+        df = pd.DataFrame(cal_data)
         
-        display_df = df.drop(columns=['raw_wd'])
-        # streamlit 데이터프레임의 내부 스크롤을 막기 위해 height를 크게 잡거나 지정하지 않음
-        st.dataframe(display_df.style.apply(style_df, axis=1), use_container_width=True, hide_index=True)
+        # 🛡️ KeyError 방지를 위해 명시적 컬럼 핸들링
+        def apply_styles(row):
+            styles = [''] * (len(row) - 1) # 'yo-il' 제외한 개수
+            # 요일 색상
+            if row['yo-il'] == '일': styles[0] = 'color: red; font-weight: bold'
+            elif row['yo-il'] == '토': styles[0] = 'color: blue; font-weight: bold'
+            # 본인 강조
+            if focus_name != "없음":
+                for i, col in enumerate(["조장", "성희", "의산A", "의산B"]):
+                    if row[col] == focus_name:
+                        styles[i+1] = 'background-color: #FFFFE0; font-weight: bold; border: 1px solid orange'
+            return styles
+
+        # 실제 보여줄 데이터에서 스타일 적용 (yo-il은 조건용으로만 쓰고 버림)
+        st.dataframe(
+            df.style.apply(apply_styles, axis=1, subset=df.columns[:-1]), 
+            use_container_width=True, 
+            hide_index=True,
+            column_order=("날짜(요일)", "조장", "성희", "의산A", "의산B")
+        )
