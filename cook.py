@@ -23,21 +23,15 @@ def crawl_recipe(url):
     except:
         return None
 
-# --- 2. AI 분석 함수 (핵심) ---
-def analyze_recipes_with_ai(recipe_list):
-    # AI에게 던질 프롬프트 구성
-    prompt = "다음 3개 레시피의 차이점을 분석해서 표 형태로 요약해줘.\n\n"
-    for i, r in enumerate(recipe_list):
-        prompt += f"레시피{i+1} ({r['title']}): 재료 - {', '.join(r['ingredients'])}, 순서 요약 - {r['steps'][0]}...\n"
-    
-    prompt += "\n출력 형식: '비교 항목', '레시피1', '레시피2', '레시피3' 컬럼을 가진 마크다운 표로 작성해줘."
-    prompt += "비교 항목은 '당면 조리법', '간장/설탕 비율', '특별한 팁', '전체적인 특징'으로 구성해줘."
-
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+# AI 분석 없이 재료만 표로 보여주는 임시 코드
+def simple_compare(results):
+    df_data = {
+        "항목": ["재료 목록"],
+        "레시피 1": [", ".join(results[0]['ingredients'][:5]) + "..."],
+        "레시피 2": [", ".join(results[1]['ingredients'][:5]) + "..."],
+        "레시피 3": [", ".join(results[2]['ingredients'][:5]) + "..."]
+    }
+    return pd.DataFrame(df_data)
 
 # --- UI 레이아웃 ---
 st.title("🤖 AI 멀티 레시피 비교 엔진")
