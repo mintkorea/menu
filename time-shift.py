@@ -18,16 +18,23 @@ st.markdown("""
     .unified-title { font-size: 24px !important; font-weight: 800; text-align: center; margin-bottom: 5px; }
     .title-sub { font-size: 14px !important; text-align: center; margin-bottom: 15px; color: #666; }
     
+    /* 카드 디자인 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 12px 5px; text-align: center; background: white; }
     .worker-name { font-size: 14px !important; font-weight: 700; color: #555; }
     .status-val { font-size: 19px !important; font-weight: 900; color: #C04B41; }
     
-    .table-wrapper { width: 100%; margin-top: 5px; }
-    .custom-table { width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: center; }
-    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 2px; }
-    .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; outline: 2px solid #C04B41; }
+    /* 2단 헤더 테이블 디자인 */
+    .table-wrapper { width: 100%; margin-top: 5px; overflow-x: auto; }
+    .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
+    .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 8px 1px; word-break: keep-all; }
     
+    /* 헤더 색상 */
+    .header-main { background-color: #f8f9fa; font-weight: 800; font-size: 13px; }
+    .header-sub-seong { background-color: #FFF2CC; font-weight: 700; color: #856404; }
+    .header-sub-uisan { background-color: #D9EAD3; font-weight: 700; color: #274e13; }
+    
+    .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; outline: 2px solid #C04B41; }
     .ready-msg { text-align: center; padding: 10px; background: #EEF2FF; border-radius: 10px; border: 1px solid #2E4077; margin-bottom: 15px; font-weight: 700; color: #2E4077; font-size: 14px; }
     </style>
     """, unsafe_allow_html=True)
@@ -48,14 +55,12 @@ def get_workers_by_date(target_date):
     return None, None, None, None
 
 today = now.date()
-# 05:30분부터는 오늘 주간 근무자 미리 계산
+# 출근 전(05:30~07:00)에도 오늘 근무자를 미리 표시하기 위한 로직
 is_early_morning = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_early_morning) else (today - timedelta(days=1))
 
 jojang, seonghui, uisanA, uisanB = get_workers_by_date(work_date)
-# 비번일 경우 예외처리
-if jojang is None:
-    jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
+if jojang is None: jojang, seonghui, uisanA, uisanB = "황재업", "김태언", "이태원", "이정석"
 
 # --- [3] 시간표 데이터 ---
 combined_data = [
@@ -93,55 +98,59 @@ with tab1:
     st.markdown('<div class="unified-title">C조 실시간 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="title-sub">{now.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
 
-    # 상단 실시간 카드
+    # 1. 상단 실시간 카드 (투입 전 대기 상태 포함)
     if get_workers_by_date(work_date)[0] is not None:
-        def get_status(idx, col):
+        def get_status_label(idx, col):
             return combined_data[idx][col] if idx != -1 else "교대 대기"
 
         st.markdown(f'''
             <div class="status-container">
-                <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{get_status(curr_idx, 2)}</div></div>
-                <div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{get_status(curr_idx, 3)}</div></div>
-                <div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{get_status(curr_idx, 4)}</div></div>
-                <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{get_status(curr_idx, 5)}</div></div>
+                <div class="status-card"><div class="worker-name">{jojang}</div><div class="status-val">{get_status_label(curr_idx, 2)}</div></div>
+                <div class="status-card"><div class="worker-name">{seonghui}</div><div class="status-val">{get_status_label(curr_idx, 3)}</div></div>
+                <div class="status-card"><div class="worker-name">{uisanA}</div><div class="status-val">{get_status_label(curr_idx, 4)}</div></div>
+                <div class="status-card"><div class="worker-name">{uisanB}</div><div class="status-val">{get_status_label(curr_idx, 5)}</div></div>
             </div>
         ''', unsafe_allow_html=True)
         
         if curr_idx == -1 and is_early_morning:
-            st.markdown('<div class="ready-msg">☕ 교대 준비 중입니다. (07:00 근무 시작)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="ready-msg">📢 곧 주간 근무가 시작됩니다. (07:00 투입 예정)</div>', unsafe_allow_html=True)
 
-    # --- 체크박스 ---
+    # 2. 보기 설정 체크박스 (테이블 바로 위)
     show_all = st.checkbox("🔄 전체 시간표 순서대로 보기", value=False)
 
-    # 테이블 정렬 및 하이라이트 설정
+    # 3. 테이블 데이터 정렬
     display_data = combined_data.copy()
     high_idx = curr_idx
 
     if not show_all and curr_idx != -1:
+        # 현재 근무 중인 행을 맨 위로 배치
         display_data = [combined_data[curr_idx]] + [r for i, r in enumerate(combined_data) if i != curr_idx]
         high_idx = 0
-    
-    # --- 수정된 2단 헤더 테이블 ---
+    elif not show_all and curr_idx == -1:
+        high_idx = -1
+
+    # 4. 개편된 2단 헤더 HTML 테이블
     html_table = f"""
     <div class="table-wrapper">
     <table class="custom-table">
         <thead>
-            <tr style="background:#f8f9fa; font-weight:bold;">
+            <tr class="header-main">
                 <th colspan="2" style="background:#f1f3f5;">구분 (시간)</th>
-                <th colspan="2" style="background:#FFF2CC;">성의회관</th>
-                <th colspan="2" style="background:#D9EAD3;">의산연</th>
+                <th colspan="2" style="background:#FFF2CC; color:#856404;">성의회관</th>
+                <th colspan="2" style="background:#D9EAD3; color:#274e13;">의산연</th>
             </tr>
-            <tr style="background:#fdfdfe; font-size:11.5px; font-weight:700; color:#444;">
-                <td style="width:18%;">From</td>
-                <td style="width:18%;">To</td>
-                <td style="background:#FFF9E6; width:16%; color:#B08D2E;">{jojang}</td>
-                <td style="background:#FFF9E6; width:16%; color:#B08D2E;">{seonghui}</td>
-                <td style="background:#EBF5E9; width:16%; color:#3E7E44;">{uisanA}</td>
-                <td style="background:#EBF5E9; width:16%; color:#3E7E44;">{uisanB}</td>
+            <tr style="background:#ffffff; font-weight:700;">
+                <td style="width:17%;">From</td>
+                <td style="width:17%;">To</td>
+                <td class="header-sub-seong">{jojang}</td>
+                <td class="header-sub-seong">{seonghui}</td>
+                <td class="header-sub-uisan">{uisanA}</td>
+                <td class="header-sub-uisan">{uisanB}</td>
             </tr>
         </thead>
         <tbody>
     """
+    
     for i, r in enumerate(display_data):
         row_cls = "highlight-row" if i == high_idx and high_idx != -1 else ""
         html_table += f'''
@@ -150,14 +159,24 @@ with tab1:
                 <td>{r[2]}</td><td>{r[3]}</td>
                 <td>{r[4]}</td><td>{r[5]}</td>
             </tr>'''
-    
+            
     st.markdown(html_table + "</tbody></table></div>", unsafe_allow_html=True)
 
 with tab2:
-    # 편성표 탭 (동일 유지)
     st.markdown('<div class="unified-title">C조 근무 편성표</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    with c1: s_date = st.date_input("📅 시작일", today, key="cal_final")
+    with c1: s_date = st.date_input("📅 시작일", today, key="cal_final_key")
     with c2: focus_u = st.selectbox("👤 강조 대상", ["안 함", "황재업", "김태언", "이태원", "이정석"])
     view_days = st.slider("📅 조회 기간 (일)", 7, 60, 31)
-    # ... (이하 동일)
+    
+    # 편성표 로직 생략 (기존과 동일)
+    cal_list = []
+    for i in range(view_days):
+        d = s_date + timedelta(days=i)
+        w1, w2, w3, w4 = get_workers_by_date(d)
+        if w1:
+            wd = ['월','화','수','목','금','토','일'][d.weekday()]
+            cal_list.append({"날짜": d.strftime('%m/%d'), "요일": wd, "조장": w1, "성희": w2, "의산A": w3, "의산B": w4})
+    if cal_list:
+        df = pd.DataFrame(cal_list)
+        st.dataframe(df, use_container_width=True, hide_index=True)
