@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# --- [1] 설정 및 CSS (상단 여백, 폰트 확대, 테이블 스타일) ---
+# --- [1] 설정 및 CSS ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
@@ -17,7 +17,6 @@ st.markdown("""
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
     
-    /* 🕒 실시간 현황 날짜/시간 폰트 16px (3pt 확대) */
     .date-display { text-align: center; font-size: 16px; color: #444; margin-bottom: 15px; font-weight: 800; }
 
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
@@ -25,21 +24,26 @@ st.markdown("""
     .worker-name { font-size: 15px; font-weight: 800; color: #333; }
     .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
     
-    /* 공통 테이블 스타일 (스크롤 방지 및 전체 보기) */
-    .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 20px; overflow: visible; }
+    .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 20px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; background: white; }
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 10px 2px; }
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     
-    /* 강조색 스타일 */
+    /* 요일 및 개인별 색상 클래스 */
     .sat { color: blue !important; font-weight: bold; }
     .sun { color: red !important; font-weight: bold; }
-    .focus-cell { background-color: #FFFFE0 !important; font-weight: bold; border: 2px solid orange !important; }
+    
+    /* 개인별 하이라이트 색상 (이미지 기반) */
+    .color-hwang { background-color: #D9EAD3 !important; font-weight: bold; } /* 황재업: 연두 */
+    .color-kim { background-color: #FFF2CC !important; font-weight: bold; }   /* 김태언: 노랑 */
+    .color-won { background-color: #EAD1DC !important; font-weight: bold; }   /* 이태원: 분홍/보라 */
+    .color-lee { background-color: #C9DAF8 !important; font-weight: bold; }   /* 이정석: 하늘 */
+    
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 (근무 패턴) ---
+# --- [2] 로직 ---
 kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst)
 PATTERN_START = datetime(2026, 3, 9).date()
@@ -59,6 +63,7 @@ is_prep = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date) or ("황재업", "김태언", "이태원", "이정석")
 
+# 시간표 리스트
 data_list = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -92,7 +97,6 @@ with tab1:
     if not show_all and curr_idx != -1:
         d_rows = [data_list[curr_idx]] + [r for i, r in enumerate(data_list) if i != curr_idx]
         hl = 0
-    elif curr_idx == -1: hl = -1
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
     st.markdown(f"""<div class="table-container"><table class="custom-table">
@@ -107,24 +111,30 @@ with tab2:
     with col2: focus_name = st.selectbox("본인 강조", ["없음", "황재업", "김태언", "이태원", "이정석"])
     view_days = st.slider("조회 기간 (일)", 7, 60, 31)
 
-    # 🛡️ HTML 테이블 직접 생성 (KeyError 원천 봉쇄)
+    # 개인별 색상 클래스 매핑 함수
+    def get_color_class(name):
+        if name == "황재업": return "color-hwang"
+        if name == "김태언": return "color-kim"
+        if name == "이태원": return "color-won"
+        if name == "이정석": return "color-lee"
+        return ""
+
     table_html = """<div class="table-container"><table class="custom-table">
                     <thead><tr class="header-main"><th>날짜(요일)</th><th>조장</th><th>성희</th><th>의산A</th><th>의산B</th></tr></thead><tbody>"""
     
     for i in range(view_days):
         d = s_date + timedelta(days=i)
-        w1, w2, w3, w4 = get_workers(d)
-        if w1:
+        workers = get_workers(d)
+        if workers[0]:
             wd_idx = d.weekday()
             wd_str = ['월','화','수','목','금','토','일'][wd_idx]
             date_label = f"{d.strftime('%m/%d')}({wd_str})"
-            
-            # 요일 색상 클래스
             date_cls = "sun" if wd_idx == 6 else ("sat" if wd_idx == 5 else "")
             
             table_html += f"<tr><td class='{date_cls}'>{date_label}</td>"
-            for w in [w1, w2, w3, w4]:
-                f_cls = "focus-cell" if w == focus_name else ""
+            for w in workers:
+                # 선택된 이름이면 해당 인원의 고유 색상 클래스 적용
+                f_cls = get_color_class(w) if w == focus_name else ""
                 table_html += f"<td class='{f_cls}'>{w}</td>"
             table_html += "</tr>"
             
