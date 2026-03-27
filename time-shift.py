@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime, date, timedelta, timezone
 import calendar
 
-# 1. 로직 및 시간 설정 (건드리지 않음)
+# 1. 로직 및 시간 설정
 def get_kst():
     return datetime.now(timezone(timedelta(hours=9)))
 
@@ -30,25 +30,22 @@ def apply_vacation(workers, v_name):
     if v_name == ui_b: return [ldr, ldr, ui_a, "연차(성의이동)"]
     return workers
 
-# 2. 스타일 설정 (큼직한 글씨 + 셸 전체 배색)
+# 2. 스타일 설정
 st.set_page_config(page_title="C조 근무 시스템", layout="wide")
 st.markdown("""
     <style>
     .block-container { padding: 10px !important; max-width: 450px; margin: auto; }
     .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 10px; text-align: center; background: white; margin-bottom: 10px; }
-    
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ddd; }
     .cal-td { border: 1px solid #fff; height: 65px; vertical-align: middle; padding: 0 !important; text-align: center; }
-    
     .date-num { font-size: 11px; font-weight: 700; display: block; }
-    .shift-name { font-size: 24px; font-weight: 900; display: block; } /* 글자 크기 시원하게 확대 */
-    
+    .shift-name { font-size: 24px; font-weight: 900; display: block; }
     .sun { color: #d32f2f; } .sat { color: #1976d2; }
     .today-border { border: 3px solid #000 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. 화면 출력 (탭 없이 순서대로 나열)
+# 3. 화면 출력 (현황판)
 st.markdown("<h3 style='text-align:center;'>🛡️ 실시간 근무 현황</h3>", unsafe_allow_html=True)
 v_person = st.selectbox("🏥 연차자 선택", ["없음", "김태언", "이정석", "이태원"])
 w_date = today_kst if now_kst.hour >= 7 else (today_kst - timedelta(days=1))
@@ -65,6 +62,7 @@ st.markdown(f'''
 
 st.write("---")
 
+# 4. 화면 출력 (근무달력)
 st.markdown("<h3 style='text-align:center;'>🏥 성의교정 근무달력</h3>", unsafe_allow_html=True)
 hi = st.selectbox("🎯 강조할 조 선택", ["없음", "A", "B", "C"], index=3)
 
@@ -88,12 +86,9 @@ for _ in range(2):
                 d_obj = date(y, m, day)
                 s_lbl = get_shift_label(d_obj)
                 is_hi = (hi == s_lbl)
-                
-                # 셸 전체 배경색 (강조 시 진하게, 평소엔 연하게)
                 bg = COLOR_MAP[s_lbl]["hi"] if is_hi else COLOR_MAP[s_lbl]["bg"]
                 t_color = "#fff" if is_hi else COLOR_MAP[s_lbl]["txt"]
                 d_color = "#fff" if is_hi else ("#d32f2f" if i==0 else ("#1976d2" if i==6 else "#333"))
-                
                 today_cls = "today-border" if d_obj == today_kst else ""
                 html += f"""
                 <td class='cal-td {today_cls}' style='background-color:{bg};'>
