@@ -101,24 +101,24 @@ with tab1:
     st.markdown(f'<div class="table-container"><table class="custom-table"><tr><th class="time-col" rowspan="2">시간</th><th colspan="2">성의회관</th><th colspan="2">의과학산업연구원</th></tr><tr><th>{h_names[0]}</th><th>{h_names[1]}</th><th>{h_names[2]}</th><th>{h_names[3]}</th></tr>{rows_html}</table></div>', unsafe_allow_html=True)
 
 with tab2:
-    st.markdown('<div class="main-title">📅 C조 향후 투입 편성표</div>', unsafe_allow_html=True)
-    st.markdown('<div style="text-align:center; font-size:13px; color:#666; margin-bottom:15px;">향후 30일간의 C조 투입일 및 명단입니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-title">📅 근무 편성표</div>', unsafe_allow_html=True)
+    s_date = st.date_input("조회 기준일 선택", today_kst)
+    focus = st.selectbox("🎯 강조(색상)", ["없음", "황재업", "김태언", "이태원", "이정석"])
+    weekdays = ['월','화','수','목','금','토','일']
     
-    plan_data = []
-    # 오늘부터 30일간 C조인 날짜만 추출
-    for i in range(30):
-        target = today_kst + timedelta(days=i)
-        if get_shift_simple(target) == "C":
-            w = get_workers(target)
-            plan_data.append({
-                "날짜": target.strftime("%Y-%m-%d"),
-                "요일": weekdays[target.weekday()],
-                "조장": w[0], "성의": w[1], "당직A": w[2], "당직B": w[3]
-            })
-    
-    df_plan = pd.DataFrame(plan_data)
-    st.table(df_plan)
-
+    t_html = '<div class="table-container"><table class="custom-table"><tr><th>날짜</th><th>조장</th><th>성희</th><th>의산A</th><th>의산B</th></tr>'
+    for i in range(31):
+        d = s_date + timedelta(days=i)
+        ws = get_workers(d)
+        if ws:
+            wd = d.weekday(); lbl = f"{d.strftime('%m/%d')}({weekdays[wd]})"
+            cls = "sun" if wd==6 else ("sat" if wd==5 else "")
+            t_html += f'<tr><td class="{cls}">{lbl}</td>'
+            for w in ws:
+                bg = {"황재업":"#D9EAD3","김태언":"#FFF2CC","이태원":"#EAD1DC","이정석":"#C9DAF8"}.get(w,"") if w==focus else ""
+                t_html += f'<td style="background:{bg}; font-weight:700;">{w}</td>'
+            t_html += '</tr>'
+    st.markdown(t_html + '</table></div>', unsafe_allow_html=True)
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
     options = ["선택 없음", "A", "B", "C"]
