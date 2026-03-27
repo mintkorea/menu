@@ -2,20 +2,20 @@ import streamlit as st
 from datetime import datetime, date, timedelta, timezone
 import calendar
 
-# 1. KST 시간 및 기본 설정
+# 1. 기본 설정 및 시간 보정
 def get_kst():
     return datetime.now(timezone(timedelta(hours=9)))
 
 now_kst = get_kst()
 today_kst = now_kst.date()
 
-# [수정] 2026-01-01 B조 시작 기준 순환 로직
+# [로직] 2026-01-01 B조 시작 기준 (달력용)
 def get_shift_label(dt):
     base_date = date(2026, 1, 1)
     diff = (dt - base_date).days
     return ["B", "C", "A"][diff % 3]
 
-# 2. 근무 로직 (3/27 시작, 선임자 우선 A배정 패턴)
+# [로직] C조 6일 주기 패턴 (선임자 우선 A배정)
 # 선임 순위: 김태언 > 이태원 > 이정석
 PATTERN = [
     ("황재업", "김태언", "이태원", "이정석"), # 1일차: 태원(선임) A
@@ -27,47 +27,27 @@ PATTERN = [
 ]
 
 def get_base_workers(dt):
-    # [수정] 편성표에서 하이픈(-)이 나오지 않도록 C조 근무일이 아니어도 패턴을 반환하거나 예외 처리
     start_date = date(2026, 3, 27)
     diff = (dt - start_date).days
-    # 6일 주기로 계속 순환되도록 설정
-    p_idx = diff % 6
-    return list(PATTERN[p_idx])
+    return list(PATTERN[diff % 6])
 
-# 3. 상세 시간표 데이터 및 인덱스 함수 (NameError 방지용 통합)
-SHIFT_DATA = [
-    ["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"],
-    ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"],
-    ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"],
-    ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"],
-    ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"],
-    ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"],
-    ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"],
-    ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"],
-    ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"],
-    ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"],
-    ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"],
-    ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]
-]
+# 연차 로직
+def apply_vacation(workers, v_name):
+    if not v_name or v_name == "없음": return workers
+    ldr, sung, ui_a, ui_b = workers
+    if v_name == sung: return [ldr, "연차(조장대근)", ui_a, ui_b]
+    if v_name == ui_a: return [ldr, ldr, "연차(성의이동)", ui_b]
+    if v_name == ui_b: return [ldr, ldr, ui_a, "연차(성의이동)"]
+    return workers
 
-def find_idx(dt):
-    m = dt.hour * 60 + dt.minute
-    if dt.hour < 7: m += 1440
-    for i, r in enumerate(SHIFT_DATA):
-        sh, sm = map(int, r[0].split(':')); eh, em = map(int, r[1].split(':'))
-        s = (sh+24 if sh<7 else sh)*60+sm
-        e = (eh+24 if (eh<7 or (eh==7 and em==0)) and sh!=7 else eh)*60+em
-        if s <= m < e: return i
-    return -1
-
-# 4. UI 스타일 및 달력 설정 (흰 배경 + 강조 시 칸 전체 색상)
+# 2. UI 스타일 (흰 배경 + 강조 시 칸 전체 색상)
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 st.markdown("""
     <style>
     .block-container { padding-top: 20px !important; max-width: 500px; margin: auto; }
     .stTabs [data-baseweb="tab-list"] { gap: 0px; display: flex; width: 100%; }
-    .stTabs [data-baseweb="tab"] { flex: 1; text-align: center; height: 40px; font-weight: 800; font-size: 13px; }
-    .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 10px 5px; text-align: center; background: white; }
+    .stTabs [data-baseweb="tab"] { flex: 1; text-align: center; height: 45px; font-weight: 800; }
+    .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 10px; text-align: center; background: white; margin-bottom: 10px; }
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ddd; }
     .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; background-color: white; }
     .cal-date-part { height: 35%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
@@ -78,19 +58,55 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# 3. 탭 구성 (누락 없이 순서대로 배치)
 tab1, tab2, tab3 = st.tabs(["🕒 근무현황", "📅 편성표", "🏥 근무달력"])
 
-# [생략] tab1(현황), tab2(편성표) 코드는 위 get_base_workers 로직을 사용하여 에러 없이 출력됨
+# --- 탭 1: 근무현황 ---
+with tab1:
+    st.markdown(f"<h3 style='text-align:center;'>🛡️ 실시간 근무 현황</h3>", unsafe_allow_html=True)
+    v_person = st.selectbox("🏥 오늘 연차자 선택", ["없음", "김태언", "이정석", "이태원"])
+    
+    is_prep = (now_kst.hour < 7)
+    w_date = today_kst if not is_prep else (today_kst - timedelta(days=1))
+    
+    base = get_base_workers(w_date)
+    final = apply_vacation(base, v_person)
+    
+    st.markdown(f'''<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div class="status-card"><small>조장</small><br><b>{final[0]}</b></div>
+        <div class="status-card"><small>성의회관</small><br><b style="color:red;">{final[1]}</b></div>
+        <div class="status-card"><small>의산A</small><br><b>{final[2]}</b></div>
+        <div class="status-card"><small>의산B</small><br><b>{final[3]}</b></div>
+    </div>''', unsafe_allow_html=True)
 
-# --- 탭 3: 근무달력 (A,B,C) ---
+# --- 탭 2: 편성표 ---
+with tab2:
+    st.markdown("<h3 style='text-align:center;'>📅 C조 상세 편성표</h3>", unsafe_allow_html=True)
+    s_date = st.date_input("조회 시작일", today_kst)
+    
+    t_html = '<table style="width:100%; border-collapse:collapse; text-align:center; font-size:12px;">'
+    t_html += '<tr style="background:#f4f4f4; font-weight:bold;"><td>날짜</td><td>조장</td><td>성희</td><td>의산A</td><td>의산B</td></tr>'
+    
+    for i in range(20): # 20일치 출력
+        target = s_date + timedelta(days=i)
+        ws = get_base_workers(target)
+        wd = target.weekday()
+        day_str = f"{target.strftime('%m/%d')}({['월','화','수','목','금','토','일'][wd]})"
+        day_cls = "color:red;" if wd==6 else ("color:blue;" if wd==5 else "")
+        
+        t_html += f'<tr><td style="{day_cls}">{day_str}</td><td>{ws[0]}</td><td>{ws[1]}</td><td>{ws[2]}</td><td>{ws[3]}</td></tr>'
+    st.markdown(t_html + "</table>", unsafe_allow_html=True)
+
+# --- 탭 3: 근무달력 ---
 with tab3:
     st.markdown("<h3 style='text-align:center;'>🏥 성의교정 근무달력</h3>", unsafe_allow_html=True)
-    hi = st.selectbox("🎯 강조할 조 선택", ["없음", "A", "B", "C"], index=3) # 기본 C조 강조
+    # 강조 조 선택 (기본 C조)
+    hi = st.selectbox("🎯 강조할 조 선택", ["없음", "A", "B", "C"], index=3)
     
     BG_COLORS = {"A": "#FB8C00", "B": "#E53935", "C": "#1E88E5"}
     curr = today_kst.replace(day=1)
     
-    for _ in range(3):
+    for _ in range(3): # 3개월 표시
         y, m = curr.year, curr.month
         cal = calendar.monthcalendar(y, m)
         st.write(f"**{y}년 {m}월**")
@@ -104,7 +120,7 @@ with tab3:
                     s_lbl = get_shift_label(d_obj)
                     is_hi = (hi == s_lbl)
                     
-                    # 강조 시에만 칸 전체 배경색 적용
+                    # 강조 시 칸 전체 배경색 적용, 평소엔 흰 배경
                     bg_style = f"background-color: {BG_COLORS[s_lbl]};" if is_hi else "background-color: white;"
                     text_cls = "hi-text" if is_hi else ""
                     day_color = ("sun" if i==0 else "sat" if i==6 else "") if not is_hi else "hi-text"
