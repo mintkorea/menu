@@ -1,164 +1,80 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta, date
-import pytz
-import calendar
+from datetime import datetime
 
-# --- [1] 페이지 설정 및 스타일 (탭 최적화) ---
-st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
+# 페이지 설정
+st.set_page_config(page_title="Workplace Hub", layout="wide", initial_sidebar_state="collapsed")
 
+# 모바일 최적화 및 스타일 설정
 st.markdown("""
     <style>
-    /* 상단 여백 5mm (약 20px) */
-    .block-container { padding-top: 20px !important; max-width: 500px; margin: auto; }
-    
-    /* 탭 메뉴 가로 꽉 차게 설정 (잘림 방지) */
-    .stTabs [data-baseweb="tab-list"] { 
-        gap: 2px; 
-        display: flex; 
-        width: 100%;
-        justify-content: space-around;
-    }
+    .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
     .stTabs [data-baseweb="tab"] {
-        flex: 1; /* 모든 탭이 동일한 비율로 공간 차지 */
-        text-align: center;
-        height: 40px; 
-        background-color: #f0f2f6; 
-        border-radius: 5px 5px 0 0;
-        padding: 0px !important; /* 내부 여백 제거 */
-        font-weight: 800; 
-        font-size: 12px !important; /* 글자 크기 축소 */
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #f0f2f6;
+        border-radius: 5px;
+        padding: 5px 15px;
     }
-    .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
-    
-    /* 타이틀 및 날짜 */
-    .main-title { text-align: center; font-size: 18px; font-weight: 900; color: #2E4077; margin-top: 5px; }
-    .date-display { text-align: center; font-size: 14px; color: #666; margin-bottom: 10px; }
-
-    /* 실시간 카드 */
-    .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 10px; }
-    .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 8px 2px; text-align: center; background: white; }
-    .worker-name { font-size: 14px; font-weight: 800; color: #333; }
-    .status-val { font-size: 16px; font-weight: 900; color: #C04B41; }
-    
-    /* 공통 테이블 */
-    .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 20px; }
-    .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
-    .custom-table td { border: 1px solid #dee2e6; padding: 8px 2px; }
-    
-    /* 달력 스타일 (12개월용) */
-    .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 35px; }
-    .cal-td { border: 1px solid #eee; height: 55px; vertical-align: top; padding: 0 !important; }
-    .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; background: white; }
-    .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; }
-    .sun { color: #d32f2f !important; }
-    .sat { color: #1976d2 !important; }
-    .hi-text { color: white !important; }
-    .today-border { border: 3px solid #333 !important; }
+    /* 플로팅 TOP 버튼 */
+    .top-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #007bff;
+        color: white;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        cursor: pointer;
+    }
     </style>
+    <a href="#top" class="top-btn">TOP</a>
     """, unsafe_allow_html=True)
 
-# --- [2] 핵심 로직 ---
-kst = pytz.timezone('Asia/Seoul')
-now_kst = datetime.now(kst)
-today_kst = now_kst.date()
-PATTERN_START = date(2026, 3, 9)
+# 메인 타이틀
+st.title("🏢 Workplace Hub")
 
-def get_workers(target_date):
-    diff = (target_date - PATTERN_START).days
-    if diff % 3 == 0:
-        sc = diff // 3
-        ci, i2 = (sc // 2) % 3, sc % 2 == 1
-        if ci == 0: return "황재업", "김태언", ("이정석" if i2 else "이태원"), ("이태원" if i2 else "이정석")
-        elif ci == 1: return "황재업", "이정석", ("이태원" if i2 else "김태언"), ("김태언" if i2 else "이태원")
-        else: return "황재업", "이태원", ("이정석" if i2 else "김태언"), ("김태언" if i2 else "이정석")
-    return None, None, None, None
-
-def get_shift_simple(dt):
-    diff = (dt - PATTERN_START).days
-    return ["C", "A", "B"][diff % 3]
-
-# --- [3] 탭 구성 ---
-tab1, tab2, tab3 = st.tabs(["🕒 근무현황", "📅 편성표", "🏥 근무달력"])
+# 탭 생성 (현황, 근무달력, 연락처, 식단표)
+tab1, tab2, tab3, tab4 = st.tabs(["📊 현황", "📅 근무달력", "📞 연락처", "🍴 식단표"])
 
 with tab1:
-    st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="date-display">{now_kst.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
-    
-    is_prep = (5 <= now_kst.hour < 7) or (now_kst.hour == 5 and now_kst.minute >= 30)
-    work_date = today_kst if (now_kst.hour >= 7 or is_prep) else (today_kst - timedelta(days=1))
-    names = get_workers(work_date) or ("황재업", "김태언", "이태원", "이정석")
-    
-    data_list = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
-    
-    def find_idx(dt):
-        m = dt.hour * 60 + dt.minute
-        if dt.hour < 7: m += 1440
-        for i, r in enumerate(data_list):
-            sh, sm = map(int, r[0].split(':')); eh, em = map(int, r[1].split(':'))
-            s, e = (sh+24 if sh<7 else sh)*60+sm, (eh+24 if (eh<7 or (eh==7 and em==0)) and sh!=7 else eh)*60+em
-            if s <= m < e: return i
-        return -1
-    
-    idx = find_idx(now_kst)
-    st.markdown(f'''<div class="status-container">
-        <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{"대기" if idx == -1 else data_list[idx][2]}</div></div>
-        <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{"대기" if idx == -1 else data_list[idx][3]}</div></div>
-        <div class="status-card"><div class="worker-name">{names[2]}</div><div class="status-val">{"대기" if idx == -1 else data_list[idx][4]}</div></div>
-        <div class="status-card"><div class="worker-name">{names[3]}</div><div class="status-val">{"대기" if idx == -1 else data_list[idx][5]}</div></div>
-    </div>''', unsafe_allow_html=True)
-    
-    d_rows, hl = (data_list, idx) if st.checkbox("🔄 전체", value=False) else ((data_list[idx:], 0) if idx != -1 else ([], -1))
-    if d_rows:
-        rows_html = "".join([f"<tr{' style=\"background:#FFE5E5;font-weight:bold;\"' if i==hl else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
-        st.markdown(f'<div class="table-container"><table class="custom-table"><tr style="background:#f8f9fa;font-weight:800;"><td colspan="2">시간</td><td colspan="2">성의</td><td colspan="2">의산</td></tr>{rows_html}</table></div>', unsafe_allow_html=True)
+    st.subheader("실시간 시설 현황")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("오늘의 업무", "시설 점검")
+    with col2:
+        st.metric("특이사항", "없음")
+    st.write("---")
+    st.info("의산연 및 옴니버스 파크 관리 모드입니다.")
 
 with tab2:
-    st.markdown('<div class="main-title">📅 근무 편성표</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1: s_date = st.date_input("시작", today_kst)
-    with c2: focus = st.selectbox("강조", ["없음", "황재업", "김태언", "이태원", "이정석"])
-    
-    t_html = '<div class="table-container"><table class="custom-table"><tr style="background:#f8f9fa;font-weight:800;"><td>날짜</td><td>조장</td><td>성희</td><td>의산A</td><td>의산B</td></tr>'
-    for i in range(21):
-        d = s_date + timedelta(days=i)
-        ws = get_workers(d)
-        if ws[0]:
-            wd = d.weekday(); lbl = f"{d.strftime('%m/%d')}({['월','화','수','목','금','토','일'][wd]})"
-            cls = "sun" if wd==6 else ("sat" if wd==5 else "")
-            t_html += f'<tr><td class="{cls}">{lbl}</td>'
-            for w in ws:
-                bg = {"황재업":"#D9EAD3","김태언":"#FFF2CC","이태원":"#EAD1DC","이정석":"#C9DAF8"}.get(w,"") if w==focus else ""
-                t_html += f'<td style="background:{bg};">{w}</td>'
-            t_html += '</tr>'
-    st.markdown(t_html + '</table></div>', unsafe_allow_html=True)
+    st.subheader("📅 C-조 근무달력 (3월)")
+    # 근무자 명단 기반 스케줄 예시
+    schedule = {
+        "날짜": ["3/27", "3/28", "3/29", "3/30"],
+        "주간": ["황재업", "김태언", "이태원", "이정석"],
+        "야간": ["이정석", "안순재", "황재업", "김태언"]
+    }
+    st.table(pd.DataFrame(schedule))
 
 with tab3:
-    st.markdown('<div class="main-title">🏥 근무달력 (12개월)</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1: offset = st.slider("📅 월 이동", -6, 6, 0)
-    with c2: 
-        hi = st.selectbox("🎯 강조", ["선택 안 함", "A", "B", "C"], index=["선택 안 함", "A", "B", "C"].index(get_shift_simple(today_kst)))
+    st.subheader("📞 비상 연락망")
+    contacts = [
+        {"성명": "황재업", "직책": "선임", "연락처": "010-XXXX-XXXX"},
+        {"성명": "김태언", "직책": "대원", "연락처": "010-XXXX-XXXX"},
+        {"성명": "이태원", "직책": "대원", "연락처": "010-XXXX-XXXX"},
+        {"성명": "이정석", "직책": "대원", "연락처": "010-XXXX-XXXX"},
+        {"성명": "안순재", "직책": "대원", "연락처": "010-XXXX-7979"} # 수정된 번호 반영
+    ]
+    st.dataframe(pd.DataFrame(contacts), use_container_width=True)
 
-    B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
-    cal_html = ""
-    curr = (today_kst.replace(day=1) + timedelta(days=31 * offset)).replace(day=1)
-    
-    for _ in range(12):
-        y, m = curr.year, curr.month
-        cal = calendar.monthcalendar(y, m)
-        cal_html += f"<div style='text-align:center; font-weight:900; margin-bottom:8px;'>{y}년 {m}월</div>"
-        cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
-        for week in cal:
-            cal_html += "<tr>"
-            for i, day in enumerate(week):
-                if day == 0: cal_html += "<td class='cal-td'></td>"
-                else:
-                    d_obj = date(y, m, day); s = get_shift_simple(d_obj); is_hi = (hi == s)
-                    s_bg, d_bg = (S_COLS[s], S_COLS[s]) if is_hi else (B_COLS[s], "white")
-                    td_cls = "today-border" if d_obj == today_kst else ""
-                    cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {('sun' if i==0 else 'sat' if i==6 else '') if not is_hi else 'hi-text'}' style='background:{d_bg};'>{day}</div><div class='cal-shift-part {'hi-text' if is_hi else ''}'>{s}</div></td>"
-            cal_html += "</tr>"
-        cal_html += "</table>"
-        curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
-    st.markdown(cal_html, unsafe_allow_html=True)
+with tab4:
+    st.subheader("🍴 주간 식단표")
+    st.write("식단표 연동 기능을 준비 중입니다.")
+
