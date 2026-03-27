@@ -17,6 +17,9 @@ st.markdown("""
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-bottom: 5px; }
     .date-display { text-align: center; font-size: 18px; color: #333; margin-bottom: 15px; font-weight: 700; }
 
+    /* 월 표시 타이틀: 메인보다 2폰트 작게 (18px) */
+    .month-title { text-align: center; font-weight: 900; font-size: 18px; margin-bottom: 8px; color: #444; }
+
     .status-msg { text-align: center; font-size: 14px; font-weight: 700; color: #C04B41; padding: 12px; border: 2px dashed #C04B41; border-radius: 10px; margin-bottom: 15px; background: #FFF5F5; }
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
     .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 10px 2px; text-align: center; background: white; }
@@ -136,12 +139,18 @@ with tab2:
 
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
-    hi = st.selectbox("🎯 강조 조 선택", ["A", "B", "C"], index=["A", "B", "C"].index(get_shift_simple(today_kst)))
+    # 2. 선택 없음 추가 (강조 안 함)
+    options = ["선택 없음", "A", "B", "C"]
+    default_idx = options.index(get_shift_simple(today_kst))
+    hi = st.selectbox("🎯 강조 조 선택", options, index=default_idx)
+    
     B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
     cal_html = ""; curr = today_kst.replace(day=1)
+    
     for _ in range(12):
         y, m = curr.year, curr.month; cal = calendar.monthcalendar(y, m)
-        cal_html += f"<div style='text-align:center; font-weight:900; margin-bottom:8px;'>{y}년 {m}월</div>"
+        # 1. 월 표시 타이틀 크기 조정 (month-title 클래스 적용)
+        cal_html += f"<div class='month-title'>{y}년 {m}월</div>"
         cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
         for week in cal:
             cal_html += "<tr>"
@@ -153,7 +162,6 @@ with tab3:
                     d_bg = S_COLS[s] if is_hi else "white"
                     td_cls = "today-border" if d_obj == today_kst else ""
                     txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
-                    # 폰트 크기: 날짜(13px), 조 표시(16px) - 3포인트 차이 적용
                     cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
             cal_html += "</tr>"
         cal_html += "</table>"; curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
