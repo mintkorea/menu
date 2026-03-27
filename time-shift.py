@@ -30,8 +30,8 @@ st.markdown("""
     
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 40px; }
     .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; }
-    .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; }
-    .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; }
+    .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+    .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
     .sun { color: #d32f2f !important; }
     .sat { color: #1976d2 !important; }
     .hi-text { color: white !important; }
@@ -39,29 +39,24 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 핵심 로직 (요청하신 순환 패턴 1~6 적용) ---
+# --- [2] 로직 설정 ---
 kst = pytz.timezone('Asia/Seoul')
 now_kst = datetime.now(kst)
 today_kst = now_kst.date()
 PATTERN_START = date(2026, 3, 9)
 
-# 6가지 순환 패턴 정의 (성의회관, 의산A, 의산B 순서)
 PATTERNS = [
-    ["김태언", "이태원", "이정석"], # 1번 패턴
-    ["김태언", "이정석", "이태원"], # 2번 패턴
-    ["이정석", "김태언", "이태원"], # 3번 패턴
-    ["이정석", "이태원", "김태언"], # 4번 패턴
-    ["이태원", "김태언", "이정석"], # 5번 패턴
-    ["이태원", "이정석", "김태언"]  # 6번 패턴
+    ["김태언", "이태원", "이정석"], ["김태언", "이정석", "이태원"],
+    ["이정석", "김태언", "이태원"], ["이정석", "이태원", "김태언"],
+    ["이태원", "김태언", "이정석"], ["이태원", "이정석", "김태언"]
 ]
 
 def get_workers(target_date):
     diff = (target_date - PATTERN_START).days
     if diff % 3 != 0: return None
-    
     cycle_num = (diff // 3)
-    p = PATTERNS[cycle_num % 6] # 18일 주기 순환
-    return ["황재업", p[0], p[1], p[2]] # 조장, 성의, 의산A, 의산B
+    p = PATTERNS[cycle_num % 6]
+    return ["황재업", p[0], p[1], p[2]]
 
 def get_shift_simple(dt):
     diff = (dt - PATTERN_START).days
@@ -69,7 +64,7 @@ def get_shift_simple(dt):
 
 data_list = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"], ["06:00", "07:00", "안내실", "정리", "로비", "정리"]]
 
-# --- [3] 탭 구성 ---
+# --- [3] 화면 구성 ---
 tab1, tab2, tab3 = st.tabs(["🕒 근무현황", "📅 편성표", "🏥 근무달력"])
 
 with tab1:
@@ -125,7 +120,6 @@ with tab2:
     st.markdown('<div class="main-title">📅 근무 편성표</div>', unsafe_allow_html=True)
     s_date = st.date_input("조회 기준일", today_kst)
     focus = st.selectbox("🎯 강조(색상)", ["없음", "황재업", "김태언", "이태원", "이정석"])
-    
     t_html = '<div class="table-container"><table class="custom-table"><tr style="background:#f8f9fa;font-weight:800; color:#333;"><td>날짜</td><td>조장</td><td>성희</td><td>의산A</td><td>의산B</td></tr>'
     for i in range(31):
         d = s_date + timedelta(days=i)
@@ -155,7 +149,12 @@ with tab3:
                 if day == 0: cal_html += "<td class='cal-td'></td>"
                 else:
                     d_obj = date(y, m, day); s = get_shift_simple(d_obj); is_hi = (hi == s)
-                    s_bg, d_bg = (S_COLS[s], S_COLS[s]) if is_hi else (B_COLS[s], "white")
+                    s_bg = S_COLS[s] if is_hi else B_COLS[s]
+                    d_bg = S_COLS[s] if is_hi else "white"
                     td_cls = "today-border" if d_obj == today_kst else ""
                     txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
-                    cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{
+                    # 폰트 크기: 날짜(13px), 조 표시(16px) - 3포인트 차이 적용
+                    cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
+            cal_html += "</tr>"
+        cal_html += "</table>"; curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
+    st.markdown(cal_html, unsafe_allow_html=True)
