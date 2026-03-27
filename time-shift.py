@@ -1,80 +1,46 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 
-# 페이지 설정
-st.set_page_config(page_title="Workplace Hub", layout="wide", initial_sidebar_state="collapsed")
+# 페이지 설정 (모바일 최적화 및 넓은 화면)
+st.set_page_config(layout="wide")
 
-# 모바일 최적화 및 스타일 설정
+# CSS: 탭 디자인 및 상단 고정 (사용자님 스타일 반영)
 st.markdown("""
     <style>
-    .main .block-container { padding-top: 1rem; padding-bottom: 1rem; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #f0f2f6;
-        border-radius: 5px;
-        padding: 5px 15px;
-    }
-    /* 플로팅 TOP 버튼 */
-    .top-btn {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #007bff;
-        color: white;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 999;
-        cursor: pointer;
+        height: 45px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        font-weight: bold;
     }
     </style>
-    <a href="#top" class="top-btn">TOP</a>
     """, unsafe_allow_html=True)
 
-# 메인 타이틀
-st.title("🏢 Workplace Hub")
+# 메인 탭 구성 (사용자님 요청 3대 핵심 탭)
+tab1, tab2, tab3 = st.tabs(["📊 근무현황판", "📝 근무편성표", "📅 근무달력"])
 
-# 탭 생성 (현황, 근무달력, 연락처, 식단표)
-tab1, tab2, tab3, tab4 = st.tabs(["📊 현황", "📅 근무달력", "📞 연락처", "🍴 식단표"])
-
+# --- [탭 1: 근무현황판] ---
 with tab1:
-    st.subheader("실시간 시설 현황")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("오늘의 업무", "시설 점검")
-    with col2:
-        st.metric("특이사항", "없음")
-    st.write("---")
-    st.info("의산연 및 옴니버스 파크 관리 모드입니다.")
+    st.subheader("오늘의 근무 현황")
+    # 현재 근무자, 순찰 구역(Gamma Knife Center 등) 정보를 보여주는 로직
+    st.info("현재 옴니버스 파크 시설 관리 및 근무 중입니다.")
 
+# --- [탭 2: 근무편성표] ---
 with tab2:
-    st.subheader("📅 C-조 근무달력 (3월)")
-    # 근무자 명단 기반 스케줄 예시
-    schedule = {
-        "날짜": ["3/27", "3/28", "3/29", "3/30"],
-        "주간": ["황재업", "김태언", "이태원", "이정석"],
-        "야간": ["이정석", "안순재", "황재업", "김태언"]
-    }
-    st.table(pd.DataFrame(schedule))
+    st.subheader("주간 근무 편성표")
+    # C-조(황재업, 김태언, 이태원, 이정석 등)의 교대 명단 로직
+    # (이전에 작업하시던 데이터 테이블 형태를 여기에 배치)
 
+# --- [탭 3: 근무달력] ---
 with tab3:
-    st.subheader("📞 비상 연락망")
-    contacts = [
-        {"성명": "황재업", "직책": "선임", "연락처": "010-XXXX-XXXX"},
-        {"성명": "김태언", "직책": "대원", "연락처": "010-XXXX-XXXX"},
-        {"성명": "이태원", "직책": "대원", "연락처": "010-XXXX-XXXX"},
-        {"성명": "이정석", "직책": "대원", "연락처": "010-XXXX-XXXX"},
-        {"성명": "안순재", "직책": "대원", "연락처": "010-XXXX-7979"} # 수정된 번호 반영
-    ]
-    st.dataframe(pd.DataFrame(contacts), use_container_width=True)
+    st.subheader("월간 근무 스케줄")
+    # 달력 형태로 근무일을 시각화하는 부분
+    # (Streamlit 달력 라이브러리 혹은 표 형식 활용)
 
-with tab4:
-    st.subheader("🍴 주간 식단표")
-    st.write("식단표 연동 기능을 준비 중입니다.")
-
+# 플로팅 TOP 버튼 (작업 중 요청하셨던 기능)
+st.markdown("""
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
+        <button onclick="window.scrollTo(0, 0);" style="border-radius: 50%; width: 50px; height: 50px; background-color: #007bff; color: white; border: none; cursor: pointer;">TOP</button>
+    </div>
+    """, unsafe_allow_html=True)
