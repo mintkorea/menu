@@ -17,6 +17,7 @@ st.markdown("""
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-top: 5px; }
     
+    /* 🕒 실시간 현황 날짜/시간 폰트 16px */
     .date-display { text-align: center; font-size: 16px; color: #444; margin-bottom: 15px; font-weight: 800; }
 
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
@@ -29,15 +30,14 @@ st.markdown("""
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 10px 2px; }
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     
-    /* 요일 및 개인별 색상 클래스 */
     .sat { color: blue !important; font-weight: bold; }
     .sun { color: red !important; font-weight: bold; }
     
-    /* 개인별 하이라이트 색상 (이미지 기반) */
-    .color-hwang { background-color: #D9EAD3 !important; font-weight: bold; } /* 황재업: 연두 */
-    .color-kim { background-color: #FFF2CC !important; font-weight: bold; }   /* 김태언: 노랑 */
-    .color-won { background-color: #EAD1DC !important; font-weight: bold; }   /* 이태원: 분홍/보라 */
-    .color-lee { background-color: #C9DAF8 !important; font-weight: bold; }   /* 이정석: 하늘 */
+    /* 개인별 고유 색상 (이미지 기반) */
+    .color-hwang { background-color: #D9EAD3 !important; font-weight: bold; } 
+    .color-kim { background-color: #FFF2CC !important; font-weight: bold; }   
+    .color-won { background-color: #EAD1DC !important; font-weight: bold; }   
+    .color-lee { background-color: #C9DAF8 !important; font-weight: bold; }   
     
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
     </style>
@@ -63,7 +63,6 @@ is_prep = (5 <= now.hour < 7) or (now.hour == 5 and now.minute >= 30)
 work_date = today if (now.hour >= 7 or is_prep) else (today - timedelta(days=1))
 names = get_workers(work_date) or ("황재업", "김태언", "이태원", "이정석")
 
-# 시간표 리스트
 data_list = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"]]
 
 def find_idx(dt):
@@ -92,17 +91,29 @@ with tab1:
     </div>''', unsafe_allow_html=True)
     
     show_all = st.checkbox("🔄 전체 시간표 보기", value=False)
-    d_rows = data_list.copy()
-    hl = curr_idx
-    if not show_all and curr_idx != -1:
-        d_rows = [data_list[curr_idx]] + [r for i, r in enumerate(data_list) if i != curr_idx]
-        hl = 0
+    
+    # 🕒 로직 수정: 현재 시간 이전은 숨기고 이후 시간만 표시
+    if show_all:
+        d_rows = data_list.copy()
+        hl = curr_idx
+    else:
+        # 현재 시간 인덱스부터 끝까지의 데이터만 슬라이싱
+        if curr_idx != -1:
+            d_rows = data_list[curr_idx:]
+            hl = 0 # 슬라이싱된 리스트에서 현재 시간은 항상 0번 인덱스
+        else:
+            d_rows = [] # 근무 시간 외
+            hl = -1
 
     rows_html = "".join([f"<tr{' class=\"highlight-row\"' if i == hl and hl != -1 else ''}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
-    st.markdown(f"""<div class="table-container"><table class="custom-table">
-        <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" style="background:#FFF2CC">성의회관</th><th colspan="2" style="background:#D9EAD3">의산연</th></tr>
-        <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td>{names[0]}</td><td>{names[1]}</td><td>{names[2]}</td><td>{names[3]}</td></tr></thead>
-        <tbody>{rows_html}</tbody></table></div>""", unsafe_allow_html=True)
+    
+    if d_rows:
+        st.markdown(f"""<div class="table-container"><table class="custom-table">
+            <thead><tr class="header-main"><th colspan="2">시간</th><th colspan="2" style="background:#FFF2CC">성의회관</th><th colspan="2" style="background:#D9EAD3">의산연</th></tr>
+            <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td>{names[0]}</td><td>{names[1]}</td><td>{names[2]}</td><td>{names[3]}</td></tr></thead>
+            <tbody>{rows_html}</tbody></table></div>""", unsafe_allow_html=True)
+    else:
+        st.info("현재는 근무 시간이 아닙니다.")
 
 with tab2:
     st.markdown('<div class="main-title">📅 근무 일정 조회</div>', unsafe_allow_html=True)
@@ -111,7 +122,6 @@ with tab2:
     with col2: focus_name = st.selectbox("본인 강조", ["없음", "황재업", "김태언", "이태원", "이정석"])
     view_days = st.slider("조회 기간 (일)", 7, 60, 31)
 
-    # 개인별 색상 클래스 매핑 함수
     def get_color_class(name):
         if name == "황재업": return "color-hwang"
         if name == "김태언": return "color-kim"
@@ -133,7 +143,6 @@ with tab2:
             
             table_html += f"<tr><td class='{date_cls}'>{date_label}</td>"
             for w in workers:
-                # 선택된 이름이면 해당 인원의 고유 색상 클래스 적용
                 f_cls = get_color_class(w) if w == focus_name else ""
                 table_html += f"<td class='{f_cls}'>{w}</td>"
             table_html += "</tr>"
