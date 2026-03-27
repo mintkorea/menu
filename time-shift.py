@@ -3,21 +3,22 @@ import pandas as pd
 from datetime import datetime, timedelta, date
 import pytz
 import calendar
-import streamlit.components.v1 as components
 
-# --- [1] 페이지 설정 및 스타일 (상단 여백 5mm 추가) ---
+# --- [1] 페이지 설정 및 스타일 ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 st.markdown("""
     <style>
-    /* 상단 여백 약 5mm(20px) 추가하여 총 70px */
-    .block-container { padding-top: 70px !important; max-width: 500px; margin: auto; }
+    /* 상단 여백 5mm(약 20px)로 최적화 */
+    .block-container { padding-top: 20px !important; max-width: 500px; margin: auto; }
+    
     .stTabs [data-baseweb="tab-list"] { gap: 8px; margin-bottom: 15px; }
     .stTabs [data-baseweb="tab"] {
         height: 42px; background-color: #f0f2f6; border-radius: 8px 8px 0 0;
         padding: 0 15px; font-weight: 700; font-size: 14px;
     }
     .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
+    
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-bottom: 10px; }
     .date-display { text-align: center; font-size: 16px; color: #444; margin-bottom: 15px; font-weight: 800; }
 
@@ -33,8 +34,9 @@ st.markdown("""
     .custom-table th, .custom-table td { border: 1px solid #dee2e6; padding: 10px 2px; }
     .header-main { background-color: #f8f9fa !important; font-weight: 800; }
     
-    .sat { color: blue !important; font-weight: bold; }
-    .sun { color: red !important; font-weight: bold; }
+    /* 요일 색상 */
+    .sun { color: #d32f2f !important; font-weight: bold; }
+    .sat { color: #1976d2 !important; font-weight: bold; }
     
     /* 개인별 고유 색상 (편성표용) */
     .color-hwang { background-color: #D9EAD3 !important; font-weight: bold; } 
@@ -42,6 +44,14 @@ st.markdown("""
     .color-won { background-color: #EAD1DC !important; font-weight: bold; }   
     .color-lee { background-color: #C9DAF8 !important; font-weight: bold; }   
     
+    /* 달력 전용 스타일 */
+    .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 30px; }
+    .cal-td { border: 1px solid #eee; height: 60px; vertical-align: top; padding: 0 !important; }
+    .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; background: white; }
+    .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 17px; }
+    .hi-text { color: white !important; }
+    .today-border { border: 3px solid #333 !important; }
+
     .highlight-row { background-color: #FFE5E5 !important; font-weight: bold; color: #C04B41; }
     </style>
     """, unsafe_allow_html=True)
@@ -50,7 +60,7 @@ st.markdown("""
 kst = pytz.timezone('Asia/Seoul')
 now_kst = datetime.now(kst)
 today_kst = now_kst.date()
-PATTERN_START = date(2026, 3, 9) # 기준일: C조(황재업 조장) 시작일
+PATTERN_START = date(2026, 3, 9)
 
 def get_workers(target_date):
     if isinstance(target_date, datetime): target_date = target_date.date()
@@ -67,13 +77,14 @@ def get_shift_simple(dt):
     diff = (dt - PATTERN_START).days
     return ["C", "A", "B"][diff % 3]
 
+# 접속 시 오늘 조 자동 강조 세션 설정
 if 'default_hi_shift' not in st.session_state:
     st.session_state.default_hi_shift = get_shift_simple(today_kst)
 
-# --- [3] 탭 구성 ---
-tab1, tab2, tab3 = st.tabs(["🕒 실시간 현황", "📅 일정 조회", "🏥 근무달력"])
+# --- [3] 탭 구성 (이름 변경) ---
+tab1, tab2, tab3 = st.tabs(["🕒 근무현황", "📅 편성표", "🏥 근무달력"])
 
-# --- [탭 1: 실시간 현황] ---
+# --- [탭 1: 근무현황] ---
 with tab1:
     st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="date-display">{now_kst.strftime("%Y-%m-%d %H:%M:%S")}</div>', unsafe_allow_html=True)
@@ -112,7 +123,7 @@ with tab1:
             <tr style="background:#fff; font-weight:700;"><td>From</td><td>To</td><td>{names[0]}</td><td>{names[1]}</td><td>{names[2]}</td><td>{names[3]}</td></tr></thead>
             <tbody>{rows_html}</tbody></table></div>""", unsafe_allow_html=True)
 
-# --- [탭 2: 일정 조회 (개인별 색상 적용)] ---
+# --- [탭 2: 편성표] ---
 with tab2:
     st.markdown('<div class="main-title">📅 근무 일정 조회</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
@@ -135,54 +146,49 @@ with tab2:
             table_html += "</tr>"
     st.markdown(table_html + "</tbody></table></div>", unsafe_allow_html=True)
 
-# --- [탭 3: 근무달력 (복원된 디자인 + 전체 하이라이트)] ---
+# --- [탭 3: 근무달력 (스크롤 문제 해결)] ---
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무달력</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1: offset = st.slider("📅 조회 기준월 변경", -12, 12, 0)
-    with c2: 
+    col1, col2 = st.columns(2)
+    with col1: offset = st.slider("📅 조회월 변경", -6, 6, 0)
+    with col2: 
         opts = ["선택 안 함", "A", "B", "C"]
         hi_shift = st.selectbox("🎯 강조 조 선택", opts, index=opts.index(st.session_state.default_hi_shift))
 
-    def generate_cal_html(start_dt, highlight):
-        BASE_COLORS = {"A": "#FFE0B2", "B": "#FFCDD2", "C": "#BBDEFB"}
-        STRONG_COLORS = {"A": "#FB8C00", "B": "#E53935", "C": "#1E88E5"}
-        html = """<style>
-            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
-            body { font-family: 'Noto Sans KR', sans-serif; background: white; margin: 0; padding: 0; }
-            .container { display: flex; flex-direction: column; gap: 30px; padding: 5px; }
-            table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; }
-            th { border: 1px solid #eee; background: #f8f9fa; padding: 8px 0; font-size: 13px; }
-            td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0; position: relative; }
-            .date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; background: white; }
-            .shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; }
-            .sun { color: #d32f2f; } .sat { color: #1976d2; }
-            .hi-text { color: white !important; }
-            .today-border { border: 3px solid #333 !important; }
-        </style><div class="container">"""
-        curr = start_dt
-        for _ in range(12):
-            y, m = curr.year, curr.month
-            cal = calendar.monthcalendar(y, m)
-            html += f"<div><div style='text-align:center; font-weight:900; font-size:1.3rem; margin-bottom:10px;'>{y}년 {m}월</div><table>"
-            html += "<tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
-            for week in cal:
-                html += "<tr>"
-                for i, day in enumerate(week):
-                    if day == 0: html += "<td></td>"
-                    else:
-                        d_obj = date(y, m, day)
-                        s = get_shift_simple(d_obj)
-                        is_hi = (highlight == s)
-                        s_bg, d_bg = (STRONG_COLORS[s], STRONG_COLORS[s]) if is_hi else (BASE_COLORS[s], "white")
-                        td_cls = "today-border" if d_obj == today_kst else ""
-                        html += f"""<td class='{td_cls}' style='background:{s_bg};'>
-                            <div class='date-part {(['sun','','','','','','sat'][i]) if not is_hi else 'hi-text'}' style='background:{d_bg};'>{day}</div>
-                            <div class='shift-part {'hi-text' if is_hi else ''}'>{s}</div></td>"""
-                html += "</tr>"
-            html += "</table></div>"
-            curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
-        return html + "</div>"
-
-    start_date = (today_kst.replace(day=1) + timedelta(days=31 * offset)).replace(day=1)
-    components.html(generate_cal_html(start_date, hi_shift), height=1000, scrolling=True)
+    # 직접 렌더링 방식 (iframe 제거로 스크롤 문제 해결)
+    BASE_COLORS = {"A": "#FFE0B2", "B": "#FFCDD2", "C": "#BBDEFB"}
+    STRONG_COLORS = {"A": "#FB8C00", "B": "#E53935", "C": "#1E88E5"}
+    
+    cal_start = (today_kst.replace(day=1) + timedelta(days=31 * offset)).replace(day=1)
+    curr = cal_start
+    
+    final_cal_html = "<div style='width:100%;'>"
+    for _ in range(3): # 3개월씩 표시 (부담 없는 길이)
+        y, m = curr.year, curr.month
+        cal = calendar.monthcalendar(y, m)
+        final_cal_html += f"<div style='text-align:center; font-weight:900; margin-bottom:10px;'>{y}년 {m}월</div>"
+        final_cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
+        
+        for week in cal:
+            final_cal_html += "<tr>"
+            for i, day in enumerate(week):
+                if day == 0:
+                    final_cal_html += "<td class='cal-td'></td>"
+                else:
+                    d_obj = date(y, m, day)
+                    s = get_shift_simple(d_obj)
+                    is_hi = (hi_shift == s)
+                    s_bg, d_bg = (STRONG_COLORS[s], STRONG_COLORS[s]) if is_hi else (BASE_COLORS[s], "white")
+                    day_cls = "sun" if i == 0 else ("sat" if i == 6 else "")
+                    today_cls = "today-border" if d_obj == today_kst else ""
+                    
+                    final_cal_html += f"""
+                    <td class='cal-td {today_cls}' style='background:{s_bg};'>
+                        <div class='cal-date-part {day_cls if not is_hi else 'hi-text'}' style='background:{d_bg};'>{day}</div>
+                        <div class='cal-shift-part {'hi-text' if is_hi else ''}'>{s}</div>
+                    </td>"""
+            final_cal_html += "</tr>"
+        final_cal_html += "</table>"
+        curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
+    
+    st.markdown(final_cal_html + "</div>", unsafe_allow_html=True)
