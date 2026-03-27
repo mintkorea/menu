@@ -119,27 +119,48 @@ with tab2:
                 t_html += f'<td style="background:{bg}; font-weight:700;">{w}</td>'
             t_html += '</tr>'
     st.markdown(t_html + '</table></div>', unsafe_allow_html=True)
+
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
-    options = ["선택 없음", "A", "B", "C"]
-    hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(curr_logic_shift))
+    
+    # 상단 컨트롤: 연도/월 선택 및 강조 조 선택
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        sel_year = st.selectbox("연도", range(today_kst.year, today_kst.year + 2), index=0)
+    with c2:
+        sel_month = st.selectbox("월", range(1, 13), index=today_kst.month - 1)
+    with c3:
+        options = ["선택 없음", "A", "B", "C"]
+        hi = st.selectbox("🎯 강조 조", options, index=options.index(curr_logic_shift))
     
     B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
-    cal_html = ""; curr = today_kst.replace(day=1)
-    for _ in range(12):
-        y, m = curr.year, curr.month; cal = calendar.monthcalendar(y, m)
-        cal_html += f"<div style='text-align:center; font-weight:900; font-size:18px; margin-bottom:8px;'>{y}년 {m}월</div>"
-        cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
-        for week in cal:
-            cal_html += "<tr>"
-            for i, day in enumerate(week):
-                if day == 0: cal_html += "<td class='cal-td'></td>"
-                else:
-                    d_obj = date(y, m, day); s = get_shift_simple(d_obj); is_hi = (hi == s)
-                    s_bg = S_COLS[s] if is_hi else B_COLS[s]; d_bg = S_COLS[s] if is_hi else "white"
-                    td_cls = "today-border" if d_obj == today_kst else ""
-                    txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
-                    cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
-            cal_html += "</tr>"
-        cal_html += "</table>"; curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
+    
+    # 선택된 월에 대한 달력 생성
+    cal = calendar.monthcalendar(sel_year, sel_month)
+    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:10px; margin-bottom:8px;'>{sel_year}년 {sel_month}월</div>"
+    cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
+    
+    for week in cal:
+        cal_html += "<tr>"
+        for i, day in enumerate(week):
+            if day == 0: 
+                cal_html += "<td class='cal-td'></td>"
+            else:
+                d_obj = date(sel_year, sel_month, day)
+                s = get_shift_simple(d_obj)
+                is_hi = (hi == s)
+                
+                s_bg = S_COLS[s] if is_hi else B_COLS[s]
+                d_bg = S_COLS[s] if is_hi else "white"
+                td_cls = "today-border" if d_obj == today_kst else ""
+                txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
+                
+                cal_html += f"""
+                <td class='cal-td {td_cls}' style='background:{s_bg};'>
+                    <div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div>
+                    <div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div>
+                </td>"""
+        cal_html += "</tr>"
+    cal_html += "</table>"
+    
     st.markdown(cal_html, unsafe_allow_html=True)
