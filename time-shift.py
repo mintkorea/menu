@@ -10,26 +10,48 @@ st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 st.markdown("""
     <style>
     .block-container { padding-top: 50px !important; max-width: 500px; margin: auto; }
-    .stTabs [data-baseweb="tab-list"] { gap: 5px; display: flex; width: 100%; justify-content: space-around; }
-    .stTabs [data-baseweb="tab"] { flex: 1; text-align: center; height: 45px; background-color: #f0f2f6; border-radius: 8px 8px 0 0; padding: 5px !important; font-weight: 800; font-size: 13px !important; }
-    .stTabs [aria-selected="true"] { background-color: #2E4077 !important; color: white !important; }
+    
+    /* 탭 디자인: 더 옅고 부드럽게 */
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; display: flex; width: 100%; }
+    .stTabs [data-baseweb="tab"] { 
+        flex: 1; text-align: center; height: 45px; 
+        background-color: #f8f9fa; /* 옅은 그레이 */
+        border: 1px solid #eee;
+        border-radius: 10px 10px 0 0; 
+        padding: 5px !important; 
+        font-weight: 700; color: #888;
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #ffffff !important; 
+        color: #2E4077 !important; 
+        border-bottom: 3px solid #2E4077 !important;
+    }
     
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-bottom: 5px; }
     .date-display { text-align: center; font-size: 18px; color: #333; margin-bottom: 15px; font-weight: 700; }
-
-    /* 월 표시 타이틀: 메인보다 2폰트 작게 (18px) */
     .month-title { text-align: center; font-weight: 900; font-size: 18px; margin-bottom: 8px; color: #444; }
 
-    .status-msg { text-align: center; font-size: 14px; font-weight: 700; color: #C04B41; padding: 12px; border: 2px dashed #C04B41; border-radius: 10px; margin-bottom: 15px; background: #FFF5F5; }
+    /* 카드 섹션 */
     .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px; }
-    .status-card { border: 2px solid #2E4077; border-radius: 12px; padding: 10px 2px; text-align: center; background: white; }
+    .status-card { border: 1.5px solid #2E4077; border-radius: 12px; padding: 10px 2px; text-align: center; background: white; }
     .worker-name { font-size: 14px; font-weight: 800; color: #555; margin-bottom: 4px; }
     .status-val { font-size: 17px; font-weight: 900; color: #C04B41; }
     
-    .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 25px; overflow: hidden; }
+    /* 테이블: 헤더 색상 연하게 + 시간 셀 개행 방지 */
+    .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
-    .custom-table th { background: #2E4077; color: white; padding: 8px 2px; border: 1px solid #dee2e6; font-size: 11px; }
-    .custom-table td { border: 1px solid #dee2e6; padding: 10px 2px; }
+    
+    /* 헤더를 옅은 회색으로 */
+    .custom-table th { 
+        background: #F2F4F7; color: #333; 
+        padding: 10px 2px; border: 1px solid #dee2e6; 
+        font-size: 11px; font-weight: 800;
+    }
+    
+    .custom-table td { border: 1px solid #dee2e6; padding: 12px 2px; }
+    
+    /* 시간 셀 넓이 확보 및 개행 방지 */
+    .time-col { width: 90px !important; white-space: nowrap !important; font-weight: 700; background: #fafafa; }
     
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 40px; }
     .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; }
@@ -42,7 +64,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 설정 ---
+# --- [2] 로직 설정 (동일) ---
 kst = pytz.timezone('Asia/Seoul')
 now_kst = datetime.now(kst)
 today_kst = now_kst.date()
@@ -80,17 +102,6 @@ with tab1:
     is_work_day = (get_shift_simple(today_kst) == "C")
     is_after_work = (get_shift_simple(today_kst - timedelta(days=1)) == "C")
     
-    msg = ""; show_cards = False
-    if is_work_day:
-        if 0 <= hr < 6 or (hr == 6 and mn < 40): msg = "오늘 하루도 보람차고 즐거운 하루가 되도록 합시다."
-        elif hr == 6 and 40 <= mn <= 59: msg = "카드 표출 및 근무 준비중입니다."; show_cards = True
-        elif hr >= 7 or hr < 7: show_cards = True
-    elif is_after_work and 0 <= hr < 7: show_cards = True
-    
-    if not msg and is_after_work and hr == 7: msg = "오늘도 수고하셨습니다. 다음 근무 때 뵙겠습니다."
-    elif not msg and not is_work_day: msg = "오늘은 휴무일입니다."
-    if msg: st.markdown(f'<div class="status-msg">{msg}</div>', unsafe_allow_html=True)
-    
     work_date = today_kst if hr >= 7 or is_work_day else today_kst - timedelta(days=1)
     names = get_workers(work_date)
     
@@ -103,7 +114,7 @@ with tab1:
         return -1
     
     idx = get_idx(now_kst)
-    if show_cards and names:
+    if names:
         st.markdown(f'''<div class="status-container">
             <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{data_list[idx][2] if idx!=-1 else "대기"}</div></div>
             <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{data_list[idx][3] if idx!=-1 else "대기"}</div></div>
@@ -114,16 +125,19 @@ with tab1:
     show_all = st.checkbox("🔄 전체 일정 보기", value=False)
     d_rows = data_list if show_all else (data_list[idx:] if idx != -1 else data_list)
     h_names = names if names else ["조장", "성희", "당직A", "당직B"]
-    rows_html = "".join([f"<tr{' style=\"background:#FFE5E5;font-weight:bold;\"' if (show_all and i==idx) or (not show_all and i==0) else ''}><td>{r[0]}~{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
+    
+    # 시간 열에 .time-col 클래스 추가하여 개행 방지
+    rows_html = "".join([f"<tr{' style=\"background:#FFE5E5;\"' if (show_all and i==idx) or (not show_all and i==0) else ''}><td class='time-col'>{r[0]} ~ {r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(d_rows)])
+    
     st.markdown(f'''<div class="table-container"><table class="custom-table">
-        <tr><th rowspan="2">시간</th><th colspan="2">성의회관</th><th colspan="2">의과학산업연구원</th></tr>
+        <tr><th class="time-col" rowspan="2">시간</th><th colspan="2">성의회관</th><th colspan="2">의과학산업연구원</th></tr>
         <tr><th>{h_names[0]}</th><th>{h_names[1]}</th><th>{h_names[2]}</th><th>{h_names[3]}</th></tr>{rows_html}</table></div>''', unsafe_allow_html=True)
 
 with tab2:
     st.markdown('<div class="main-title">📅 근무 편성표</div>', unsafe_allow_html=True)
     s_date = st.date_input("조회 기준일", today_kst)
     focus = st.selectbox("🎯 강조(색상)", ["없음", "황재업", "김태언", "이태원", "이정석"])
-    t_html = '<div class="table-container"><table class="custom-table"><tr style="background:#f8f9fa;font-weight:800; color:#333;"><td>날짜</td><td>조장</td><td>성희</td><td>의산A</td><td>의산B</td></tr>'
+    t_html = '<div class="table-container"><table class="custom-table"><tr><th>날짜</th><th>조장</th><th>성희</th><th>의산A</th><th>의산B</th></tr>'
     for i in range(31):
         d = s_date + timedelta(days=i)
         ws = get_workers(d)
@@ -139,17 +153,12 @@ with tab2:
 
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
-    # 2. 선택 없음 추가 (강조 안 함)
     options = ["선택 없음", "A", "B", "C"]
-    default_idx = options.index(get_shift_simple(today_kst))
-    hi = st.selectbox("🎯 강조 조 선택", options, index=default_idx)
-    
+    hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(get_shift_simple(today_kst)))
     B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
     cal_html = ""; curr = today_kst.replace(day=1)
-    
     for _ in range(12):
         y, m = curr.year, curr.month; cal = calendar.monthcalendar(y, m)
-        # 1. 월 표시 타이틀 크기 조정 (month-title 클래스 적용)
         cal_html += f"<div class='month-title'>{y}년 {m}월</div>"
         cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
         for week in cal:
