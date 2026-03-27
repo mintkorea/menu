@@ -42,7 +42,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # 5. 상단 컨트롤 박스
-st.subheader(f"🏥 성의교정 근무표 <br>오늘: {today_kst} {st.session_state.default_shift}조")
+st.subheader(f"🏥 성의교정 근무표")
 
 col1, col2 = st.columns(2)
 with col1:
