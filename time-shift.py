@@ -7,7 +7,7 @@ import calendar
 # --- [1] 페이지 설정 및 스타일 ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
-# [중요] 한국 표준시(KST) 및 교대 시간(07:00) 로직 설정
+# 한국 표준시(KST) 및 교대 시간(07:00) 로직 설정
 kst = pytz.timezone('Asia/Seoul')
 now_kst = datetime.now(kst)
 today_kst = now_kst.date()
@@ -39,7 +39,6 @@ st.markdown("""
     .row-highlight { background-color: #FFE5E5 !important; }
     .row-highlight td { border-top: 3px solid #E53935 !important; border-bottom: 3px solid #E53935 !important; font-weight: 900 !important; }
     
-    /* 달력 스타일 고정 */
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 40px; }
     .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; }
     .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
@@ -59,7 +58,11 @@ def get_shift_simple(dt):
 def get_workers(target_date):
     diff = (target_date - PATTERN_START).days
     if diff % 3 != 0: return None
-    PATTERNS = [["김태언", "이태원", "이정석"], ["김태언", "이정석", "이태원"], ["이정석", "김태언", "이태원"], ["이정석", "이태원", "김태언"], ["이태원", "김태언", "이정석"], ["이태원", "이정석", "김태언"]]
+    PATTERNS = [
+        ["김태언", "이태원", "이정석"], ["김태언", "이정석", "이태원"], 
+        ["이정석", "김태언", "이태원"], ["이정석", "이태원", "김태언"], 
+        ["이태원", "김태언", "이정석"], ["이태원", "이정석", "김태언"]
+    ]
     return ["황재업", PATTERNS[(diff // 3) % 6][0], PATTERNS[(diff // 3) % 6][1], PATTERNS[(diff // 3) % 6][2]]
 
 data_list = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"], ["06:00", "07:00", "안내실", "정리", "로비", "정리"]]
@@ -72,7 +75,6 @@ with tab1:
     weekdays = ['월','화','수','목','금','토','일']
     st.markdown(f'<div class="date-display">{now_kst.strftime("%Y-%m-%d")}({weekdays[now_kst.weekday()]}) {now_kst.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
     
-    # [수정] 현재 조 판단 (07:00 교대 로직 기준)
     curr_logic_shift = get_shift_simple(logic_date)
     is_c_day = (curr_logic_shift == "C")
     status_msg = ""; highlight_idx = -1
@@ -98,9 +100,27 @@ with tab1:
     rows_html = "".join([f"<tr{' class=\"row-highlight\"' if i==highlight_idx else ''}><td class='time-col'>{r[0]} ~ {r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(data_list)])
     st.markdown(f'<div class="table-container"><table class="custom-table"><tr><th class="time-col" rowspan="2">시간</th><th colspan="2">성의회관</th><th colspan="2">의과학산업연구원</th></tr><tr><th>{h_names[0]}</th><th>{h_names[1]}</th><th>{h_names[2]}</th><th>{h_names[3]}</th></tr>{rows_html}</table></div>', unsafe_allow_html=True)
 
+with tab2:
+    st.markdown('<div class="main-title">📅 C조 향후 투입 편성표</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; font-size:13px; color:#666; margin-bottom:15px;">향후 30일간의 C조 투입일 및 명단입니다.</div>', unsafe_allow_html=True)
+    
+    plan_data = []
+    # 오늘부터 30일간 C조인 날짜만 추출
+    for i in range(30):
+        target = today_kst + timedelta(days=i)
+        if get_shift_simple(target) == "C":
+            w = get_workers(target)
+            plan_data.append({
+                "날짜": target.strftime("%Y-%m-%d"),
+                "요일": weekdays[target.weekday()],
+                "조장": w[0], "성의": w[1], "당직A": w[2], "당직B": w[3]
+            })
+    
+    df_plan = pd.DataFrame(plan_data)
+    st.table(df_plan)
+
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
-    # [수정] 현재 조(logic_date 기준) 자동 선택
     options = ["선택 없음", "A", "B", "C"]
     hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(curr_logic_shift))
     
