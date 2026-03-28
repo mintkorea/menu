@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import os
 
-# --- 0. 설정 파일 관리 ---
+# --- 0. 설정 파일 관리 (영구 저장) ---
 SETTINGS_FILE = "admin_settings.txt"
 DEFAULT_KEYWORDS = "안내, 인포, 로비, 마리아, 대강당, 행정팀"
 
@@ -47,7 +47,6 @@ def load_and_clean_data():
         except: continue
     return pd.concat(all_dfs, ignore_index=True).dropna(subset=['name']) if all_dfs else None
 
-# --- 3. 우선순위 및 정렬 로직 ---
 def get_priority(row, selected_bldg, admin_keywords):
     name = str(row['name'])
     keywords = [k.strip() for k in admin_keywords.split(',') if k.strip()]
@@ -57,48 +56,53 @@ def get_priority(row, selected_bldg, admin_keywords):
     if any(k in name.lower() for k in ['eps', 'tps', '공실', '창고']): return 200
     return 100
 
-# --- 4. 메인 UI ---
+# --- 3. 메인 UI ---
 def main():
     st.set_page_config(page_title="성의안내", layout="centered")
     
-    # CSS: 줄간격 균일화 및 왼쪽 정렬 강화
     st.markdown("""
         <style>
-        .block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; }
+        .block-container { padding-top: 2.5rem !important; }
         .small-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem; color: #1e3a8a; }
         
-        /* 한 줄 레이아웃 최적화 */
+        /* 정보 한 줄 레이아웃 */
         .info-row { 
             display: flex; 
             align-items: center; 
-            padding: 4px 0; /* 줄간격 균일하게 고정 */
+            padding: 5px 0; 
             border-bottom: 1px solid #f0f0f0; 
-            gap: 10px; /* 요소 간 간격 */
+            white-space: nowrap; /* 행 전체 개행 방지 */
         }
         
+        /* 건물명: 옴니버스A(5자)도 수용 가능하도록 너비 확장 */
         .tag-bldg { 
             background-color: #f1f3f5; color: #495057; 
             font-weight: bold; font-size: 0.75rem; 
-            padding: 2px 6px; border-radius: 4px; 
-            width: 55px; text-align: center; flex-shrink: 0;
+            padding: 2px 8px; border-radius: 4px; 
+            width: 75px; text-align: center; flex-shrink: 0;
+            overflow: hidden;
         }
         
-        .tag-floor { 
-            color: #0061f2; font-weight: 800; 
-            font-size: 0.9rem; width: 35px; flex-shrink: 0;
-        }
-        
-        /* 시설명을 왼쪽으로 밀착 */
+        /* 시설명: 왼쪽 정렬 및 가변 너비 */
         .tag-name-box { 
             flex-grow: 1; 
             text-align: left; 
             font-weight: 700; color: #1a1a1a; font-size: 0.92rem; 
-            display: flex; align-items: center;
+            margin-left: 10px;
+            overflow: hidden; text-overflow: ellipsis;
         }
         
-        .tag-room { color: #e83e8c; font-weight: bold; font-size: 0.82rem; margin-left: 5px; }
+        .tag-room { color: #e83e8c; font-weight: bold; font-size: 0.85rem; margin-left: 4px; }
         
-        .sub-desc { font-size: 0.8rem; color: #868e96; padding-left: 105px; margin-top: 1px; margin-bottom: 3px; }
+        /* 층표시: 우측 정렬 고정 */
+        .tag-floor { 
+            color: #0061f2; font-weight: 800; 
+            font-size: 0.9rem; width: 45px; 
+            text-align: right; flex-shrink: 0;
+            margin-left: 5px;
+        }
+        
+        .sub-desc { font-size: 0.8rem; color: #868e96; padding-left: 95px; margin-top: 1px; margin-bottom: 4px; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -120,26 +124,24 @@ def main():
         view_df['floor_int'] = pd.to_numeric(view_df['floor'].astype(str).str.extract('(\\d+)', expand=False), errors='coerce').fillna(0)
         view_df = view_df.sort_values(by=['priority', 'floor_int', 'name'], ascending=[True, False, True])
 
-        # 리스트 출력
         for _, row in view_df.iterrows():
             room_val = str(row.get('room', ''))
             room_html = f"<span class='tag-room'>({room_val}호)</span>" if room_val and room_val != 'nan' and room_val.strip() != "" else ""
             desc_val = str(row.get('description', '')).strip()
             
-            # 메인 행 (좌측 정렬 구조)
+            # [구조 변경] 건물명 -> 시설명(flex-grow) -> 층수(우측)
             st.markdown(f"""
                 <div class="info-row">
                     <span class="tag-bldg">{row['building']}</span>
-                    <span class="tag-floor">{row['floor']}F</span>
                     <div class="tag-name-box">{row['name']}{room_html}</div>
+                    <span class="tag-floor">{row['floor']}F</span>
                 </div>
             """, unsafe_allow_html=True)
             
-            # 비고 (있는 경우만)
             if desc_val and desc_val.lower() != 'nan' and desc_val != "":
                 st.markdown(f'<div class="sub-desc">└ {desc_val}</div>', unsafe_allow_html=True)
 
-        # 관리자 모드 버튼 (비밀번호 1234)
+        # 관리자 모드 (비번 1234)
         st.markdown("<br>", unsafe_allow_html=True)
         if not st.session_state.admin_mode:
             if st.button("🔒 Admin"): st.session_state.admin_pw_input = True
@@ -149,7 +151,7 @@ def main():
                     st.session_state.admin_mode = True
                     st.rerun()
         else:
-            with st.expander("🛠 정렬 키워드 관리 (영구 저장)", expanded=True):
+            with st.expander("🛠 정렬 키워드 관리 (파일 저장)", expanded=True):
                 new_kw = st.text_area("우선순위 키워드", value=st.session_state.priority_keywords)
                 if st.button("💾 서버 저장"):
                     st.session_state.priority_keywords = new_kw
@@ -160,7 +162,7 @@ def main():
                     st.session_state.admin_mode = False
                     st.rerun()
     else:
-        st.error("데이터를 불러올 수 없습니다.")
+        st.error("데이터 로드 실패")
 
 if __name__ == "__main__":
     main()
