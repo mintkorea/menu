@@ -1,52 +1,70 @@
 import pandas as pd
 import os
 
-# 1. 파일 리스트 (경로 확인 필수)
-# 스트림릿 클라우드라면 파일들이 py 파일과 같은 위치에 있는지 확인하세요.
+# 1. 대상 파일 리스트 (대소문자 및 오타 수정 완료)
 file_names = [
     '대학본관.csv', '병원별관.csv', '서울성모병원.CSV', 
     '성으회관0.csv', '옴니버스B.csv', '의산연01.csv'
 ]
 
+# 2. 모든 파일을 수용할 수 있는 표준 규격
 standard_columns = ['name', 'campus', 'building', 'floor', 'room', 'category', 'description', 'hours']
-combined_data = []
+
+combined_list = []
+
+print("🚀 데이터 통합 작업을 시작합니다...")
 
 for file in file_names:
-    # 파일 존재 여부 확인
     if not os.path.exists(file):
-        print(f"⚠️ 파일을 찾을 수 없음 (건너뜀): {file}")
+        print(f"⚠️  [파일 없음] {file} - 경로를 확인하세요.")
         continue
         
     try:
-        # 데이터 읽기 (한글 깨짐 방지를 위해 cp949 또는 utf-8-sig 시도)
+        # 한글 인코딩 대응 (utf-8-sig 또는 cp949)
         try:
             df = pd.read_csv(file, skip_blank_lines=True, encoding='utf-8-sig')
         except:
             df = pd.read_csv(file, skip_blank_lines=True, encoding='cp949')
+
+        # [전처리 1] 완전 빈 줄 제거
+        df = df.dropna(how='all')
+
+        # [전처리 2] 파일 중간에 삽입된 중복 헤더('name'이라는 글자) 제거
+        if 'name' in df.columns:
+            df = df[df['name'] != 'name']
         
-        # 중간 헤더 제거 및 빈 줄 제거
-        df = df.dropna(subset=['name']) # 이름이 없는 행 제거
-        df = df[df['name'] != 'name']   # 중복 헤더 제거
-        
-        # 표준 컬럼 맞추기
+        # [전처리 3] 부족한 컬럼 채우기 및 순서 통일
         for col in standard_columns:
             if col not in df.columns:
-                df[col] = ""
+                df[col] = "" # 없는 컬럼은 빈 값으로 생성
         
+        # 필요한 컬럼만 추출
         df = df[standard_columns]
-        combined_data.append(df)
-        print(f"✅ {file} 읽기 성공 ({len(df)}개 행)")
         
-    except Exception as e:
-        print(f"❌ {file} 처리 중 에러: {e}")
+        # [전처리 4] 데이터 앞뒤 공백 제거
+        df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
 
-# 2. 통합 대상이 있는지 확인 (에러 방지 핵심)
-if combined_data:
-    final_df = pd.concat(combined_data, ignore_index=True)
+        combined_list.append(df)
+        print(f"✅ [성공] {file} ({len(df)}개 행)")
+
+    except Exception as e:
+        print(f"❌ [에러] {file} 처리 중 오류: {e}")
+
+# 3. 데이터 합치기 (비어있을 경우 대비)
+if combined_list:
+    final_df = pd.concat(combined_list, ignore_index=True)
+    
+    # [최종 정리] 중복 데이터 제거 및 층수(floor) 데이터 정제
     final_df.drop_duplicates(inplace=True)
     
     # 결과 저장
-    final_df.to_csv('integrated_building_data.csv', index=False, encoding='utf-8-sig')
-    print(f"\n🎉 총 {len(final_df)}개의 데이터를 통합하여 저장했습니다.")
+    output_name = 'total_building_data.csv'
+    final_df.to_csv(output_name, index=False, encoding='utf-8-sig')
+    
+    print("-" * 30)
+    print(f"🎉 통합 완료!")
+    print(f"📂 파일명: {output_name}")
+    print(f"📊 총 데이터 개수: {len(final_df)}개")
 else:
-    print("\n❌ 통합할 데이터가 없습니다. 파일 파일명과 경로를 다시 확인해주세요.")
+    print("-" * 30)
+    print("❌ 통합할 데이터가 하나도 없습니다. 파일명을 다시 확인해주세요.")
