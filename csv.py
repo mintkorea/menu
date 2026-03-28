@@ -1,72 +1,45 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 
-def safe_read_and_clean(file_path):
-    try:
-        # 1. 인코딩 처리
-        try:
-            df = pd.read_csv(file_path, encoding='utf-8-sig')
-        except:
-            df = pd.read_csv(file_path, encoding='cp949')
+# [가정] 이전 단계에서 통합된 final_df가 있다고 가정합니다.
+# 1. 화면 타이틀
+st.title("🏢 가톨릭대학교 성의교정 시설 안내")
+st.markdown(f"현재 **{len(final_df)}개**의 시설 정보가 등록되어 있습니다.")
 
-        # 2. 중복 컬럼 제거 및 제목행 방어
-        df = df.loc[:, ~df.columns.duplicated()]
-        if 'name' in df.columns:
-            is_header = df['name'].astype(str).str.strip().str.lower() == 'name'
-            df = df[~is_header]
+# 2. 통합 검색창 레이아웃
+st.divider()
+search_query = st.text_input("🔍 찾으시는 시설명, 건물명, 또는 호실 번호를 입력하세요.", placeholder="예: 기초의학실습실, 옴니버스, 402호")
 
-        # 3. 빈 데이터 제거
-        df = df.dropna(subset=['name'])
-        df = df[df['name'].astype(str).str.strip() != '']
-        
-        # 4. 건물명 기록
-        df['building_name'] = file_path.split('.')[0]
-        
-        return df.reset_index(drop=True)
-    except Exception as e:
-        return None
-
-# --- [메인 실행부] ---
-target_files = [
-    '성의회관.csv', '의산연01.csv', '대학본관.csv', 
-    '병원별관.csv', '서울성모병원.CSV', '옴니버스B.csv', '옴니버스A.csv'
-]
-
-all_dfs = []
-for f in target_files:
-    temp_df = safe_read_and_clean(f)
-    if temp_df is not None:
-        all_dfs.append(temp_df)
-
-if all_dfs:
-    # 1. 데이터 통합
-    final_df = pd.concat(all_dfs, ignore_index=True, sort=False)
+# 3. 검색 로직 (시설명, 건물명, 호실, 비고 전체에서 검색)
+if search_query:
+    # 대소문자 구분 없이 검색하기 위해 query를 소문자로 변환
+    q = search_query.lower()
     
-    # 2. 화면 출력
-    st.success(f"🎊 총 {len(all_dfs)}개 건물, 전체 {len(final_df)}개 데이터 통합 완료!")
+    # 여러 컬럼을 합쳐서 검색 대상 생성
+    search_target = (
+        final_df['name'].astype(str) + 
+        final_df['building_name'].astype(str) + 
+        final_df['floor'].astype(str) + 
+        final_df['room'].astype(str) + 
+        final_df['description'].astype(str)
+    ).str.lower()
     
-    st.divider()
+    results = final_df[search_target.str.contains(q, na=False)]
     
-    # 3. [핵심] 건물별 추출 개수 통계
-    st.subheader("🏢 건물별 시설 데이터 추출 현황")
-    
-    # 개수 집계 및 정렬
-    counts = final_df['building_name'].value_counts().reset_index()
-    counts.columns = ['건물명', '추출된 시설 수']
-    
-    # 표와 차트 나란히 배치
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.write("#### 데이터 상세 수치")
-        st.table(counts)
-        
-    with col2:
-        st.write("#### 시각화 그래프")
-        st.bar_chart(data=counts.set_index('건물명'))
-
-    # 4. 데이터 미리보기
-    with st.expander("🔍 전체 데이터 리스트 보기"):
-        st.dataframe(final_df)
+    if not results.empty:
+        st.write(f"✅ **'{search_query}'**에 대한 검색 결과가 **{len(results)}건** 있습니다.")
+        st.dataframe(results, use_container_width=True)
+    else:
+        st.warning(f"❌ '{search_query}'에 대한 검색 결과가 없습니다. 검색어를 확인해 주세요.")
 else:
-    st.error("파일을 하나도 불러오지 못했습니다. 파일명이 정확한지 확인해 주세요.")
+    st.info("검색어를 입력하시면 전체 건물에서 해당 시설을 즉시 찾아드립니다.")
+
+# 4. 부가 기능: 건물별 필터 (사이드바)
+st.sidebar.header("📍 건물별 필터")
+selected_building = st.sidebar.multiselect(
+    "특정 건물만 보기",
+    options=final_df['building_name'].unique(),
+    default=final_df['building_name'].unique()
+)
+
+# 필터 적용 로직은 필요시 추가 가능
