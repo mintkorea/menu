@@ -65,44 +65,42 @@ def main():
         .block-container { padding-top: 2.5rem !important; }
         .small-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem; color: #1e3a8a; }
         
-        /* 정보 한 줄 레이아웃 */
         .info-row { 
             display: flex; 
             align-items: center; 
-            padding: 5px 0; 
+            padding: 4px 0; 
             border-bottom: 1px solid #f0f0f0; 
-            white-space: nowrap; /* 행 전체 개행 방지 */
+            white-space: nowrap;
         }
         
-        /* 건물명: 옴니버스A(5자)도 수용 가능하도록 너비 확장 */
+        /* 건물명: 너비 확보하여 개행 방지 */
         .tag-bldg { 
             background-color: #f1f3f5; color: #495057; 
             font-weight: bold; font-size: 0.75rem; 
             padding: 2px 8px; border-radius: 4px; 
-            width: 75px; text-align: center; flex-shrink: 0;
-            overflow: hidden;
+            width: 78px; text-align: center; flex-shrink: 0;
         }
         
-        /* 시설명: 왼쪽 정렬 및 가변 너비 */
+        /* 층표시: 시설명 앞에서 우측 정렬 */
+        .tag-floor { 
+            color: #0061f2; font-weight: 800; 
+            font-size: 0.9rem; width: 40px; 
+            text-align: right; flex-shrink: 0;
+            margin-right: 12px; /* 시설명과의 간격 */
+        }
+        
+        /* 시설명: 좌측 정렬 밀착 */
         .tag-name-box { 
             flex-grow: 1; 
             text-align: left; 
             font-weight: 700; color: #1a1a1a; font-size: 0.92rem; 
-            margin-left: 10px;
             overflow: hidden; text-overflow: ellipsis;
         }
         
         .tag-room { color: #e83e8c; font-weight: bold; font-size: 0.85rem; margin-left: 4px; }
         
-        /* 층표시: 우측 정렬 고정 */
-        .tag-floor { 
-            color: #0061f2; font-weight: 800; 
-            font-size: 0.9rem; width: 45px; 
-            text-align: right; flex-shrink: 0;
-            margin-left: 5px;
-        }
-        
-        .sub-desc { font-size: 0.8rem; color: #868e96; padding-left: 95px; margin-top: 1px; margin-bottom: 4px; }
+        /* 비고 들여쓰기 조정 (건물명 + 층수 영역만큼) */
+        .sub-desc { font-size: 0.8rem; color: #868e96; padding-left: 135px; margin-top: 1px; margin-bottom: 4px; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -129,12 +127,12 @@ def main():
             room_html = f"<span class='tag-room'>({room_val}호)</span>" if room_val and room_val != 'nan' and room_val.strip() != "" else ""
             desc_val = str(row.get('description', '')).strip()
             
-            # [구조 변경] 건물명 -> 시설명(flex-grow) -> 층수(우측)
+            # [수정된 배치] 건물명 -> 층(우측정렬) -> 시설명(좌측정렬)
             st.markdown(f"""
                 <div class="info-row">
                     <span class="tag-bldg">{row['building']}</span>
-                    <div class="tag-name-box">{row['name']}{room_html}</div>
                     <span class="tag-floor">{row['floor']}F</span>
+                    <div class="tag-name-box">{row['name']}{room_html}</div>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -151,12 +149,12 @@ def main():
                     st.session_state.admin_mode = True
                     st.rerun()
         else:
-            with st.expander("🛠 정렬 키워드 관리 (파일 저장)", expanded=True):
-                new_kw = st.text_area("우선순위 키워드", value=st.session_state.priority_keywords)
-                if st.button("💾 서버 저장"):
+            with st.expander("🛠 정렬 키워드 관리 (서버 저장)", expanded=True):
+                new_kw = st.text_area("우선순위 키워드 (쉼표 구분)", value=st.session_state.priority_keywords)
+                if st.button("💾 저장하기"):
                     st.session_state.priority_keywords = new_kw
                     save_settings(new_kw)
-                    st.success("저장 완료")
+                    st.success("설정이 저장되었습니다.")
                     st.rerun()
                 if st.button("로그아웃"):
                     st.session_state.admin_mode = False
