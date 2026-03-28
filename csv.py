@@ -1,22 +1,20 @@
 import pandas as pd
 
-def debug_seoul_hospital():
-    file_name = '서울성모병원.CSV'
+def debug_single_file(file_name):
+    print(f"--- [{file_name}] 파일 읽기 시도 ---")
     try:
-        # 1. 인코딩 해결
+        # 1. 인코딩 에러 방지 (한글 깨짐 차단)
         try:
             df = pd.read_csv(file_name, encoding='utf-8-sig')
         except:
             df = pd.read_csv(file_name, encoding='cp949')
 
-        # 2. 중복 컬럼명 제거 (InvalidIndexError 방지)
-        df = df.loc[:, ~df.columns.duplicated()]
-
-        # 3. 데이터 중간에 삽입된 'name' 행들 제거 (백지의 주범)
+        # 2. [백지 해결 핵심] 데이터 중간에 낀 제목줄(name, campus...) 강제 제거
+        # 'name' 컬럼에 'name'이라는 글자가 들어있는 행을 모두 지웁니다.
         if 'name' in df.columns:
             df = df[df['name'].astype(str).str.lower() != 'name']
 
-        # 4. 층수 변환 (-6 -> B6F)
+        # 3. 층수 데이터 변환 (-6 -> B6F)
         def convert_floor(f):
             f = str(f).strip().upper()
             if f.startswith('-'): return f"B{f[1:]}F"
@@ -26,12 +24,11 @@ def debug_seoul_hospital():
         if 'floor' in df.columns:
             df['floor'] = df['floor'].apply(convert_floor)
 
-        # 5. 필요한 컬럼만 추출
-        # 성모병원은 'room' 컬럼이 있으므로 이를 살립니다.
-        df = df[['name', 'building', 'floor', 'room', 'category']].dropna(subset=['name'])
+        # 4. 필수 데이터가 없는 행(빈 줄) 삭제
+        df = df.dropna(subset=['name'])
         
-        print(f"✅ {file_name} 읽기 성공! 데이터 {len(df)}건을 찾았습니다.")
-        print(df.head(10)) # 상위 10개 출력해서 확인
+        print(f"✅ 성공: {len(df)}개의 데이터를 읽어왔습니다.")
+        print(df.head(10)) # 상위 10개 데이터 출력
         return df
 
     except Exception as e:
@@ -39,4 +36,4 @@ def debug_seoul_hospital():
         return None
 
 # 실행
-test_df = debug_seoul_hospital()
+hospital_df = debug_single_file('서울성모병원.CSV')
