@@ -10,7 +10,7 @@ today_kst = datetime.now(KST).date()
 
 # 2. 근무 로직
 def get_shift_simple(d):
-    base = date(2024, 1, 1)
+    base = date(2025, 1, 1)
     diff = (d - base).days % 3
     return ["A", "B", "C"][diff]
 
