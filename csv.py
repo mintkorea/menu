@@ -19,14 +19,12 @@ def load_and_clean_data():
             rename_map = {'건물명': 'building', '시설명': 'name', '이름': 'name', '호실': 'room', '층': 'floor'}
             df = df.rename(columns=rename_map)
             
-            # 건물명 강제 매칭
             if '성의회관' in file_path: df['building'] = '성의회관'
             elif '대학본관' in file_path: df['building'] = '대학본관'
             elif '의산연01' in file_path: df['building'] = '의산연본관'
             elif '의산연별관' in file_path: df['building'] = '의산연별관'
             elif '병원별관' in file_path: df['building'] = '병원별관'
             elif '옴니버스' in file_path: df['building'] = '옴니버스파크'
-            elif 'building' not in df.columns: df['building'] = file_path.split('.')[0]
             
             if 'name' in df.columns:
                 df = df.dropna(subset=['name'])
@@ -63,21 +61,22 @@ def apply_priority(df, selected_bldg):
             df.loc[df['name'].astype(str).str.contains(target, case=False, na=False), 'sort_idx'] = i
     return df.sort_values(by=['sort_idx', 'floor', 'name']).drop(columns=['sort_idx'])
 
-# --- 4. 메인 UI (리스트 노출 방식 수정) ---
+# --- 4. 메인 UI ---
 def main():
     st.set_page_config(page_title="성의안내", layout="centered")
     
-    # CSS: 리스트 가독성 및 모바일 최적화
     st.markdown("""
         <style>
-        .m-title { font-size: 1.15rem; font-weight: bold; color: #1E3A8A; margin-bottom: 10px; }
+        .m-title { font-size: 1.15rem; font-weight: bold; color: #1E3A8A; margin-bottom: 15px; }
         .result-row { 
-            padding: 10px; border-bottom: 1px solid #eee; font-size: 0.95rem; line-height: 1.5;
+            padding: 12px 8px; border-bottom: 1px solid #f0f0f0; font-size: 0.95rem; display: flex; align-items: flex-start;
         }
-        .bldg-tag { color: #666; font-size: 0.8rem; margin-right: 5px; }
-        .floor-tag { color: #007bff; font-weight: bold; margin-right: 8px; }
-        .name-tag { font-weight: 500; color: #333; }
-        .info-icon { color: #e67e22; margin-right: 4px; }
+        .loc-tag { 
+            background: #f8f9fa; border-radius: 4px; padding: 2px 6px; 
+            color: #007bff; font-weight: bold; font-size: 0.85rem; margin-right: 10px; white-space: nowrap;
+        }
+        .name-tag { font-weight: 500; color: #333; flex: 1; }
+        .room-info { color: #888; font-size: 0.8rem; margin-left: 5px; font-weight: normal; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -95,33 +94,34 @@ def main():
             view_df = view_df[view_df['name'].astype(str).str.lower().str.contains(q) | 
                              view_df['name'].apply(get_search_tags).str.contains(q)]
         
-        # 인덱스 우선순위 적용
         view_df = apply_priority(view_df, selected_bldg)
         
-        st.caption(f"📍 {len(view_df)}개의 시설이 검색되었습니다.")
+        st.caption(f"📍 {len(view_df)}개 정보 노출 중")
         st.markdown("---")
 
-        # [수정] 펼치기 없이 바로 리스트 노출
         for _, row in view_df.iterrows():
             name_str = str(row['name'])
             floor_str = str(row.get('floor', '-'))
-            bldg_str = str(row.get('building', '-'))
+            room_str = str(row.get('room', ''))
             
-            # 안내판 항목 여부 확인 (아이콘 표시)
+            # 호실 정보가 있는 경우에만 괄호와 함께 표시
+            room_display = f"({room_str}호)" if room_str and room_str != 'nan' and room_str != '-' else ""
+            
             is_info = any(kw in name_str.lower() for kw in ['센터', '연구소', '홀', '실', '팀', '식당'])
             icon = "📢" if is_info else "📍"
             
-            # HTML을 이용한 한 줄 출력 (건물 | 층 | 시설명)
+            # [층 | 호실 | 시설명] 구조의 한 줄 출력
             st.markdown(f"""
                 <div class='result-row'>
-                    <span class='bldg-tag'>[{bldg_str}]</span>
-                    <span class='floor-tag'>{floor_str}F</span>
-                    <span class='name-tag'>{icon} {name_str}</span>
+                    <div class='loc-tag'>{floor_str}F</div>
+                    <div class='name-tag'>
+                        {icon} {name_str} <span class='room-info'>{room_display}</span>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
             
     else:
-        st.error("데이터를 불러올 수 없습니다.")
+        st.error("데이터 로드 실패")
 
 if __name__ == "__main__":
     main()
