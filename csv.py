@@ -1,29 +1,35 @@
 import pandas as pd
 import os
 
-def standardize_campus_data(file_list):
-    # 최종 앱에서 사용할 표준 컬럼 구조
-    std_cols = ['facility_name', 'building', 'floor', 'room_no', 'category', 'description', 'map_key']
-    integrated_df = []
+def generate_app_master_db(file_list):
+    # 1. 앱에서 사용할 표준 컬럼 구조
+    std_cols = ['facility_name', 'building', 'floor', 'room_no', 'category', 'description', 'map_id']
+    integrated_data = []
+
+    # 건물명 매핑 (파일명 기준 통일)
+    building_names = {
+        '대학본관': '대학본관',
+        '병원별관': '병원별관',
+        '서울성모병원': '서울성모병원',
+        '성으회관0': '성의회관',
+        '옴니버스B': '옴니버스파크B',
+        '의산연01': '의과학연구원'
+    }
 
     for file in file_list:
         try:
-            # 1. 인코딩 대응 (한글 깨짐 방지)
+            # 인코딩 대응 (UTF-8-SIG 또는 CP949)
             try:
                 df = pd.read_csv(file, encoding='utf-8-sig')
             except:
                 df = pd.read_csv(file, encoding='cp949')
 
-            # 2. 컬럼명 표준화 (파일마다 다른 헤더 통합)
-            rename_map = {
-                'name': 'facility_name',
-                'room': 'room_no',
-                'zone': 'description' # 구역 정보는 비고란으로 통합
-            }
-            df.rename(columns=rename_map, inplace=True)
+            # 2. 컬럼명 표준화
+            mapping = {'name': 'facility_name', 'room': 'room_no', 'zone': 'description'}
+            df.rename(columns=mapping, inplace=True)
 
-            # 3. 층수(Floor) 데이터 정규화 (예: -6 -> B6F, 4 -> 4F)
-            def fix_floor(f):
+            # 3. 층수(Floor) 형식 통일 (예: -6 -> B6F, 4 -> 4F)
+            def normalize_floor(f):
                 f = str(f).strip().upper()
                 if f == 'NAN' or not f: return ""
                 if f.startswith('-'): return f"B{f[1:]}F"
@@ -31,42 +37,39 @@ def standardize_campus_data(file_list):
                 if not f.endswith('F'): return f + "F"
                 return f
             
-            df['floor'] = df['floor'].apply(fix_floor)
+            df['floor'] = df['floor'].apply(normalize_floor)
 
-            # 4. 건물명 표준화 및 이미지 매칭 키(map_key) 생성
-            # 앱에서 '건물명_층수.png'로 도면을 불러올 수 있게 설계
-            b_name = file.split('.')[0]
-            if 'building' not in df.columns:
-                df['building'] = b_name
+            # 4. 건물명 보정 및 이미지 매핑 키 생성
+            b_key = file.split('.')[0]
+            df['building'] = building_names.get(b_key, b_key)
             
-            df['map_key'] = df['building'] + "_" + df['floor']
+            # 앱에서 이미지를 불러올 때 쓸 ID (예: 옴니버스파크B_4F)
+            df['map_id'] = df['building'] + "_" + df['floor']
 
-            # 5. 필수 컬럼 확보 및 데이터 정제
+            # 5. 필수 컬럼 확보 및 불필요한 행 제거
             for col in std_cols:
-                if col not in df.columns:
-                    df[col] = ""
+                if col not in df.columns: df[col] = ""
             
-            # 중간에 섞인 헤더 행이나 빈 행 제거
-            df = df[df['facility_name'] != 'name']
-            df = df.dropna(subset=['facility_name'])
+            df = df[df['facility_name'] != 'name'] # 헤더 중복 제거
+            df = df.dropna(subset=['facility_name']) # 빈 행 제거
 
-            integrated_df.append(df[std_cols])
-            print(f"✅ 처리 완료: {file}")
+            integrated_data.append(df[std_cols])
+            print(f"✅ {file} 통합 완료")
 
         except Exception as e:
-            print(f"❌ 오류 발생 ({file}): {e}")
+            print(f"❌ {file} 처리 중 오류: {e}")
 
-    # 모든 데이터 결합
-    if integrated_df:
-        final_db = pd.concat(integrated_df, ignore_index=True)
-        # 중복 데이터 제거 및 정리
-        final_db.drop_duplicates(inplace=True)
+    # 데이터 합치기
+    if integrated_data:
+        final_df = pd.concat(integrated_data, ignore_index=True)
+        final_df.drop_duplicates(inplace=True)
         
-        # CSV 저장 (엑셀 호환 UTF-8-SIG)
-        final_db.to_csv('integrated_campus_master.csv', index=False, encoding='utf-8-sig')
-        return final_db
+        # 저장
+        final_df.to_csv('campus_master_db.csv', index=False, encoding='utf-8-sig')
+        print("\n🚀 모든 데이터가 'campus_master_db.csv'로 통합되었습니다.")
+        return final_df
     return None
 
-# 실행 리스트
-csv_files = ['대학본관.csv', '병원별관.csv', '서울성모병원.CSV', '성으회관0.csv', '옴니버스B.csv', '의산연01.csv']
-master_data = standardize_campus_data(csv_files)
+# 실행
+files = ['대학본관.csv', '병원별관.csv', '서울성모병원.CSV', '성으회관0.csv', '옴니버스B.csv', '의산연01.csv']
+master_db = generate_app_master_db(files)
