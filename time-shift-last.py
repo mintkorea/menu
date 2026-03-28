@@ -128,29 +128,42 @@ with tab2:
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
     
-    # 달력 시작 요일을 일요일로 고정 (핵심!)
-    calendar.setfirstweekday(calendar.SUNDAY)
+    # 달력 시작 요일을 일요일(6)로 고정 (0=월, 6=일)
+    # calendar 모듈의 상수는 SUNDAY=6 입니다.
+    cal_obj = calendar.Calendar(firstweekday=6) 
     
     options = ["선택 없음", "A", "B", "C"]
     current_shift = get_shift_simple(today_kst)
     hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(current_shift) if current_shift in options else 0)
     
-    B_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"} # 기본 배경
-    S_COLS = {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"} # 강조 배경/날짜 박스
+    B_COLS = {"A":"#FFE0B2", "B":"#FFCDD2", "C":"#BBDEFB"} # 기본 배경 (연함)
+    S_COLS = {"A":"#FB8C00", "B":"#E53935", "C":"#1E88E5"} # 강조 배경 (진함)
     
     cal_html = ""
-    curr_cal = today_kst.replace(day=1)
+    # 시작 달 설정 (현재 달부터 12개월)
+    curr_cal_date = today_kst.replace(day=1)
     
     for _ in range(12):
-        y, m = curr_cal.year, curr_cal.month
-        cal = calendar.monthcalendar(y, m)
+        y, m = curr_cal_date.year, curr_cal_date.month
         
-        cal_html += f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:25px; margin-bottom:10px;'>{y}년 {m}월</div>"
-        cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
+        # 해당 월의 주 단위 리스트 생성 (일요일 시작)
+        weeks = cal_obj.monthdayscalendar(y, m)
         
-        for week in cal:
+        cal_html += f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:30px; margin-bottom:10px; color:#2E4077;'>{y}년 {m}월</div>"
+        cal_html += """
+        <table class='cal-table'>
+            <thead>
+                <tr>
+                    <th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        for week in weeks:
             cal_html += "<tr>"
             for i, day in enumerate(week):
+                # i=0:일, 1:월 ... 6:토
                 if day == 0:
                     cal_html += "<td class='cal-td empty-td'></td>"
                 else:
@@ -158,26 +171,25 @@ with tab3:
                     s = get_shift_simple(d_obj)
                     is_hi = (hi == s)
                     
-                    s_bg = S_COLS[s] if is_hi else B_COLS[s]
-                    d_bg = S_COLS[s] if is_hi else "white"
-                    
-                    td_cls = "today-border" if d_obj == today_kst else ""
-                    # i=0: 일요일, i=6: 토요일 (calendar.SUNDAY 기준)
-                    txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
+                    # 스타일 결정
+                    bg_color = S_COLS[s] if is_hi else B_COLS[s]
+                    date_bg = S_COLS[s] if is_hi else "rgba(255,255,255,0.5)"
+                    text_color_class = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
+                    today_class = "today-border" if d_obj == today_kst else ""
                     
                     cal_html += f"""
-                    <td class='cal-td {td_cls}' style='background:{s_bg};'>
-                        <div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div>
-                        <div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div>
+                    <td class='cal-td {today_class}' style='background:{bg_color};'>
+                        <div class='cal-date-part {text_color_class}' style='background:{date_bg}; font-size:12px;'>{day}</div>
+                        <div class='cal-shift-part {text_color_class}' style='font-size:16px;'>{s}</div>
                     </td>
                     """
             cal_html += "</tr>"
-        cal_html += "</table>"
+        cal_html += "</tbody></table>"
         
-        # 다음 달로 이동
+        # 다음 달 계산
         if m == 12:
-            curr_cal = curr_cal.replace(year=y+1, month=1)
+            curr_cal_date = curr_cal_date.replace(year=y+1, month=1)
         else:
-            curr_cal = curr_cal.replace(month=m+1)
+            curr_cal_date = curr_cal_date.replace(month=m+1)
 
     st.markdown(cal_html, unsafe_allow_html=True)
