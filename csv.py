@@ -12,7 +12,7 @@ def safe_clean_file(file_path):
         # 1. 중복 컬럼 제거 (InvalidIndexError 방지)
         df = df.loc[:, ~df.columns.duplicated()]
 
-        # 2. 데이터 중간에 낀 'name' 행 제거
+        # 2. 데이터 중간에 낀 'name' 행 제거 (필터링)
         if 'name' in df.columns:
             df = df[df['name'].astype(str).str.lower() != 'name']
 
@@ -24,22 +24,26 @@ def safe_clean_file(file_path):
         
         return df.reset_index(drop=True)
     except Exception as e:
-        st.error(f"❌ {file_path} 처리 중 에러: {e}")
+        # 파일이 없거나 에러가 나면 화면에 표시
+        st.error(f"⚠️ {file_path}를 찾을 수 없거나 에러가 났습니다: {e}")
         return None
 
 # --- 실행 부분 ---
-# 1. 성의회관 처리 (이미 성공한 것)
-df1 = safe_clean_file('성의회관.csv')
+# 1. 기존 성공 파일들
+df_list = []
+target_files = ['성의회관.csv', '의산연01.csv', '대학본관.csv', '병원별관.csv']
 
-# 2. 의과학연구원 처리 (새로 추가하는 것)
-df2 = safe_clean_file('의산연01.csv')
+for f in target_files:
+    temp_df = safe_clean_file(f)
+    if temp_df is not None:
+        df_list.append(temp_df)
 
-# 3. 두 파일 합치기
-if df1 is not None and df2 is not None:
-    combined_df = pd.concat([df1, df2], ignore_index=True, sort=False)
+# 2. 파일들 합치기
+if df_list:
+    combined_df = pd.concat(df_list, ignore_index=True, sort=False)
     
-    st.success(f"✅ 통합 성공! (성의회관: {len(df1)}건 + 의산연: {len(df2)}건)")
-    st.write(f"### 총 {len(combined_df)}개 데이터 목록")
+    st.success(f"✅ 통합 성공! 총 {len(df_list)}개 건물 데이터 합쳐짐")
+    st.write(f"### 현재까지 총 {len(combined_df)}개 데이터 목록")
     st.dataframe(combined_df)
 else:
-    st.warning("일부 파일을 불러오지 못했습니다. 파일명을 다시 확인해주세요.")
+    st.error("데이터를 하나도 불러오지 못했습니다.")
