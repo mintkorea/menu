@@ -1,48 +1,61 @@
 import pandas as pd
 import streamlit as st
 
-def recover_omnibus_final():
-    file_path = '옴니버스B.csv'
+def robust_read(file_path):
     try:
-        # 1. 인코딩 해결 및 전체 읽기
+        # 1. 인코딩 처리
         try:
             df = pd.read_csv(file_path, encoding='utf-8-sig')
         except:
             df = pd.read_csv(file_path, encoding='cp949')
 
-        # [복구 핵심 1] 전체 데이터가 숫자로 인식되어도 문자로 강제 변환
+        # 2. 모든 데이터를 문자로 변환 (에러 방지)
         df = df.astype(str)
         
-        # [복구 핵심 2] 중복 컬럼 제거
+        # 3. 중복 컬럼 제거
         df = df.loc[:, ~df.columns.duplicated()]
 
-        # [복구 핵심 3] 'name' 행 제거 로직 수정 (에러 발생 지점 해결)
+        # 4. 제목행('name')이 반복되는 경우 제거
         if 'name' in df.columns:
-            # .strAccessor를 사용하여 안전하게 비교
-            mask = df['name'].str.strip().str.lower() != 'name'
-            df = df[mask]
+            df = df[df['name'].str.strip().lower() != 'name']
 
-        # [복구 핵심 4] 진짜 데이터만 남기기 (nan이나 빈 칸 제외)
-        # 'nan'이라는 문자열로 변한 빈 값들을 필터링
+        # 5. 유효한 데이터만 남기기 (nan 제외)
         df = df[~df['name'].str.contains('nan|None', case=False, na=False)]
         df = df[df['name'].str.strip() != '']
 
-        # 층수 보정 (B5~L8 등)
-        if 'floor' in df.columns:
-            df['floor'] = df['floor'].str.strip().str.upper()
-            df['floor'] = df['floor'].replace('NAN', '층수미상')
-
-        df['building_name'] = '옴니버스B'
+        # 6. 건물명 기록
+        df['building_name'] = file_path.split('.')[0]
         
         return df.reset_index(drop=True)
-
     except Exception as e:
-        st.error(f"❌ 옴니버스B 복구 중 에러 발생: {e}")
+        st.error(f"⚠️ {file_path} 읽기 실패: {e}")
         return None
 
-# 실행 및 결과 확인
-omni_df = recover_omnibus_final()
+# --- 실행: 모든 파일 합치기 ---
+target_files = [
+    '성의회관.csv', '의산연01.csv', '대학본관.csv', 
+    '병원별관.csv', '서울성모병원.CSV', '옴니버스B.csv', '옴니버스A.csv' # A 추가!
+]
 
-if omni_df is not None:
-    st.success(f"📊 옴니버스B 복구 완료: {len(omni_df)}개 행 발견")
-    st.dataframe(omni_df)
+all_dfs = []
+for f in target_files:
+    clean_df = robust_read(f)
+    if clean_df is not None:
+        all_dfs.append(clean_df)
+
+if all_dfs:
+    final_db = pd.concat(all_dfs, ignore_index=True, sort=False)
+    
+    # 필수 컬럼 정리
+    cols = ['name', 'building_name', 'floor', 'room', 'category', 'description']
+    for col in cols:
+        if col not in final_db.columns: final_db[col] = "정보없음"
+    
+    final_db = final_db[cols]
+    
+    # CSV 저장
+    final_db.to_csv('integrated_campus_db_v2.csv', index=False, encoding='utf-8-sig')
+    
+    st.success(f"🎊 [최종 통합 성공] 총 {len(all_dfs)}개 건물을 합쳤습니다!")
+    st.info(f"📊 현재 전체 데이터 개수: {len(final_db)}개")
+    st.dataframe(final_db)
