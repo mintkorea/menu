@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import os
 
-# --- 0. 설정 파일 경로 및 로드 함수 ---
+# --- 0. 설정 파일 관리 (영구 저장용) ---
 SETTINGS_FILE = "admin_settings.txt"
 DEFAULT_KEYWORDS = "안내, 인포, 로비, 마리아, 대강당, 행정팀"
 
@@ -16,18 +16,19 @@ def save_settings(content):
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         f.write(content)
 
-# --- 1. 초기 세션 상태 설정 ---
+# --- 1. 세션 상태 초기화 ---
 if 'admin_mode' not in st.session_state:
     st.session_state.admin_mode = False
-# 앱 시작 시 파일에서 키워드 불러오기
 if 'priority_keywords' not in st.session_state:
     st.session_state.priority_keywords = load_settings()
 
-# --- [데이터 로드 및 우선순위 로직은 이전과 동일] ---
+# --- 2. 데이터 로드 및 전처리 ---
 @st.cache_data
 def load_and_clean_data():
-    # (기존 데이터 로드 로직 동일...)
-    target_files = ['의산연본관.csv', '대학본관.csv', '의산연별관.csv', '성의회관.csv', '병원별관.csv', '옴니버스A.csv', '옴니버스B.csv', '서울성모병원.CSV']
+    target_files = [
+        '의산연본관.csv', '대학본관.csv', '의산연별관.csv', '성의회관.csv', 
+        '병원별관.csv', '옴니버스A.csv', '옴니버스B.csv', '서울성모병원.CSV'
+    ]
     all_dfs = []
     for file_path in target_files:
         try:
@@ -36,6 +37,7 @@ def load_and_clean_data():
             df.columns = [str(c).strip().lower() for c in df.columns]
             rename_map = {'건물명': 'building', '시설명': 'name', '이름': 'name', '호실': 'room', '층': 'floor', '비고': 'description'}
             df = df.rename(columns=rename_map)
+            
             f_name = file_path.upper()
             if '의산연본관' in f_name: b_name = "의산연본"
             elif '성의회관' in f_name: b_name = "성의회관"
@@ -48,6 +50,7 @@ def load_and_clean_data():
         except: continue
     return pd.concat(all_dfs, ignore_index=True).dropna(subset=['name']) if all_dfs else None
 
+# --- 3. 우선순위 및 정렬 로직 ---
 def get_priority(row, selected_bldg, admin_keywords):
     name = str(row['name'])
     keywords = [k.strip() for k in admin_keywords.split(',') if k.strip()]
@@ -57,19 +60,62 @@ def get_priority(row, selected_bldg, admin_keywords):
     if any(k in name.lower() for k in ['eps', 'tps', '공실', '창고']): return 200
     return 100
 
-# --- 2. 메인 UI ---
+# --- 4. 메인 UI ---
 def main():
     st.set_page_config(page_title="성의안내", layout="centered")
     
-    # CSS (생략 - 이전과 동일)
-    st.markdown("<style>.block-container { padding-top: 3.5rem !important; } .small-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem; color: #1e3a8a; border-left: 5px solid #1e3a8a; padding-left: 12px; }</style>", unsafe_allow_html=True)
-    st.markdown('<div class="small-title">🏥 성의교정 시설 안내 시스템</div>', unsafe_allow_html=True)
+    # CSS: 줄간격 축소 및 강조 디자인
+    st.markdown("""
+        <style>
+        .block-container { padding-top: 3rem !important; padding-bottom: 1rem !important; }
+        .small-title { font-size: 1.0rem; font-weight: bold; margin-bottom: 0.7rem; color: #1e3a8a; }
+        
+        /* 정보 한 줄 컨테이너 */
+        .info-row { 
+            display: flex; align-items: center; 
+            padding: 3px 0; border-bottom: 1px solid #f2f2f2; 
+            line-height: 1.1; 
+        }
+        
+        /* 건물명 배경색 설정 */
+        .tag-bldg { 
+            background-color: #f0f2f6; color: #444; 
+            font-weight: bold; font-size: 0.75rem; 
+            padding: 2px 5px; border-radius: 3px; 
+            min-width: 52px; text-align: center; margin-right: 8px;
+        }
+        
+        /* 층수 청색 계열 강조 */
+        .tag-floor { 
+            color: #0056b3; font-weight: 800; 
+            font-size: 0.9rem; min-width: 30px; 
+        }
+        
+        /* 시설명 강조 */
+        .tag-name { 
+            font-weight: 700; color: #111; font-size: 0.9rem; 
+            flex-grow: 1; margin-left: 5px;
+        }
+        
+        /* 호수 강조 */
+        .tag-room { color: #d63384; font-weight: bold; font-size: 0.85rem; margin-left: 3px; }
+        
+        /* 비고 줄간격 및 크기 */
+        .sub-desc { font-size: 0.78rem; color: #777; padding-left: 65px; margin-top: -2px; margin-bottom: 2px; }
+        
+        /* 스트림릿 기본 여백 제거 */
+        div[data-testid="stVerticalBlock"] > div { margin-top: -0.2rem !important; margin-bottom: -0.2rem !important; }
+        hr { margin: 0.2rem 0 !important; }
+        </style>
+    """, unsafe_allow_html=True)
 
+    st.markdown('<div class="small-title">🏥 성의교정 시설 안내</div>', unsafe_allow_html=True)
+    
     data = load_and_clean_data()
     if data is not None:
         c1, c2 = st.columns([1, 1.5])
         with c1: selected_bldg = st.selectbox("건물", options=["전체보기"] + sorted(data['building'].unique().tolist()), label_visibility="collapsed")
-        with c2: search_query = st.text_input("검색", placeholder="시설명, 이름, 호실", label_visibility="collapsed")
+        with c2: search_query = st.text_input("검색", placeholder="시설명/호실/이름", label_visibility="collapsed")
 
         view_df = data.copy()
         if selected_bldg != "전체보기": view_df = view_df[view_df['building'] == selected_bldg]
@@ -77,39 +123,51 @@ def main():
             q = search_query.lower().strip()
             view_df = view_df[view_df.apply(lambda r: q in f"{r['name']} {r.get('room','')} {r.get('description','')}".lower(), axis=1)]
 
-        # 정렬 시 파일에서 불러온 키워드 사용
         view_df['priority'] = view_df.apply(lambda r: get_priority(r, selected_bldg, st.session_state.priority_keywords), axis=1)
         view_df['floor_int'] = pd.to_numeric(view_df['floor'].astype(str).str.extract('(\\d+)', expand=False), errors='coerce').fillna(0)
         view_df = view_df.sort_values(by=['priority', 'floor_int', 'name'], ascending=[True, False, True])
 
-        # 리스트 출력 (중략 - 이전과 동일한 렌더링 로직)
+        # 결과 출력
         for _, row in view_df.iterrows():
             room_val = str(row.get('room', ''))
-            room_html = f"<span style='color: #d63384; font-weight: bold; margin-left: 4px; font-size: 0.85rem;'>({room_val}호)</span>" if room_val and room_val != 'nan' else ""
-            st.markdown(f"**{row['building']} {row['floor']}F** {row['name']}{room_html}", unsafe_allow_html=True)
-            desc = str(row.get('description', ''))
-            if desc and desc != 'nan': st.caption(f"└ {desc}")
-            st.divider()
+            room_html = f"<span class='tag-room'>({room_val}호)</span>" if room_val and room_val != 'nan' and room_val.strip() != "" else ""
+            desc_val = str(row.get('description', '')).strip()
+            
+            # 메인 줄 (건물, 층, 시설명+호실)
+            st.markdown(f"""
+                <div class="info-row">
+                    <span class="tag-bldg">{row['building']}</span>
+                    <span class="tag-floor">{row['floor']}F</span>
+                    <div class="tag-name">{row['name']}{room_html}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 비고 (있을 경우만)
+            if desc_val and desc_val.lower() != 'nan' and desc_val != "":
+                st.markdown(f'<div class="sub-desc">└ {desc_val}</div>', unsafe_allow_html=True)
 
-        # --- 관리자 모드 (하단) ---
+        # --- 관리자 모드 (하단 배치) ---
+        st.markdown("<br>", unsafe_allow_html=True)
         if not st.session_state.admin_mode:
-            if st.button("🔒 관리자 모드"): st.session_state.admin_pw_input = True
+            if st.button("🔒 Admin", key="admin_btn"): st.session_state.admin_pw_input = True
             if st.session_state.get('admin_pw_input'):
-                pw = st.text_input("비밀번호", type="password")
+                pw = st.text_input("Password", type="password")
                 if pw == "1234":
                     st.session_state.admin_mode = True
                     st.rerun()
         else:
-            with st.expander("🛠 관리자 설정 (영구 저장)", expanded=True):
-                new_keywords = st.text_area("우선순위 키워드 수정", value=st.session_state.priority_keywords)
-                if st.button("💾 서버에 저장"):
-                    st.session_state.priority_keywords = new_keywords
-                    save_settings(new_keywords) # 파일에 쓰기
-                    st.success("설정이 서버에 영구 저장되었습니다.")
+            with st.expander("🛠 설정 (나갔다 들어와도 유지됨)", expanded=True):
+                new_kw = st.text_area("우선순위 키워드", value=st.session_state.priority_keywords)
+                if st.button("💾 서버 저장"):
+                    st.session_state.priority_keywords = new_kw
+                    save_settings(new_kw)
+                    st.success("저장 완료")
                     st.rerun()
                 if st.button("로그아웃"):
                     st.session_state.admin_mode = False
                     st.rerun()
+    else:
+        st.error("Data Not Found")
 
 if __name__ == "__main__":
     main()
