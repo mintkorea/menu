@@ -10,9 +10,14 @@ today_kst = datetime.now(KST).date()
 
 # 2. 근무 로직
 def get_shift_simple(d):
+    # 2025년 1월 1일을 기준점으로 설정
     base = date(2025, 1, 1)
+    # (대상일 - 기준일)의 차이를 3으로 나눈 나머지 계산
     diff = (d - base).days % 3
-    return ["A", "B", "C"][diff]
+    
+    # 나머지 0일 때 C조가 되도록 리스트 순서 조정
+    # 나머지 0: C, 나머지 1: A, 나머지 2: B
+    return ["C", "A", "B"][diff]
 
 # 3. CSS 스타일 (마크다운 충돌 방지를 위해 별도 변수 선언)
 style_html = """
