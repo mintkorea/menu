@@ -1,71 +1,71 @@
 import pandas as pd
-import numpy as np
 import os
 
-def standardize_campus_data(file_list):
-    integrated_data = []
-    
-    # 표준 컬럼 정의
-    target_columns = ['facility_name', 'campus', 'building', 'floor', 'room_no', 'category', 'description']
+def build_unified_campus_db(file_list):
+    # 1. 최종 통합본에 들어갈 표준 컬럼 정의
+    standard_columns = ['facility_name', 'campus', 'building', 'floor', 'room_no', 'category', 'description']
+    all_data = []
 
     for file in file_list:
+        if not os.path.exists(file):
+            print(f"파일 없음: {file}")
+            continue
+            
+        # 2. 인코딩 대응 (UTF-8-SIG는 한글 깨짐 방지에 좋습니다)
         try:
-            # CSV 읽기 (UTF-8 또는 CP949 대응)
-            try:
-                df = pd.read_csv(file, encoding='utf-8')
-            except:
-                df = pd.read_csv(file, encoding='cp949')
+            df = pd.read_csv(file, encoding='utf-8-sig')
+        except:
+            df = pd.read_csv(file, encoding='cp949')
 
-            # 1. 컬럼명 매핑 (파일마다 다른 헤더를 표준명으로 통일)
-            column_mapping = {
-                'name': 'facility_name',
-                'room': 'room_no',
-                'zone': 'description' # zone 정보는 비고란으로 통합
-            }
-            df.rename(columns=column_mapping, inplace=True)
+        # 3. 개별 파일별 컬럼명 매핑 (동적으로 감지)
+        mapping = {
+            'name': 'facility_name',
+            'room': 'room_no',
+            'zone': 'description'  # zone이 있는 경우 비고란으로 통합
+        }
+        df.rename(columns=mapping, inplace=True)
 
-            # 2. 필수 컬럼 유무 확인 및 생성
-            for col in target_columns:
-                if col not in df.columns:
-                    df[col] = ""
+        # 4. 층수(Floor) 데이터 정규화 (예: 4 -> 4F, B1 -> B1F 등)
+        def normalize_floor(f):
+            f = str(f).strip().upper()
+            if f == 'NAN' or not f: return ""
+            if f.isdigit(): return f + "F"
+            if f.startswith('-'): return "B" + f[1:] + "F" # -6 -> B6F
+            if not f.endswith('F'): return f + "F"
+            return f
 
-            # 3. 데이터 정제: 층수(floor) 포맷 통일 (예: 4F, 04, 4 -> 4F로 통일)
-            def clean_floor(x):
-                x = str(x).strip().upper()
-                if x == 'NAN' or x == "": return ""
-                # 숫자만 있는 경우 'F' 붙이기 (지하는 B 유지)
-                if x.isdigit(): return f"{int(x)}F"
-                if not x.endswith('F') and not x.startswith('B'): return f"{x}F"
-                return x
+        if 'floor' in df.columns:
+            df['floor'] = df['floor'].apply(normalize_floor)
 
-            df['floor'] = df['floor'].apply(clean_floor)
+        # 5. 부족한 컬럼 채우기 및 순서 고정
+        for col in standard_columns:
+            if col not in df.columns:
+                df[col] = ""
+        
+        # 파일 내부에서 헤더가 반복되는 경우(CSV 병합 시 발생) 제거
+        df = df[df['facility_name'] != 'name']
+        
+        all_data.append(df[standard_columns])
+        print(f"처리 완료: {file} ({len(df)}개 항목)")
 
-            # 4. 데이터 정제: 시설명(facility_name) 공백 제거 및 결측치 처리
-            df = df[df['facility_name'].notna()]
-            df['facility_name'] = df['facility_name'].str.strip()
-
-            # 5. 필요한 컬럼만 추출하여 리스트에 추가
-            df_standard = df[target_columns]
-            integrated_data.append(df_standard)
-            print(f"성공: {file} ({len(df)}건)")
-
-        except Exception as e:
-            print(f"오류 발생: {file} -> {e}")
-
-    # 모든 데이터 합치기
-    if integrated_data:
-        final_df = pd.concat(integrated_data, ignore_index=True)
-        # 중복 데이터 제거
+    # 6. 전체 데이터 병합 및 저장
+    if all_data:
+        final_df = pd.concat(all_data, ignore_index=True)
+        # 빈 줄 및 중복 제거
+        final_df.dropna(subset=['facility_name'], inplace=True)
         final_df.drop_duplicates(inplace=True)
+        
+        output_name = 'standardized_campus_data.csv'
+        final_df.to_csv(output_name, index=False, encoding='utf-8-sig')
+        print(f"\n✅ 통합 성공! 저장된 파일명: {output_name}")
         return final_df
-    else:
-        return None
+    return None
 
-# 실행 부분
-files = ['대학본관.csv', '병원별관.csv', '서울성모병원.CSV', '성으회관0.csv', '옴니버스B.csv', '의산연01.csv']
-final_result = standardize_campus_data(files)
+# 파일 리스트 (업로드하신 파일명 기준)
+target_files = [
+    '대학본관.csv', '병원별관.csv', '서울성모병원.CSV', 
+    '성으회관0.csv', '옴니버스B.csv', '의산연01.csv'
+]
 
-if final_result is not None:
-    final_result.to_csv('integrated_campus_map.csv', index=False, encoding='utf-8-sig')
-    print("\n--- 통합 완료: integrated_campus_map.csv 저장됨 ---")
-    print(final_result.head())
+# 실행
+unified_df = build_unified_campus_db(target_files)
