@@ -37,43 +37,11 @@ def format_floor(floor_val):
     clean_floor = re.sub(r'[^0-9BL]', '', str(floor_val).upper())
     return f"{clean_floor}F" if clean_floor else str(floor_val)
 
-# --- 3. 통합 검색용 텍스트 생성 ---
-def get_search_corpus(row):
-    fields = [row.get('name', ''), row.get('room', ''), row.get('description', ''), row.get('category', '')]
-    return " ".join([str(f).lower() for f in fields if pd.notna(f)])
-
-# --- 4. 메인 UI ---
+# --- 3. 메인 UI ---
 def main():
     st.set_page_config(page_title="성의안내", layout="centered")
     
-    # CSS 스타일 (박스 밀림 및 태그 노출 방지)
-    st.markdown("""
-        <style>
-        .m-title { font-size: 1.15rem; font-weight: bold; color: #1E3A8A; margin-bottom: 15px; }
-        .result-row { 
-            padding: 12px 8px; 
-            border-bottom: 1px solid #f0f0f0; 
-            display: flex; 
-            align-items: flex-start;
-            width: 100%;
-        }
-        .loc-tag { 
-            background: #e7f1ff; border-radius: 4px; padding: 2px 8px; 
-            color: #007bff; font-weight: bold; font-size: 0.85rem; margin-right: 12px;
-            min-width: 45px; text-align: center; flex-shrink: 0;
-        }
-        .info-container { flex: 1; min-width: 0; }
-        .name-line { font-weight: 600; color: #333; font-size: 0.98rem; display: block; word-break: break-all; }
-        .room-tag { color: #d63384; font-size: 0.85rem; margin-left: 6px; font-weight: bold; }
-        .desc-line { 
-            color: #666; font-size: 0.82rem; margin-top: 4px; 
-            line-height: 1.4; border-left: 2px solid #ddd; padding-left: 8px;
-            word-break: break-all;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<div class='m-title'>🏥 성의교정 통합 안내</div>", unsafe_allow_html=True)
+    st.title("🏥 성의교정 통합 안내")
     
     data = load_and_clean_data()
     if data is not None:
@@ -85,39 +53,40 @@ def main():
         
         if search_query:
             q = search_query.lower().strip()
-            view_df = view_df[view_df.apply(lambda r: q in get_search_corpus(r), axis=1)]
+            # 검색 로직: 이름, 호실, 비고 모두 포함
+            view_df = view_df[
+                view_df['name'].astype(str).str.lower().str.contains(q) | 
+                view_df['room'].astype(str).str.lower().str.contains(q) | 
+                view_df['description'].astype(str).str.lower().str.contains(q)
+            ]
         
-        # 층수 정렬
+        # 정렬 및 출력
         view_df['floor_int'] = pd.to_numeric(view_df['floor'], errors='coerce').fillna(0)
         view_df = view_df.sort_values(by=['building', 'floor_int', 'room'], ascending=[True, False, True])
 
-        st.caption(f"📍 {len(view_df)}개의 결과를 찾았습니다.")
-        st.markdown("---")
+        st.info(f"📍 {len(view_df)}개의 결과를 찾았습니다.")
 
+        # --- 출력 부분 (HTML 제거 버전) ---
         for _, row in view_df.iterrows():
-            floor_disp = format_floor(row.get('floor'))
-            name_str = str(row['name'])
-            room_val = str(row.get('room', ''))
-            desc_val = str(row.get('description', ''))
-            
-            # 텍스트 정제 (HTML 깨짐 방지)
-            room_text = f" <span class='room-tag'>{room_val}호</span>" if room_val and room_val != 'nan' else ""
-            
-            # description이 있을 때만 div를 생성하고, 없을 때는 아예 생성하지 않음
-            desc_html = ""
-            if desc_val and desc_val != 'nan' and desc_val.strip() != "":
-                desc_html = f"<div class='desc-line'>{desc_val}</div>"
-            
-            # f-string 내부에 div 태그가 정확히 닫혔는지 확인
-            st.markdown(f"""
-                <div class='result-row'>
-                    <div class='loc-tag'>{floor_disp}</div>
-                    <div class='info-container'>
-                        <div class='name-line'>{name_str}{room_text}</div>
-                        {desc_html}
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            with st.container():
+                # 1:5 비율로 층수와 정보를 나눔
+                c1, c2 = st.columns([1, 5])
+                
+                with c1:
+                    # 층수를 파란색 배지 느낌으로 표시
+                    st.markdown(f"**:blue[[{format_floor(row['floor'])}]]**")
+                
+                with c2:
+                    # 시설명과 호실 정보
+                    room_info = f" ({row['room']}호)" if pd.notna(row['room']) and str(row['room']) != 'nan' else ""
+                    st.markdown(f"**{row['name']}**{room_info}")
+                    
+                    # 비고(Description)가 있는 경우에만 회색 작은 글씨로 출력
+                    desc = str(row['description'])
+                    if desc and desc != 'nan' and desc.strip() != "":
+                        st.caption(f"└ {desc}")
+                
+                st.divider() # 구분선
             
     else:
         st.error("데이터 로드 실패")
