@@ -39,12 +39,16 @@ st.markdown("""
     .row-highlight { background-color: #FFE5E5 !important; }
     .row-highlight td { border-top: 3px solid #E53935 !important; border-bottom: 3px solid #E53935 !important; font-weight: 900 !important; }
     
+    /* 달력 관련 스타일 */
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 40px; }
-    .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; }
+    .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; position: relative; }
     .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
     .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
-    .sun { color: #d32f2f !important; } .sat { color: #1976d2 !important; }
-    .hi-text { color: white !important; } .today-border { border: 3px solid #333 !important; }
+    .sun { color: #d32f2f !important; } 
+    .sat { color: #1976d2 !important; }
+    .hi-text { color: white !important; } 
+    .today-border { outline: 3px solid #333 !important; outline-offset: -3px; z-index: 5; }
+    .empty-td { background-color: #fcfcfc; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -53,6 +57,7 @@ PATTERN_START = date(2026, 3, 9)
 NEXT_WORK_DATE = date(2026, 3, 30)
 
 def get_shift_simple(dt):
+    # 기준일로부터 3일 순환 (C -> A -> B)
     return ["C", "A", "B"][(dt - PATTERN_START).days % 3]
 
 def get_workers(target_date):
@@ -85,18 +90,18 @@ with tab1:
     elif is_c_day and hr == 7:
         status_msg = "✨ 밤새 고생 많으셨습니다. 안전하게 퇴근하십시오!"
     elif today_kst >= NEXT_WORK_DATE and hr < 7:
-        status_msg = "🗓️ 오늘은 C조 근무일입니다. 즐겁고 보람 된 하루를 준비하십시오. 07시 투입 예정입니다." if mn < 40 else "근무 교대 및 근무 준비 중(인수인계 사항을 잘 확인하시기 바랍니다.)"
+        status_msg = "🗓️ 오늘은 C조 근무일입니다. 07시 투입 예정입니다." if mn < 40 else "근무 교대 및 준비 중입니다."
     else:
         status_msg = "😴 오늘은 휴무일입니다. 편안한 휴식 되세요."
 
     st.markdown(f'<div class="status-msg-box">{status_msg}</div>', unsafe_allow_html=True)
     
-    if highlight_idx == -1:
-        st.markdown(f'<div style="text-align:center; font-weight:700; margin-bottom:10px;">📍 다음 근무는 <b>2026년 03월 30일(월)</b>입니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="text-align:center; font-weight:700; margin-bottom:10px;">📍 다음 근무는 <b>2026년 03월 30일(월)</b>입니다.</div>', unsafe_allow_html=True)
 
-    h_date = today_kst if highlight_idx != -1 else NEXT_WORK_DATE
+    h_date = today_kst if is_c_day else NEXT_WORK_DATE
     names = get_workers(h_date)
     h_names = names if names else ["조장", "성희", "당직A", "당직B"]
+    
     rows_html = "".join([f"<tr{' class=\"row-highlight\"' if i==highlight_idx else ''}><td class='time-col'>{r[0]} ~ {r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(data_list)])
     st.markdown(f'<div class="table-container"><table class="custom-table"><tr><th class="time-col" rowspan="2">시간</th><th colspan="2">성의회관</th><th colspan="2">의과학산업연구원</th></tr><tr><th>{h_names[0]}</th><th>{h_names[1]}</th><th>{h_names[2]}</th><th>{h_names[3]}</th></tr>{rows_html}</table></div>', unsafe_allow_html=True)
 
@@ -104,14 +109,14 @@ with tab2:
     st.markdown('<div class="main-title">📅 근무 편성표</div>', unsafe_allow_html=True)
     s_date = st.date_input("조회 기준일 선택", today_kst)
     focus = st.selectbox("🎯 강조(색상)", ["없음", "황재업", "김태언", "이태원", "이정석"])
-    weekdays = ['월','화','수','목','금','토','일']
+    weekdays_s = ['월','화','수','목','금','토','일']
     
     t_html = '<div class="table-container"><table class="custom-table"><tr><th>날짜</th><th>조장</th><th>성희</th><th>의산A</th><th>의산B</th></tr>'
     for i in range(31):
         d = s_date + timedelta(days=i)
         ws = get_workers(d)
         if ws:
-            wd = d.weekday(); lbl = f"{d.strftime('%m/%d')}({weekdays[wd]})"
+            wd = d.weekday(); lbl = f"{d.strftime('%m/%d')}({weekdays_s[wd]})"
             cls = "sun" if wd==6 else ("sat" if wd==5 else "")
             t_html += f'<tr><td class="{cls}">{lbl}</td>'
             for w in ws:
@@ -120,28 +125,59 @@ with tab2:
             t_html += '</tr>'
     st.markdown(t_html + '</table></div>', unsafe_allow_html=True)
 
-
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
+    
+    # 달력 시작 요일을 일요일로 고정 (핵심!)
+    calendar.setfirstweekday(calendar.SUNDAY)
+    
     options = ["선택 없음", "A", "B", "C"]
-    hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(get_shift_simple(today_kst)))
-    B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
-    cal_html = ""; curr = today_kst.replace(day=1)
+    current_shift = get_shift_simple(today_kst)
+    hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(current_shift) if current_shift in options else 0)
+    
+    B_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"} # 기본 배경
+    S_COLS = {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"} # 강조 배경/날짜 박스
+    
+    cal_html = ""
+    curr_cal = today_kst.replace(day=1)
+    
     for _ in range(12):
-        y, m = curr.year, curr.month; cal = calendar.monthcalendar(y, m)
-        cal_html += f"<div class='month-title'>{y}년 {m}월</div>"
+        y, m = curr_cal.year, curr_cal.month
+        cal = calendar.monthcalendar(y, m)
+        
+        cal_html += f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:25px; margin-bottom:10px;'>{y}년 {m}월</div>"
         cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
+        
         for week in cal:
             cal_html += "<tr>"
             for i, day in enumerate(week):
-                if day == 0: cal_html += "<td class='cal-td'></td>"
+                if day == 0:
+                    cal_html += "<td class='cal-td empty-td'></td>"
                 else:
-                    d_obj = date(y, m, day); s = get_shift_simple(d_obj); is_hi = (hi == s)
+                    d_obj = date(y, m, day)
+                    s = get_shift_simple(d_obj)
+                    is_hi = (hi == s)
+                    
                     s_bg = S_COLS[s] if is_hi else B_COLS[s]
                     d_bg = S_COLS[s] if is_hi else "white"
+                    
                     td_cls = "today-border" if d_obj == today_kst else ""
+                    # i=0: 일요일, i=6: 토요일 (calendar.SUNDAY 기준)
                     txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
-                    cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
+                    
+                    cal_html += f"""
+                    <td class='cal-td {td_cls}' style='background:{s_bg};'>
+                        <div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div>
+                        <div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div>
+                    </td>
+                    """
             cal_html += "</tr>"
-        cal_html += "</table>"; curr = (curr.replace(day=1) + timedelta(days=32)).replace(day=1)
+        cal_html += "</table>"
+        
+        # 다음 달로 이동
+        if m == 12:
+            curr_cal = curr_cal.replace(year=y+1, month=1)
+        else:
+            curr_cal = curr_cal.replace(month=m+1)
+
     st.markdown(cal_html, unsafe_allow_html=True)
