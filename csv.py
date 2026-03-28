@@ -19,8 +19,10 @@ def load_and_clean_data():
             rename_map = {'건물명': 'building', '시설명': 'name', '이름': 'name', '호실': 'room', '층': 'floor', '비고': 'description'}
             df = df.rename(columns=rename_map)
             
+            # 파일명 기반으로 건물명 강제 매핑 (데이터 누락 대비)
             if '의산연본관' in file_path: df['building'] = '의산연본관'
             elif '성의회관' in file_path: df['building'] = '성의회관'
+            elif '대학본관' in file_path: df['building'] = '대학본관'
             
             if 'name' in df.columns:
                 df = df.dropna(subset=['name'])
@@ -53,40 +55,41 @@ def main():
         
         if search_query:
             q = search_query.lower().strip()
-            # 검색 로직: 이름, 호실, 비고 모두 포함
             view_df = view_df[
                 view_df['name'].astype(str).str.lower().str.contains(q) | 
                 view_df['room'].astype(str).str.lower().str.contains(q) | 
                 view_df['description'].astype(str).str.lower().str.contains(q)
             ]
         
-        # 정렬 및 출력
+        # 정렬: 건물별 -> 층별(역순) -> 호실별
         view_df['floor_int'] = pd.to_numeric(view_df['floor'], errors='coerce').fillna(0)
         view_df = view_df.sort_values(by=['building', 'floor_int', 'room'], ascending=[True, False, True])
 
         st.info(f"📍 {len(view_df)}개의 결과를 찾았습니다.")
 
-        # --- 출력 부분 (HTML 제거 버전) ---
         for _, row in view_df.iterrows():
             with st.container():
-                # 1:5 비율로 층수와 정보를 나눔
-                c1, c2 = st.columns([1, 5])
+                c1, c2 = st.columns([1, 6])
                 
                 with c1:
-                    # 층수를 파란색 배지 느낌으로 표시
-                    st.markdown(f"**:blue[[{format_floor(row['floor'])}]]**")
+                    # 층수 표시
+                    floor_txt = format_floor(row['floor'])
+                    st.markdown(f"<div style='text-align: right; color: #007bff; font-weight: bold; margin-top: 5px;'>[{floor_txt}]</div>", unsafe_allow_html=True)
                 
                 with c2:
-                    # 시설명과 호실 정보
-                    room_info = f" ({row['room']}호)" if pd.notna(row['room']) and str(row['room']) != 'nan' else ""
-                    st.markdown(f"**{row['name']}**{room_info}")
+                    # [건물명] 시설명 (호실) 구조
+                    bldg_name = f"<span style='color: #666; font-size: 0.8rem; font-weight: normal;'>[{row['building']}]</span> "
+                    room_val = str(row.get('room', ''))
+                    room_info = f" <span style='color: #d63384; font-size: 0.85rem; font-weight: bold;'>({room_val}호)</span>" if room_val and room_val != 'nan' else ""
                     
-                    # 비고(Description)가 있는 경우에만 회색 작은 글씨로 출력
-                    desc = str(row['description'])
+                    st.markdown(f"<div style='font-weight: 600; font-size: 1rem;'>{bldg_name}{row['name']}{room_info}</div>", unsafe_allow_html=True)
+                    
+                    # 비고(Description)
+                    desc = str(row.get('description', ''))
                     if desc and desc != 'nan' and desc.strip() != "":
                         st.caption(f"└ {desc}")
                 
-                st.divider() # 구분선
+                st.divider()
             
     else:
         st.error("데이터 로드 실패")
