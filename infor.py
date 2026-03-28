@@ -1,11 +1,10 @@
 import pandas as pd
 import streamlit as st
-import re
+import io
+import zipfile
 
-# --- 1. 데이터 로드 및 파일 매핑 ---
-@st.cache_data
+# --- 1. 파일 정보 설정 ---
 def get_file_info():
-    # 실제 서버에 존재하는 파일명과 화면에 표시할 이름 매핑
     return {
         '의산연01.csv': '🔬 의산연 본관',
         '대학본관.csv': '🏢 대학 본관',
@@ -17,83 +16,77 @@ def get_file_info():
         '서울성모병원.CSV': '🚑 서울성모병원'
     }
 
-# --- 2. 유틸리티: 층 표시 정규화 ---
-def format_floor(floor_val):
-    if pd.isna(floor_val): return "-"
-    # 숫자, B, L만 추출 (FF 중복 방지)
-    clean_floor = re.sub(r'[^0-9BL]', '', str(floor_val).upper())
-    return f"{clean_floor}F" if clean_floor else str(floor_val)
-
-# --- 3. 메인 UI ---
+# --- 2. 메인 UI ---
 def main():
-    st.set_page_config(page_title="데이터 관리 도구", layout="centered")
+    st.set_page_config(page_title="데이터 장바구니", layout="centered")
     
     st.markdown("""
         <style>
         .m-title { font-size: 1.2rem; font-weight: bold; color: #1E3A8A; margin-bottom: 20px; }
-        .edit-card { 
-            background-color: #ffffff; padding: 20px; border-radius: 12px; 
-            border: 1px solid #e1e4e8; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
+        .cart-box { 
+            background-color: #f8f9fa; padding: 15px; border-radius: 12px; 
+            border: 2px dashed #007bff; margin-bottom: 25px;
         }
-        .stButton>button { width: 100%; border-radius: 8px; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='m-title'>⚙️ 성의교정 원본 데이터 관리자</div>", unsafe_allow_html=True)
+    st.markdown("<div class='m-title'>🛒 성의교정 데이터 수정 장바구니</div>", unsafe_allow_html=True)
 
     file_map = get_file_info()
-
-    # --- [핵심] 원본 파일 선택 섹션 ---
-    st.markdown("### 📥 수정할 파일을 선택하세요")
-    
-    # 2열로 배치하여 선택하기 편하게 구성
-    col1, col2 = st.columns(2)
     files = list(file_map.keys())
-    
-    # 세션 상태를 이용해 어떤 파일이 선택되었는지 추적
-    selected_file = st.radio(
-        "파일 목록", 
-        options=files, 
+
+    # --- [Step 1] 파일 선택 (멀티 셀렉트 / 장바구니) ---
+    st.subheader("1. 수정할 파일들을 선택하세요 (중복 선택 가능)")
+    selected_files = st.multiselect(
+        "파일 목록",
+        options=files,
         format_func=lambda x: file_map[x],
+        default=None,
         label_visibility="collapsed"
     )
 
-    if selected_file:
-        st.markdown(f"---")
-        with st.container():
-            try:
-                # 선택된 파일만 읽어오기
-                try: df = pd.read_csv(selected_file, encoding='utf-8-sig')
-                except: df = pd.read_csv(selected_file, encoding='cp949')
-                
-                st.success(f"✅ **{file_map[selected_file]}** ({selected_file}) 파일이 선택되었습니다.")
-                
-                # 다운로드 버튼 생성
-                csv_bytes = df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
-                st.download_button(
-                    label=f"💾 {selected_file} 다운로드 (엑셀 수정용)",
-                    data=csv_bytes,
-                    file_name=selected_file,
-                    mime='text/csv',
-                    type="primary"
-                )
-                
-                # 데이터 미리보기 (상단 5개만)
-                with st.expander("👀 데이터 미리보기 (수정 전 내용 확인)"):
-                    st.dataframe(df.head(10), use_container_width=True)
+    # --- [Step 2] 장바구니 및 일괄 다운로드 ---
+    if selected_files:
+        st.markdown(f"### 2. 선택된 파일: {len(selected_files)}개")
+        
+        # 압축 파일을 담을 버퍼 메모리 생성
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+            for file_name in selected_files:
+                try:
+                    # 파일 읽기 (인코딩 대응)
+                    try: df = pd.read_csv(file_name, encoding='utf-8-sig')
+                    except: df = pd.read_csv(file_name, encoding='cp949')
                     
-            except Exception as e:
-                st.error(f"⚠️ {selected_file} 파일을 찾을 수 없습니다. 파일명을 확인해 주세요.")
+                    # CSV 데이터를 메모리에 저장
+                    csv_data = df.to_csv(index=False, encoding='utf-8-sig')
+                    zip_file.writestr(file_name, csv_data)
+                except:
+                    st.warning(f"⚠️ {file_name} 파일을 서버에서 찾을 수 없어 제외되었습니다.")
+
+        # 압축 파일 다운로드 버튼
+        st.markdown("<div class='cart-box'>", unsafe_allow_html=True)
+        st.download_button(
+            label="📦 선택한 파일들을 하나의 압축파일(.zip)로 받기",
+            data=zip_buffer.getvalue(),
+            file_name="성의교정_수정용_데이터.zip",
+            mime="application/zip",
+            type="primary",
+            use_container_width=True
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # 선택된 파일 목록 미리보기
+        with st.expander("📋 선택된 파일 리스트 확인"):
+            for f in selected_files:
+                st.write(f"- {file_map[f]} ({f})")
+
+    else:
+        st.info("💡 위 목록에서 수정하고 싶은 파일들을 클릭하여 장바구니에 담아주세요.")
 
     st.markdown("---")
-    st.info("""
-    **💡 데이터 수정 팁:**
-    1. 위 버튼으로 파일을 다운로드하여 **엑셀**에서 엽니다.
-    2. 'FF' 중복 데이터나 오타를 수정합니다.
-    3. 저장할 때 반드시 **CSV(쉼표로 분리)** 형식을 유지해 주세요.
-    4. 수정된 파일을 서버의 동일한 위치에 덮어쓰기 하면 앱에 즉시 반영됩니다.
-    """)
+    st.caption("주의: 다운로드한 .zip 파일의 압축을 풀면 개별 CSV 파일들이 나옵니다. 수정 후 동일한 이름으로 서버에 올려주세요.")
 
 if __name__ == "__main__":
     main()
