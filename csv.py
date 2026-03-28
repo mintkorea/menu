@@ -1,9 +1,8 @@
 import pandas as pd
 import streamlit as st
 import re
-import html
 
-# --- 1. 데이터 로드 및 방문객 우선순위 부여 ---
+# --- 1. 데이터 로드 및 전처리 (건물명 단축 및 핵심 시설 우선순위 강제 부여) ---
 @st.cache_data
 def load_and_clean_data():
     target_files = [
@@ -19,7 +18,7 @@ def load_and_clean_data():
             rename_map = {'건물명': 'building', '시설명': 'name', '이름': 'name', '호실': 'room', '층': 'floor', '비고': 'description'}
             df = df.rename(columns=rename_map)
             
-            # 건물명 4글자 제한 (사용자 요청 반영)
+            # 건물명 4글자 제한 (성모병원, 의산연본, 성의회관, 옴니버스A/B)
             f_name = file_path.upper()
             if '의산연본관' in f_name: b_name = "의산연본"
             elif '성의회관' in f_name: b_name = "성의회관"
@@ -34,50 +33,37 @@ def load_and_clean_data():
     if not all_dfs: return None
     combined = pd.concat(all_dfs, ignore_index=True, sort=False).dropna(subset=['name'])
     
-    # [방문객 우선순위 로직] 인포메이션 게시용 대관/공용시설 최우선
-    def get_visitor_priority(row):
-        target = f"{row['name']} {row.get('description', '')}".lower()
-        # 0순위: 외부인 방문 목적 (강당, 회의실, 홀, 센터, 사무실, 도서관)
-        if any(k in target for k in ['강당', '회의', '홀', '센터', '사무', '팀', '강의', '도서', '식당', '카페']):
+    # [핵심 우선순위 로직] 방문객들이 가장 많이 찾는 시설(인포메이션) 최상단 고정
+    def get_core_priority(row):
+        name = str(row['name'])
+        room = str(row.get('room', ''))
+        # 0순위: 마리아홀, 대강당, 1002호 및 주요 대관/회의 시설
+        if any(k in name for k in ['마리아', '대강당', '홀', '회의', '팀', '사무', '강의', '도서관']):
             return 0
-        # 2순위: 단순 설비 및 비공개 공간 (EPS, TPS, 공실 등)
-        if any(k in target for k in ['eps', 'tps', '공실', 'ps', '창고', '휀룸', '비트']):
+        if '1002' in room:
+            return 0
+        # 2순위: 단순 설비 공간 (EPS, TPS, 공실 등)
+        if any(k in name.lower() for k in ['eps', 'tps', '공실', '창고']):
             return 2
         # 1순위: 일반 연구실 및 기타
         return 1
         
-    combined['priority'] = combined.apply(get_visitor_priority, axis=1)
+    combined['priority'] = combined.apply(get_core_priority, axis=1)
     return combined.drop_duplicates(subset=['name', 'building', 'floor', 'room'])
 
-# --- 2. 메인 UI 및 밀착 레이아웃 ---
+# --- 2. 메인 UI ---
 def main():
+    # 모바일에서 타이틀이 개행되지 않도록 크기 축소
     st.set_page_config(page_title="성의안내", layout="centered")
-    
-    # CSS: 건물명-시설명 밀착 및 개행 방지
-    st.markdown("""
-        <style>
-        .main-title { font-size: 1.25rem !important; font-weight: bold; color: #1E3A8A; margin-bottom: 15px; }
-        .res-row { display: flex; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #eee; width: 100%; }
-        /* 접두사(건물/층) 영역 너비를 75px로 줄여 시설명과 밀착 */
-        .prefix-area { flex-shrink: 0; width: 75px; margin-right: 12px; line-height: 1.3; }
-        .bldg-label { font-weight: bold; font-size: 0.82rem; color: #333; display: block; }
-        .floor-label { font-size: 0.78rem; color: #007bff; font-weight: bold; }
-        .main-area { flex: 1; min-width: 0; }
-        .name-label { font-weight: 600; font-size: 1rem; color: #111; word-break: keep-all; }
-        .room-label { color: #d63384; font-size: 0.88rem; font-weight: bold; }
-        .desc-label { font-size: 0.82rem; color: #666; margin-top: 4px; border-left: 3px solid #f0f0f0; padding-left: 8px; line-height: 1.4; }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<div class='main-title'>🏥 성의교정 시설 안내 (인포메이션)</div>", unsafe_allow_html=True)
+    st.markdown("<h3 style='margin-bottom: 0.5rem;'>🏥 성의교정 시설 안내 (인포메이션)</h3>", unsafe_allow_html=True)
     
     data = load_and_clean_data()
     if data is not None:
-        c1, c2 = st.columns([1, 1.2])
-        with c1:
-            selected_bldg = st.selectbox("🏢 건물 선택", options=["전체보기"] + sorted(data['building'].unique().tolist()))
-        with c2:
-            search_query = st.text_input("🔍 시설/호실/교수님 검색", placeholder="예: 마리아홀, 2016")
+        c_f1, c_f2 = st.columns([1, 1.5])
+        with c_f1:
+            selected_bldg = st.selectbox("🏢 건물", options=["전체보기"] + sorted(data['building'].unique().tolist()))
+        with c_f2:
+            search_query = st.text_input("🔍 검색(시설/호실/이름)", placeholder="예: 마리아홀, 김완욱")
         
         view_df = data.copy()
         if selected_bldg != "전체보기":
@@ -87,43 +73,43 @@ def main():
             q = search_query.lower().strip()
             view_df = view_df[view_df.apply(lambda r: q in f"{r['name']} {r['room']} {r['description']} {r['building']}".lower(), axis=1)]
         
-        # [정렬 기준] 우선순위(방문객 시설) -> 건물명 -> 층(내림차순)
+        # 정렬: 핵심순위 -> 건물명 -> 층(숫자 추출 정렬)
         view_df['floor_int'] = pd.to_numeric(view_df['floor'].astype(str).str.extract('(\\d+)', expand=False), errors='coerce').fillna(0)
         view_df = view_df.sort_values(by=['priority', 'building', 'floor_int'], ascending=[True, True, False])
 
-        st.caption(f"📍 {len(view_df)}개의 시설이 검색되었습니다.")
+        st.caption(f"📍 {len(view_df)}개의 결과를 찾았습니다.")
+        st.divider()
 
-        # --- 3. 데이터 출력 (HTML 노출 방지 처리) ---
+        # --- 3. 출력 영역 (HTML 완전 제거 버전) ---
         for _, row in view_df.iterrows():
-            # 텍스트 안전 처리
-            s_bldg = html.escape(str(row['building']))
-            s_floor = html.escape(str(row['floor']))
-            s_name = html.escape(str(row['name']))
-            s_room = html.escape(str(row.get('room', '')))
-            s_desc = html.escape(str(row.get('description', '')))
-
-            room_tag = f" <span class='room-label'>({s_room}호)</span>" if s_room and s_room != 'nan' else ""
-            
-            # 상세정보(비고)가 있을 때만 렌더링
-            desc_tag = ""
-            if s_desc and s_desc != 'nan' and s_desc.strip() != "":
-                desc_tag = f"<div class='desc-label'>{s_desc}</div>"
-
-            st.markdown(f"""
-                <div class='res-row'>
-                    <div class='prefix-area'>
-                        <span class='bldg-label'>{s_bldg}</span>
-                        <span class='floor-label'>[{s_floor}]</span>
-                    </div>
-                    <div class='main-area'>
-                        <div class='name-label'>{s_name}{room_tag}</div>
-                        {desc_tag}
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            with st.container():
+                # [레이아웃 고정] [1: 3.5] 비율로 왼쪽 건물/층 정보와 오른쪽 시설 정보를 나눔
+                c1, c2 = st.columns([1, 3.5])
+                
+                with c1:
+                    # 건물명(4글자)을 굵게 강조
+                    st.write(f"**:{row['building']}**")
+                    # 층 표시에 'F'를 붙여 명확하게 표시 (예: 13F)
+                    st.caption(f"{row['floor']}F")
+                
+                with c2:
+                    # 시설명 + 호실 정보
+                    room_val = str(row.get('room', ''))
+                    # 호실 정보를 핑크색 굵은 글씨로 강조
+                    room_info = f" <span style='color: #d63384; font-weight: bold; font-size: 0.85rem;'>({room_val}호)</span>" if room_val and room_val != 'nan' else ""
+                    # 시설명은 굵게, 호실 정보와 함께 배치 (개행 방지)
+                    st.markdown(f"**{row['name']}**{room_info}", unsafe_allow_html=True)
+                    
+                    # 비고(Description)가 있는 경우에만 '└' 표시와 함께 출력
+                    desc = str(row.get('description', ''))
+                    if desc and desc != 'nan' and desc.strip() != "":
+                        # st.text는 HTML을 절대 해석하지 않으므로 보안상 가장 안전함
+                        st.text(f"└ {desc}")
+                
+                st.divider() # 각 결과 사이 구분선
             
     else:
-        st.error("데이터를 불러올 수 없습니다.")
+        st.error("데이터 로드 실패")
 
 if __name__ == "__main__":
     main()
