@@ -13,7 +13,7 @@ now_kst = datetime.now(kst)
 today_kst = now_kst.date() # 2026-03-28 (토요일)
 hr, mn = now_kst.hour, now_kst.minute
 
-# 07:00 교대 로직
+# 07:00 교대 로직: 새벽 7시 이전이면 '실질적 전날' 근무로 판단
 if hr < 7:
     logic_date = today_kst - timedelta(days=1)
 else:
@@ -21,7 +21,7 @@ else:
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 50px !important; max-width: 500px; margin: auto; }
+    .block-container { padding-top: 20px !important; max-width: 500px; margin: auto; }
     .stTabs [data-baseweb="tab-list"] { gap: 8px; display: flex; width: 100%; }
     .stTabs [data-baseweb="tab"] { 
         flex: 1; text-align: center; height: 45px; background-color: #f8f9fa; 
@@ -31,27 +31,32 @@ st.markdown("""
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-bottom: 5px; }
     .date-display { text-align: center; font-size: 18px; color: #333; margin-bottom: 15px; font-weight: 700; }
     .status-msg-box { background: #2E4077; color: white; padding: 20px; border-radius: 15px; text-align: center; font-size: 17px; font-weight: 800; margin-bottom: 15px; line-height: 1.5; }
+    
+    /* 달력 전용 스타일 */
+    .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; }
+    .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; position: relative; }
+    .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; }
+    .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; }
+    .sun { color: #d32f2f !important; } 
+    .sat { color: #1976d2 !important; }
+    .hi-text { color: white !important; } 
+    .today-border { outline: 4px solid #333 !important; outline-offset: -4px; z-index: 10; }
+    
+    /* 테이블 공통 스타일 */
     .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
     .custom-table th { background: #F2F4F7; color: #333; padding: 10px 2px; border: 1px solid #dee2e6; font-size: 11px; font-weight: 800; }
     .custom-table td { border: 1px solid #dee2e6; padding: 12px 2px; }
-    .time-col { width: 90px !important; white-space: nowrap !important; font-weight: 700; background: #fafafa; }
-    
-    .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 20px; }
-    .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; position: relative; }
-    .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
-    .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
-    .sun { color: #d32f2f !important; } .sat { color: #1976d2 !important; }
-    .hi-text { color: white !important; } 
-    .today-border { outline: 4px solid #333 !important; outline-offset: -4px; z-index: 10; }
+    .time-col { width: 90px !important; font-weight: 700; background: #fafafa; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 설정 ---
-PATTERN_START = date(2025, 1, 1) # C조 기준
-NEXT_WORK_DATE = date(2026, 3, 30)
+# --- [2] 로직 설정 (2025/01/01 = C조 시작 기준) ---
+PATTERN_START = date(2025, 1, 1) #
+NEXT_WORK_DATE = date(2026, 3, 30) # 다음 출근일 고정
 
 def get_shift_simple(dt):
+    # 2025-01-01(C) -> 01-02(A) -> 01-03(B) 순환
     return ["C", "A", "B"][(dt - PATTERN_START).days % 3]
 
 def get_workers(target_date):
@@ -64,6 +69,7 @@ def get_workers(target_date):
     ]
     return ["황재업", PATTERNS[(diff // 3) % 6][0], PATTERNS[(diff // 3) % 6][1], PATTERNS[(diff // 3) % 6][2]]
 
+# 근무 시간표 데이터
 data_list = [["07:00", "08:00", "안내실", "로비", "로비", "휴게"], ["08:00", "09:00", "안내실", "휴게", "휴게", "로비"], ["09:00", "10:00", "안내실", "순찰", "휴게", "로비"], ["10:00", "11:00", "휴게", "안내실", "로비", "휴게"], ["11:00", "12:00", "안내실", "중식", "로비", "중식"], ["12:00", "13:00", "중식", "안내실", "중식", "로비"], ["13:00", "14:00", "안내실", "휴게", "순찰", "로비"], ["14:00", "15:00", "순찰", "안내실", "로비", "휴게"], ["15:00", "16:00", "안내실", "휴게", "로비", "휴게"], ["16:00", "17:00", "휴게", "안내실", "휴게", "로비"], ["17:00", "18:00", "안내실", "휴게", "휴게", "로비"], ["18:00", "19:00", "안내실", "석식", "로비", "석식"], ["19:00", "20:00", "안내실", "안내실", "석식", "로비"], ["20:00", "21:00", "석식", "안내실", "로비", "휴게"], ["21:00", "22:00", "안내실", "순찰", "로비", "휴게"], ["22:00", "23:00", "순찰", "안내실", "순찰", "로비"], ["23:00", "00:00", "안내실", "휴게", "휴게", "로비"], ["00:00", "01:00", "안내실", "휴게", "휴게", "로비"], ["01:00", "01:40", "안내실", "휴게", "휴게", "로비"], ["01:40", "02:00", "안내실", "안내실", "로비", "로비"], ["02:00", "03:00", "휴게", "안내실", "로비", "휴게"], ["03:00", "04:00", "휴게", "안내실", "로비", "휴게"], ["04:00", "05:00", "휴게", "안내실", "로비", "휴게"], ["05:00", "06:00", "안내실", "순찰", "로비", "순찰"], ["06:00", "07:00", "안내실", "정리", "로비", "정리"]]
 
 # --- [3] 화면 구성 ---
@@ -73,10 +79,10 @@ with tab1:
     st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
     weekdays = ['월','화','수','목','금','토','일']
     st.markdown(f'<div class="date-display">{today_kst.strftime("%Y-%m-%d")}({weekdays[today_kst.weekday()]}) {now_kst.strftime("%H:%M:%S")}</div>', unsafe_allow_html=True)
-    curr_logic_shift = get_shift_simple(logic_date)
-    is_c_day = (curr_logic_shift == "C")
+    
     st.markdown(f'<div class="status-msg-box">😴 오늘은 휴무일입니다. 편안한 휴식 되세요.</div>', unsafe_allow_html=True)
     st.markdown(f'<div style="text-align:center; font-weight:700; margin-bottom:10px;">📍 다음 근무는 <b>2026년 03월 30일(월)</b>입니다.</div>', unsafe_allow_html=True)
+    
     names = get_workers(NEXT_WORK_DATE)
     h_names = names if names else ["조장", "성희", "당직A", "당직B"]
     rows_html = "".join([f"<tr><td class='time-col'>{r[0]} ~ {r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for r in data_list])
@@ -103,8 +109,8 @@ with tab2:
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
     
-    # [요일 밀림 방지 핵심 로직]
-    calendar.setfirstweekday(calendar.SUNDAY) # 일요일(6) 시작 고정
+    # 요일 밀림 방지를 위한 핵심 설정: 일요일 시작 (firstweekday=6)
+    calendar.setfirstweekday(calendar.SUNDAY)
     
     c1, c2 = st.columns(2)
     with c1:
@@ -118,7 +124,7 @@ with tab3:
     y = 2026
     cal = calendar.monthcalendar(y, sel_month)
     
-    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:10px; margin-bottom:10px;'>{y}년 {sel_month}월</div>"
+    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin:10px 0;'>{y}년 {sel_month}월</div>"
     cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
     
     for week in cal:
@@ -134,11 +140,11 @@ with tab3:
                 s_bg = S_COLS[s] if is_hi else B_COLS[s]
                 d_bg = S_COLS[s] if is_hi else "white"
                 
-                # 오늘(3/28) 강조 테두리
+                # 오늘 날짜(3/28 토요일) 강조 테두리
                 td_cls = "today-border" if d_obj == today_kst else ""
                 txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
                 
-                cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
+                cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg};'>{day}</div><div class='cal-shift-part {txt_cls}'>{s}</div></td>"
         cal_html += "</tr>"
     cal_html += "</table>"
     st.markdown(cal_html, unsafe_allow_html=True)
