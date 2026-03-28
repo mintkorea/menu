@@ -39,7 +39,7 @@ st.markdown("""
     .row-highlight { background-color: #FFE5E5 !important; }
     .row-highlight td { border-top: 3px solid #E53935 !important; border-bottom: 3px solid #E53935 !important; font-weight: 900 !important; }
     
-    .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 40px; }
+    .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 20px; }
     .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; }
     .cal-date-part { height: 40%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
     .cal-shift-part { height: 60%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
@@ -48,16 +48,19 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 설정 ---
-PATTERN_START = date(2026, 3, 9)
+# --- [2] 로직 설정 (사용자 요청 반영: 2025/1/1 = C조 시작) ---
+PATTERN_START = date(2025, 1, 1)
+# 2026년 3월 30일은 기준일로부터 453일째이며, 453 % 3 = 0 이므로 C조 근무일이 맞습니다.
 NEXT_WORK_DATE = date(2026, 3, 30)
 
 def get_shift_simple(dt):
+    # 2025-01-01부터 C-A-B 순환
     return ["C", "A", "B"][(dt - PATTERN_START).days % 3]
 
 def get_workers(target_date):
     diff = (target_date - PATTERN_START).days
     if diff % 3 != 0: return None
+    # 3일마다 돌아오는 편성 순서 (총 18일 주기)
     PATTERNS = [
         ["김태언", "이태원", "이정석"], ["김태언", "이정석", "이태원"], 
         ["이정석", "김태언", "이태원"], ["이정석", "이태원", "김태언"], 
@@ -123,30 +126,28 @@ with tab2:
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
     
-    # 상단 컨트롤: 연도/월 선택 및 강조 조 선택
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
-        sel_year = st.selectbox("연도", range(today_kst.year, today_kst.year + 2), index=0)
+        sel_month = st.selectbox("📅 월 선택", range(1, 13), index=today_kst.month - 1)
     with c2:
-        sel_month = st.selectbox("월", range(1, 13), index=today_kst.month - 1)
-    with c3:
         options = ["선택 없음", "A", "B", "C"]
-        hi = st.selectbox("🎯 강조 조", options, index=options.index(curr_logic_shift))
+        hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(curr_logic_shift))
     
     B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
     
-    # 선택된 월에 대한 달력 생성
-    cal = calendar.monthcalendar(sel_year, sel_month)
-    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:10px; margin-bottom:8px;'>{sel_year}년 {sel_month}월</div>"
+    # 연도는 현재 연도(2026) 고정
+    y = 2026
+    cal = calendar.monthcalendar(y, sel_month)
+    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin-bottom:10px;'>{y}년 {sel_month}월</div>"
     cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
     
     for week in cal:
         cal_html += "<tr>"
         for i, day in enumerate(week):
-            if day == 0: 
+            if day == 0:
                 cal_html += "<td class='cal-td'></td>"
             else:
-                d_obj = date(sel_year, sel_month, day)
+                d_obj = date(y, sel_month, day)
                 s = get_shift_simple(d_obj)
                 is_hi = (hi == s)
                 
@@ -155,12 +156,7 @@ with tab3:
                 td_cls = "today-border" if d_obj == today_kst else ""
                 txt_cls = "hi-text" if is_hi else ("sun" if i==0 else "sat" if i==6 else "")
                 
-                cal_html += f"""
-                <td class='cal-td {td_cls}' style='background:{s_bg};'>
-                    <div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div>
-                    <div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div>
-                </td>"""
+                cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
         cal_html += "</tr>"
     cal_html += "</table>"
-    
     st.markdown(cal_html, unsafe_allow_html=True)
