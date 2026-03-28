@@ -1,47 +1,42 @@
 import pandas as pd
 
-def test_single_file(file_name):
-    print(f"--- [{file_name}] 분석 시작 ---")
+def debug_seoul_hospital():
+    file_name = '서울성모병원.CSV'
     try:
-        # 1. 인코딩 해결 (엑셀 호환 모드)
+        # 1. 인코딩 해결
         try:
             df = pd.read_csv(file_name, encoding='utf-8-sig')
         except:
             df = pd.read_csv(file_name, encoding='cp949')
 
-        # 2. 중복 컬럼명 즉시 제거 (InvalidIndexError 방지)
+        # 2. 중복 컬럼명 제거 (InvalidIndexError 방지)
         df = df.loc[:, ~df.columns.duplicated()]
 
-        # 3. 데이터 중간에 낀 제목행(name, campus...) 제거
+        # 3. 데이터 중간에 삽입된 'name' 행들 제거 (백지의 주범)
         if 'name' in df.columns:
             df = df[df['name'].astype(str).str.lower() != 'name']
 
-        # 4. 컬럼명 표준화 (앱에서 쓸 이름으로 통일)
-        mapping = {'name': 'facility_name', 'room': 'room_no', 'zone': 'description'}
-        df.rename(columns=mapping, inplace=True)
-
-        # 5. 층수(Floor) 데이터 정규화 (-6 -> B6F, 4 -> 4F)
-        def fix_floor(f):
+        # 4. 층수 변환 (-6 -> B6F)
+        def convert_floor(f):
             f = str(f).strip().upper()
-            if f in ['NAN', 'NONE', '']: return ""
             if f.startswith('-'): return f"B{f[1:]}F"
             if f.isdigit(): return f + "F"
-            if not f.endswith('F'): return f + "F"
             return f
         
         if 'floor' in df.columns:
-            df['floor'] = df['floor'].apply(fix_floor)
+            df['floor'] = df['floor'].apply(convert_floor)
 
-        # 6. 시설명 없는 빈 행 삭제 및 건물명 추가
-        df = df.dropna(subset=['facility_name'])
-        df['building_name'] = file_name.split('.')[0]
+        # 5. 필요한 컬럼만 추출
+        # 성모병원은 'room' 컬럼이 있으므로 이를 살립니다.
+        df = df[['name', 'building', 'floor', 'room', 'category']].dropna(subset=['name'])
         
-        # 7. 인덱스 초기화 (번호 꼬임 방지)
-        df = df.reset_index(drop=True)
-        
-        print(f"✅ 결과: {len(df)}개의 유효한 데이터 발견")
+        print(f"✅ {file_name} 읽기 성공! 데이터 {len(df)}건을 찾았습니다.")
+        print(df.head(10)) # 상위 10개 출력해서 확인
         return df
 
     except Exception as e:
-        print(f"❌ 실패 이유: {e}")
+        print(f"❌ 에러 발생: {e}")
         return None
+
+# 실행
+test_df = debug_seoul_hospital()
