@@ -77,7 +77,6 @@ with tab1:
     st.markdown('<div class="main-title">🛡️ 실시간 근무 현황</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="date-display">{today_kst.strftime("%Y-%m-%d")}({WEEKDAYS_LBL[today_kst.weekday()]})</div>', unsafe_allow_html=True)
     
-    # 휴무 여부 판별 (C조 기준)
     curr_shift = get_shift_simple(logic_date)
     if curr_shift == "C":
         st.markdown('<div class="status-msg-box">⚡ 오늘은 C조 근무일입니다.<br>안전에 유의하세요!</div>', unsafe_allow_html=True)
@@ -119,9 +118,11 @@ with tab3:
         hi_shift = st.selectbox("🎯 강조 조", ["A", "B", "C", "없음"], index=2)
     
     year = 2026
-    # 해당 월의 첫 요일(월0~일6)과 마지막 날짜 계산
+    # 해당 월의 첫 날 요일(월=0...일=6)
     first_weekday, last_day = calendar.monthrange(year, sel_month)
-    # 일요일 시작(0)으로 인덱스 보정
+    
+    # [수정포인트] 일요일 시작 기준(일=0, 월=1...)으로 인덱스 설정
+    # first_weekday가 6(일요일)이면 start_idx는 0이 되어야 함
     start_idx = (first_weekday + 1) % 7
         
     B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
@@ -129,7 +130,7 @@ with tab3:
     cal_html = f"<div style='text-align:center; font-weight:900; margin-bottom:10px;'>{year}년 {sel_month}월</div>"
     cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr><tr>"
     
-    # 시작 빈칸
+    # 시작 전 빈칸 채우기
     for _ in range(start_idx):
         cal_html += "<td class='cal-td'></td>"
         
@@ -156,6 +157,7 @@ with tab3:
         """
         curr_col += 1
         
+    # 마지막 빈칸 채우기
     while curr_col < 7:
         cal_html += "<td class='cal-td'></td>"
         curr_col += 1
