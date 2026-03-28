@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-import re
 
 # --- 1. 데이터 로드 및 전처리 ---
 @st.cache_data
@@ -19,7 +18,6 @@ def load_and_clean_data():
             rename_map = {'건물명': 'building', '시설명': 'name', '이름': 'name', '호실': 'room', '층': 'floor', '비고': 'description'}
             df = df.rename(columns=rename_map)
             
-            # 건물명 정규화
             f_name = file_path.upper()
             if '의산연본관' in f_name: b_name = "의산연본"
             elif '성의회관' in f_name: b_name = "성의회관"
@@ -36,100 +34,85 @@ def load_and_clean_data():
     combined = pd.concat(all_dfs, ignore_index=True, sort=False).dropna(subset=['name'])
     return combined.drop_duplicates(subset=['name', 'building', 'floor', 'room'])
 
-# --- 2. 우선순위 로직 함수 ---
+# --- 2. 우선순위 로직 ---
 def get_priority(row, selected_bldg):
     name = str(row['name'])
-    desc = str(row.get('description', ''))
-    
-    # [0순위] 선택된 건물의 안내데스크/로비/주요시설 (가장 먼저 보여야 함)
+    # 선택된 건물의 로비/안내 시설 최우선(0)
     if selected_bldg != "전체보기" and row['building'] == selected_bldg:
-        if any(k in name for k in ['안내', '인포', '로비', '센터', '데스크']):
-            return 0
-            
-    # [1순위] 공통 주요 시설 (마리아홀, 대강당 등)
-    if any(k in name for k in ['마리아', '대강당', '강당', '홀', '도서관', '은행', '편의점']):
-        return 1
-    
-    # [3순위] 기계실, EPS, 공실 등 (가장 나중)
-    if any(k in name.lower() for k in ['eps', 'tps', '공실', '창고', '기계실', '전기실']):
-        return 3
-        
-    # [2순위] 일반 연구실 및 사무실
+        if any(k in name for k in ['안내', '인포', '데스크', '로비']): return 0
+    # 주요 공용 시설(1)
+    if any(k in name for k in ['마리아', '대강당', '강당', '홀', '도서관']): return 1
+    # 기피 시설(3)
+    if any(k in name.lower() for k in ['eps', 'tps', '공실', '창고']): return 3
     return 2
 
 # --- 3. 메인 UI ---
 def main():
+    # 좁은 간격을 위해 padding 최적화
     st.set_page_config(page_title="성의안내", layout="centered")
     
-    # 커스텀 CSS (카드 디자인 및 폰트 조절)
     st.markdown("""
         <style>
-        .main { background-color: #f8f9fa; }
-        .stActionButton { visibility: hidden; }
-        .result-card {
-            background-color: white; padding: 15px; border-radius: 10px;
-            border-left: 5px solid #004b9d; margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        /* 타이틀 크기 절반 축소 및 상단 여백 제거 */
+        .small-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; color: #333; }
+        /* 리스트 항목 간격 최소화 */
+        .info-row { 
+            display: flex; align-items: center; border-bottom: 1px solid #eee; 
+            padding: 4px 0; font-size: 0.85rem; line-height: 1.2;
         }
-        .bldg-tag { background-color: #e9ecef; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #495057; font-weight: bold; }
-        .floor-tag { color: #004b9d; font-weight: bold; font-size: 1rem; }
+        .tag-bldg { color: #666; width: 60px; font-weight: bold; flex-shrink: 0; }
+        .tag-floor { color: #004b9d; width: 35px; font-weight: bold; flex-shrink: 0; }
+        .tag-name { flex-grow: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tag-room { color: #d63384; font-weight: bold; margin-left: 4px; flex-shrink: 0; }
+        .tag-desc { color: #888; font-size: 0.75rem; margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30%; }
+        /* 스트림릿 기본 여백 제거 */
+        .block-container { padding-top: 2rem !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.title("🏥 성의교정 스마트 인포")
+    st.markdown('<div class="small-title">🏥 성의교정 시설 안내</div>', unsafe_allow_html=True)
     
     data = load_and_clean_data()
     if data is not None:
-        # 필터 레이아웃
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            selected_bldg = st.selectbox("🏢 건물 선택", options=["전체보기"] + sorted(data['building'].unique().tolist()))
-        with col2:
-            search_query = st.text_input("🔍 시설명 검색", placeholder="예: 마리아홀, 교수실")
+        c1, c2 = st.columns([1, 1.5])
+        with c1:
+            selected_bldg = st.selectbox("🏢 건물", options=["전체보기"] + sorted(data['building'].unique().tolist()), label_visibility="collapsed")
+        with c2:
+            search_query = st.text_input("🔍 검색", placeholder="시설/호실/이름", label_visibility="collapsed")
 
-        # 필터링 로직
+        # 필터링 및 정렬
         view_df = data.copy()
         if selected_bldg != "전체보기":
             view_df = view_df[view_df['building'] == selected_bldg]
-        
         if search_query:
             q = search_query.lower().strip()
             view_df = view_df[view_df.apply(lambda r: q in f"{r['name']} {r.get('room','')} {r.get('description','')}".lower(), axis=1)]
 
-        # 정렬 로직 적용
         view_df['priority'] = view_df.apply(lambda r: get_priority(r, selected_bldg), axis=1)
         view_df['floor_int'] = pd.to_numeric(view_df['floor'].astype(str).str.extract('(\\d+)', expand=False), errors='coerce').fillna(0)
-        
-        # 우선순위 -> 층수(높은순) 정렬
         view_df = view_df.sort_values(by=['priority', 'floor_int'], ascending=[True, False])
 
-        st.caption(f"총 {len(view_df)}개의 시설이 검색되었습니다.")
-        st.divider()
+        st.caption(f"검색 결과: {len(view_df)}건")
 
-        # 결과 출력 (카드형 레이아웃)
+        # 한 줄 출력 영역
         for _, row in view_df.iterrows():
-            with st.container():
-                room_val = str(row.get('room', ''))
-                room_str = f"({room_val}호)" if room_val and room_val != 'nan' else ""
-                
-                # HTML을 활용한 카드 UI 구현
-                st.markdown(f"""
-                <div class="result-card">
-                    <span class="bldg-tag">{row['building']}</span> <span class="floor-tag">{row['floor']}F</span>
-                    <div style="margin-top: 8px;">
-                        <span style="font-size: 1.1rem; font-weight: bold;">{row['name']}</span>
-                        <span style="color: #d63384; font-weight: bold;">{room_str}</span>
-                    </div>
+            room_val = str(row.get('room', ''))
+            room_str = f"{room_val}" if room_val and room_val != 'nan' else ""
+            desc_val = str(row.get('description', ''))
+            desc_str = f"| {desc_val}" if desc_val and desc_val != 'nan' else ""
+            
+            st.markdown(f"""
+                <div class="info-row">
+                    <span class="tag-bldg">{row['building']}</span>
+                    <span class="tag-floor">{row['floor']}F</span>
+                    <span class="tag-name">{row['name']}</span>
+                    <span class="tag-room">{room_str}</span>
+                    <span class="tag-desc">{desc_str}</span>
                 </div>
-                """, unsafe_allow_html=True)
-                
-                # 비고는 가독성을 위해 별도 표시
-                desc = str(row.get('description', ''))
-                if desc and desc != 'nan' and desc.strip() != "":
-                    st.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;└ {desc}")
-                
+            """, unsafe_allow_html=True)
+            
     else:
-        st.error("데이터 파일을 찾을 수 없습니다. CSV 파일들을 확인해주세요.")
+        st.error("데이터 로드 실패")
 
 if __name__ == "__main__":
     main()
