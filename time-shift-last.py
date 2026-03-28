@@ -13,7 +13,6 @@ now_kst = datetime.now(kst)
 today_kst = now_kst.date()
 hr, mn = now_kst.hour, now_kst.minute
 
-# 07:00 교대 기준: 새벽 7시 이전이면 '실질적 전날' 근무로 판단
 if hr < 7:
     logic_date = today_kst - timedelta(days=1)
 else:
@@ -48,19 +47,16 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 설정 (사용자 요청 반영: 2025/1/1 = C조 시작) ---
+# --- [2] 로직 설정 (2025/1/1 C조 기준) ---
 PATTERN_START = date(2025, 1, 1)
-# 2026년 3월 30일은 기준일로부터 453일째이며, 453 % 3 = 0 이므로 C조 근무일이 맞습니다.
 NEXT_WORK_DATE = date(2026, 3, 30)
 
 def get_shift_simple(dt):
-    # 2025-01-01부터 C-A-B 순환
     return ["C", "A", "B"][(dt - PATTERN_START).days % 3]
 
 def get_workers(target_date):
     diff = (target_date - PATTERN_START).days
     if diff % 3 != 0: return None
-    # 3일마다 돌아오는 편성 순서 (총 18일 주기)
     PATTERNS = [
         ["김태언", "이태원", "이정석"], ["김태언", "이정석", "이태원"], 
         ["이정석", "김태언", "이태원"], ["이정석", "이태원", "김태언"], 
@@ -126,19 +122,21 @@ with tab2:
 with tab3:
     st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
     
+    # [수정] 월 선택 레이아웃 최적화
     c1, c2 = st.columns(2)
     with c1:
-        sel_month = st.selectbox("📅 월 선택", range(1, 13), index=today_kst.month - 1)
+        # 월 선택 (기본값은 현재 월)
+        sel_month = st.selectbox("📅 조회 월 선택", range(1, 13), index=today_kst.month - 1)
     with c2:
         options = ["선택 없음", "A", "B", "C"]
         hi = st.selectbox("🎯 강조 조 선택", options, index=options.index(curr_logic_shift))
     
     B_COLS, S_COLS = {"A":"#FFE0B2","B":"#FFCDD2","C":"#BBDEFB"}, {"A":"#FB8C00","B":"#E53935","C":"#1E88E5"}
     
-    # 연도는 현재 연도(2026) 고정
+    # 2026년 기준 선택한 달만 렌더링
     y = 2026
     cal = calendar.monthcalendar(y, sel_month)
-    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin-bottom:10px;'>{y}년 {sel_month}월</div>"
+    cal_html = f"<div style='text-align:center; font-weight:900; font-size:18px; margin-top:10px; margin-bottom:10px;'>{y}년 {sel_month}월</div>"
     cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
     
     for week in cal:
@@ -159,4 +157,5 @@ with tab3:
                 cal_html += f"<td class='cal-td {td_cls}' style='background:{s_bg};'><div class='cal-date-part {txt_cls}' style='background:{d_bg}; font-size:13px;'>{day}</div><div class='cal-shift-part {txt_cls}' style='font-size:16px;'>{s}</div></td>"
         cal_html += "</tr>"
     cal_html += "</table>"
+    
     st.markdown(cal_html, unsafe_allow_html=True)
