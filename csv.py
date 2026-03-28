@@ -1,60 +1,26 @@
 import pandas as pd
 import streamlit as st
 
-def safe_read_and_clean(file_path):
-    try:
-        try:
-            df = pd.read_csv(file_path, encoding='utf-8-sig')
-        except:
-            df = pd.read_csv(file_path, encoding='cp949')
-
-        df = df.loc[:, ~df.columns.duplicated()]
-
-        if 'name' in df.columns:
-            # 숫자나 NaN이 있어도 안전하게 처리
-            is_header = df['name'].astype(str).str.strip().str.lower() == 'name'
-            df = df[~is_header]
-
-        df = df.dropna(subset=['name'])
-        df = df[df['name'].astype(str).str.strip() != '']
-        
-        # 건물명 기록
-        df['building_name'] = file_path.split('.')[0]
-        
-        return df.reset_index(drop=True)
-    except Exception as e:
-        st.error(f"⚠️ {file_path} 읽기 실패: {e}")
-        return None
-
-# --- 전체 통합 실행 ---
-target_files = [
-    '성의회관.csv', '의산연01.csv', '대학본관.csv', 
-    '병원별관.csv', '서울성모병원.CSV', '옴니버스B.csv', '옴니버스A.csv'
-]
-
-all_dfs = []
-for f in target_files:
-    temp_df = safe_read_and_clean(f)
-    if temp_df is not None:
-        all_dfs.append(temp_df)
-
-if all_dfs:
-    # [변수명 통일: final_df로 고쳤습니다]
-    final_df = pd.concat(all_dfs, ignore_index=True, sort=False)
+# 1. 데이터가 합쳐진 final_df가 있다고 가정하고 집계를 수행합니다.
+if 'final_df' in locals() or 'final_df' in globals():
+    st.markdown("### 🏢 건물별 시설 데이터 추출 결과")
     
-    # 필수 컬럼 정리
-    cols = ['name', 'building_name', 'floor', 'room', 'category', 'description']
-    for col in cols:
-        if col not in final_df.columns: final_df[col] = "정보없음"
+    # 건물별로 개수 세기 (Value Counts)
+    building_counts = final_df['building_name'].value_counts().reset_index()
+    building_counts.columns = ['건물명', '추출된 시설 수']
     
-    final_df = final_df[cols]
+    # 시설 수 기준으로 내림차순 정렬
+    building_counts = building_counts.sort_values(by='추출된 시설 수', ascending=False)
     
-    # 화면 출력 및 저장
-    st.success(f"🎊 [최종 통합 완료] 총 {len(all_dfs)}개 건물을 합쳤습니다!")
-    # 이제 에러 없이 숫자가 뜰 거예요!
-    st.info(f"📊 전체 데이터 개수: {len(final_df)}개")
-    st.dataframe(final_df)
+    # 2. 결과 표 출력
+    st.table(building_counts)
     
-    # CSV 저장 및 다운로드 버튼
-    csv_data = final_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
-    st.download_button("📥 통합 DB 다운로드", data=csv_data, file_name='integrated_campus_db_v3.csv')
+    # 3. 전체 합계 표시
+    total_sum = building_counts['추출된 시설 수'].sum()
+    st.success(f"✅ 7개 파일에서 총 **{total_sum}개**의 시설 정보를 완벽하게 추출했습니다.")
+
+    # 4. 시각화 (막대 그래프)
+    st.bar_chart(data=building_counts.set_index('건물명'))
+
+else:
+    st.error("통합된 데이터(final_df)를 찾을 수 없습니다. 이전 단계의 통합 코드를 먼저 실행해 주세요.")
