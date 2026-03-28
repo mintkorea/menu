@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import os
 
-# --- 0. 설정 파일 관리 (영구 저장용) ---
+# --- 0. 설정 파일 관리 ---
 SETTINGS_FILE = "admin_settings.txt"
 DEFAULT_KEYWORDS = "안내, 인포, 로비, 마리아, 대강당, 행정팀"
 
@@ -25,10 +25,7 @@ if 'priority_keywords' not in st.session_state:
 # --- 2. 데이터 로드 및 전처리 ---
 @st.cache_data
 def load_and_clean_data():
-    target_files = [
-        '의산연본관.csv', '대학본관.csv', '의산연별관.csv', '성의회관.csv', 
-        '병원별관.csv', '옴니버스A.csv', '옴니버스B.csv', '서울성모병원.CSV'
-    ]
+    target_files = ['의산연본관.csv', '대학본관.csv', '의산연별관.csv', '성의회관.csv', '병원별관.csv', '옴니버스A.csv', '옴니버스B.csv', '서울성모병원.CSV']
     all_dfs = []
     for file_path in target_files:
         try:
@@ -64,48 +61,44 @@ def get_priority(row, selected_bldg, admin_keywords):
 def main():
     st.set_page_config(page_title="성의안내", layout="centered")
     
-    # CSS: 줄간격 축소 및 강조 디자인
+    # CSS: 줄간격 균일화 및 왼쪽 정렬 강화
     st.markdown("""
         <style>
-        .block-container { padding-top: 3rem !important; padding-bottom: 1rem !important; }
-        .small-title { font-size: 1.0rem; font-weight: bold; margin-bottom: 0.7rem; color: #1e3a8a; }
+        .block-container { padding-top: 2.5rem !important; padding-bottom: 1rem !important; }
+        .small-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem; color: #1e3a8a; }
         
-        /* 정보 한 줄 컨테이너 */
+        /* 한 줄 레이아웃 최적화 */
         .info-row { 
-            display: flex; align-items: center; 
-            padding: 3px 0; border-bottom: 1px solid #f2f2f2; 
-            line-height: 1.1; 
+            display: flex; 
+            align-items: center; 
+            padding: 4px 0; /* 줄간격 균일하게 고정 */
+            border-bottom: 1px solid #f0f0f0; 
+            gap: 10px; /* 요소 간 간격 */
         }
         
-        /* 건물명 배경색 설정 */
         .tag-bldg { 
-            background-color: #f0f2f6; color: #444; 
+            background-color: #f1f3f5; color: #495057; 
             font-weight: bold; font-size: 0.75rem; 
-            padding: 2px 5px; border-radius: 3px; 
-            min-width: 52px; text-align: center; margin-right: 8px;
+            padding: 2px 6px; border-radius: 4px; 
+            width: 55px; text-align: center; flex-shrink: 0;
         }
         
-        /* 층수 청색 계열 강조 */
         .tag-floor { 
-            color: #0056b3; font-weight: 800; 
-            font-size: 0.9rem; min-width: 30px; 
+            color: #0061f2; font-weight: 800; 
+            font-size: 0.9rem; width: 35px; flex-shrink: 0;
         }
         
-        /* 시설명 강조 */
-        .tag-name { 
-            font-weight: 700; color: #111; font-size: 0.9rem; 
-            flex-grow: 1; margin-left: 5px;
+        /* 시설명을 왼쪽으로 밀착 */
+        .tag-name-box { 
+            flex-grow: 1; 
+            text-align: left; 
+            font-weight: 700; color: #1a1a1a; font-size: 0.92rem; 
+            display: flex; align-items: center;
         }
         
-        /* 호수 강조 */
-        .tag-room { color: #d63384; font-weight: bold; font-size: 0.85rem; margin-left: 3px; }
+        .tag-room { color: #e83e8c; font-weight: bold; font-size: 0.82rem; margin-left: 5px; }
         
-        /* 비고 줄간격 및 크기 */
-        .sub-desc { font-size: 0.78rem; color: #777; padding-left: 65px; margin-top: -2px; margin-bottom: 2px; }
-        
-        /* 스트림릿 기본 여백 제거 */
-        div[data-testid="stVerticalBlock"] > div { margin-top: -0.2rem !important; margin-bottom: -0.2rem !important; }
-        hr { margin: 0.2rem 0 !important; }
+        .sub-desc { font-size: 0.8rem; color: #868e96; padding-left: 105px; margin-top: 1px; margin-bottom: 3px; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -127,36 +120,36 @@ def main():
         view_df['floor_int'] = pd.to_numeric(view_df['floor'].astype(str).str.extract('(\\d+)', expand=False), errors='coerce').fillna(0)
         view_df = view_df.sort_values(by=['priority', 'floor_int', 'name'], ascending=[True, False, True])
 
-        # 결과 출력
+        # 리스트 출력
         for _, row in view_df.iterrows():
             room_val = str(row.get('room', ''))
             room_html = f"<span class='tag-room'>({room_val}호)</span>" if room_val and room_val != 'nan' and room_val.strip() != "" else ""
             desc_val = str(row.get('description', '')).strip()
             
-            # 메인 줄 (건물, 층, 시설명+호실)
+            # 메인 행 (좌측 정렬 구조)
             st.markdown(f"""
                 <div class="info-row">
                     <span class="tag-bldg">{row['building']}</span>
                     <span class="tag-floor">{row['floor']}F</span>
-                    <div class="tag-name">{row['name']}{room_html}</div>
+                    <div class="tag-name-box">{row['name']}{room_html}</div>
                 </div>
             """, unsafe_allow_html=True)
             
-            # 비고 (있을 경우만)
+            # 비고 (있는 경우만)
             if desc_val and desc_val.lower() != 'nan' and desc_val != "":
                 st.markdown(f'<div class="sub-desc">└ {desc_val}</div>', unsafe_allow_html=True)
 
-        # --- 관리자 모드 (하단 배치) ---
+        # 관리자 모드 버튼 (비밀번호 1234)
         st.markdown("<br>", unsafe_allow_html=True)
         if not st.session_state.admin_mode:
-            if st.button("🔒 Admin", key="admin_btn"): st.session_state.admin_pw_input = True
+            if st.button("🔒 Admin"): st.session_state.admin_pw_input = True
             if st.session_state.get('admin_pw_input'):
                 pw = st.text_input("Password", type="password")
                 if pw == "1234":
                     st.session_state.admin_mode = True
                     st.rerun()
         else:
-            with st.expander("🛠 설정 (나갔다 들어와도 유지됨)", expanded=True):
+            with st.expander("🛠 정렬 키워드 관리 (영구 저장)", expanded=True):
                 new_kw = st.text_area("우선순위 키워드", value=st.session_state.priority_keywords)
                 if st.button("💾 서버 저장"):
                     st.session_state.priority_keywords = new_kw
@@ -167,7 +160,7 @@ def main():
                     st.session_state.admin_mode = False
                     st.rerun()
     else:
-        st.error("Data Not Found")
+        st.error("데이터를 불러올 수 없습니다.")
 
 if __name__ == "__main__":
     main()
