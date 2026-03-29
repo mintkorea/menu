@@ -1,89 +1,184 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import os
+from datetime import datetime, date
+import calendar
+import pytz
 
-# --- 1. 기본 설정 및 연차 데이터 로드 ---
-START_DATE = datetime(2026, 3, 24).date()
-RANK = ["김태언", "이태원", "이정석"]
-HALL_ROTATION = ["김태언", "이정석", "이태원"]
-VACATION_FILE = 'vacation.csv'
+# -------------------------------
+# 1. 기본 설정
+# -------------------------------
+st.set_page_config(page_title="근무 달력", layout="wide")
 
-def get_vacation_list(target_date):
-    """특정 날짜에 연차인 사람 리스트 반환"""
-    if os.path.exists(VACATION_FILE):
-        df_vac = pd.read_csv(VACATION_FILE)
-        # 날짜 형식 통일 후 필터링
-        df_vac['날짜'] = pd.to_datetime(df_vac['날짜']).dt.date
-        return df_vac[df_vac['날짜'] == target_date]['이름'].tolist()
-    return []
+KST = pytz.timezone("Asia/Seoul")
+today_kst = datetime.now(KST).date()
 
-# --- 2. 근무 배정 로직 (연차 반영 버전) ---
-def get_daily_layout_with_vac(target_date):
-    diff = (target_date - START_DATE).days
-    if diff % 3 != 0: return None
-    
-    seq = (diff // 3) + 5 
-    hall_worker = HALL_ROTATION[(seq // 2) % 3]
-    others = [p for p in RANK if p != hall_worker]
-    
-    # 기본 배정 (회관, 의산A, 의산B)
-    if seq % 2 == 0:
-        res = [hall_worker, others[0], others[1]]
-    else:
-        res = [hall_worker, others[1], others[0]]
-    
-    # [핵심] 연차 체크 및 치환
-    vac_people = get_vacation_list(target_date)
-    final_res = []
-    for person in res:
-        if person in vac_people:
-            final_res.append(f"🔴연차({person})") # 이름 옆에 표시하거나 '연차'로 치환
-        else:
-            final_res.append(person)
-            
-    return final_res # [회관, A, B] 순서
+# -------------------------------
+# 2. 샘플 근무 로직 (수정 가능)
+# -------------------------------
+def get_shift_simple(d):
+    base = date(2024, 1, 1)
+    diff = (d - base).days % 3
+    return ["A", "B", "C"][diff]
 
-# --- 3. 화면 출력 (HTML 방식 적용) ---
-def render_work_table(data_list):
-    html = """
-    <style>
-        .work-table { width: 100%; border-collapse: collapse; text-align: center; }
-        .work-table th, .work-table td { border: 1px solid #ddd; padding: 10px; }
-        .vacation-row { background-color: #FFEBEE; font-weight: bold; } /* 연차 발생 시 줄 강조 */
-    </style>
-    <table class="work-table">
+# -------------------------------
+# 3. 스타일
+# -------------------------------
+st.markdown("""
+<style>
+.cal-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.cal-table th {
+    padding: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.cal-table td {
+    height: 70px;
+    border: 1px solid #ddd;
+    vertical-align: top;
+    padding: 3px;
+}
+
+.cal-td {
+    position: relative;
+}
+
+.empty-td {
+    background: #f9f9f9;
+}
+
+.cal-date-part {
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 2px 4px;
+    display: inline-block;
+}
+
+.cal-shift-part {
+    font-size: 16px;
+    font-weight: 900;
+    text-align: center;
+    margin-top: 5px;
+}
+
+.sun { color: #d32f2f; }
+.sat { color: #1976d2; }
+
+.today-border {
+    border: 2px solid #000 !important;
+}
+
+.main-title {
+    text-align:center;
+    font-size:22px;
+    font-weight:900;
+    margin-bottom:10px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------------
+# 4. UI
+# -------------------------------
+st.markdown('<div class="main-title">🏥 성의교정 근무 달력</div>', unsafe_allow_html=True)
+
+options = ["선택 없음", "A", "B", "C"]
+current_shift = get_shift_simple(today_kst)
+
+hi = st.selectbox(
+    "🎯 강조 조 선택",
+    options,
+    index=options.index(current_shift) if current_shift in options else 0
+)
+
+# 색상
+B_COLS = {"A":"#FFE0B2", "B":"#FFCDD2", "C":"#BBDEFB"}  # 기본
+S_COLS = {"A":"#FB8C00", "B":"#E53935", "C":"#1E88E5"}  # 강조
+
+# -------------------------------
+# 5. 달력 생성
+# -------------------------------
+calendar.setfirstweekday(calendar.SUNDAY)
+cal_obj = calendar.Calendar()
+
+cal_html = ""
+curr_cal_date = today_kst.replace(day=1)
+
+for _ in range(12):
+    y, m = curr_cal_date.year, curr_cal_date.month
+    weeks = cal_obj.monthdayscalendar(y, m)
+
+    cal_html += f"""
+    <div style='text-align:center; font-weight:900; font-size:18px; margin-top:30px; margin-bottom:10px; color:#2E4077;'>
+        {y}년 {m}월
+    </div>
+    """
+
+    cal_html += """
+    <table class='cal-table'>
         <thead>
-            <tr><th>날짜</th><th>조장</th><th>회관</th><th>의산A</th><th>의산B</th></tr>
+            <tr>
+                <th class='sun'>일</th>
+                <th>월</th>
+                <th>화</th>
+                <th>수</th>
+                <th>목</th>
+                <th>금</th>
+                <th class='sat'>토</th>
+            </tr>
         </thead>
         <tbody>
     """
-    for row in data_list:
-        # 줄에 '연차'라는 글자가 있으면 배경색 변경
-        is_vac = any("연차" in str(v) for v in row.values())
-        row_style = "class='vacation-row'" if is_vac else ""
-        
-        html += f"<tr {row_style}>"
-        for key in row:
-            html += f"<td>{row[key]}</td>"
-        html += "</tr>"
-    html += "</tbody></table>"
-    st.markdown(html, unsafe_allow_html=True)
 
-# --- 4. 메인 실행부 ---
-st.subheader("🗓️ 연차 연동 C조 근무표")
+    for week in weeks:
+        cal_html += "<tr>"
+        for i, day in enumerate(week):
+            if day == 0:
+                cal_html += "<td class='cal-td empty-td'></td>"
+            else:
+                d_obj = date(y, m, day)
+                s = get_shift_simple(d_obj)
 
-display_data = []
-for i in range(30): # 30일치
-    d = START_DATE + timedelta(days=i)
-    res = get_daily_layout_with_vac(d)
-    if res:
-        display_data.append({
-            "날짜": d.strftime('%m/%d(%a)'),
-            "조장": "황재업",
-            "회관": res[0],
-            "의산A": res[1],
-            "의산B": res[2]
-        })
+                # 안전 처리
+                if s not in B_COLS:
+                    s = "A"
 
-render_work_table(display_data)
+                is_hi = (hi == s)
+
+                bg_color = S_COLS[s] if is_hi else B_COLS[s]
+                date_bg = S_COLS[s] if is_hi else "#FFFFFF"
+
+                text_color_class = (
+                    "sun" if i == 0 else "sat" if i == 6 else ""
+                )
+
+                today_class = "today-border" if d_obj == today_kst else ""
+
+                cal_html += f"""
+                <td class='cal-td {today_class}' style='background:{bg_color};'>
+                    <div class='cal-date-part {text_color_class}' style='background:{date_bg};'>
+                        {day}
+                    </div>
+                    <div class='cal-shift-part'>
+                        {s}
+                    </div>
+                </td>
+                """
+
+        cal_html += "</tr>"
+
+    cal_html += "</tbody></table>"
+
+    # 다음 달
+    if m == 12:
+        curr_cal_date = curr_cal_date.replace(year=y+1, month=1)
+    else:
+        curr_cal_date = curr_cal_date.replace(month=m+1)
+
+# 출력
+st.markdown(cal_html, unsafe_allow_html=True)
