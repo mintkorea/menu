@@ -1,11 +1,10 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, date
 import pytz
 import calendar
 
-# --- [1] 페이지 설정 및 스타일 ---
+# --- [1] 페이지 설정 및 스타일 (원본 유지) ---
 st.set_page_config(page_title="C조 통합 근무 시스템", layout="wide")
 
 # 한국 표준시(KST) 및 교대 시간(07:00) 로직 설정
@@ -32,13 +31,20 @@ st.markdown("""
     .main-title { text-align: center; font-size: 20px; font-weight: 900; color: #2E4077; margin-bottom: 5px; }
     .date-display { text-align: center; font-size: 18px; color: #333; margin-bottom: 15px; font-weight: 700; }
     .status-msg-box { background: #2E4077; color: white; padding: 20px; border-radius: 15px; text-align: center; font-size: 17px; font-weight: 800; margin-bottom: 15px; line-height: 1.5; }
+    
+    /* 카드 스타일 추가 */
+    .status-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+    .status-card { border: 2px solid #2E4077; border-radius: 10px; padding: 10px; text-align: center; background: white; }
+    .worker-name { font-size: 14px; font-weight: 700; color: #666; }
+    .status-val { font-size: 18px; font-weight: 900; color: #2E4077; }
+
     .table-container { width: 100%; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; table-layout: fixed; }
     .custom-table th { background: #F2F4F7; color: #333; padding: 10px 2px; border: 1px solid #dee2e6; font-size: 11px; font-weight: 800; }
     .custom-table td { border: 1px solid #dee2e6; padding: 12px 2px; }
     .time-col { width: 90px !important; white-space: nowrap !important; font-weight: 700; background: #fafafa; }
     .row-highlight { background-color: #FFE5E5 !important; }
-    .row-highlight td { border-top: 3px solid #E53935 !important; border-bottom: 3px solid #E53935 !important; font-weight: 900 !important; }
+    .row-highlight td { border-top: 3px solid #E53935 !important; border-bottom: 3px solid #E53935 !important; font-weight: 900 !important; color: #E53935; }
     
     .cal-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #ccc; margin-bottom: 40px; }
     .cal-td { border: 1px solid #eee; height: 65px; vertical-align: top; padding: 0 !important; }
@@ -49,7 +55,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [2] 로직 설정 ---
+# --- [2] 로직 설정 (원본 유지) ---
 PATTERN_START = date(2026, 3, 9)
 NEXT_WORK_DATE = date(2026, 3, 30)
 
@@ -78,26 +84,48 @@ with tab1:
     
     curr_logic_shift = get_shift_simple(logic_date)
     is_c_day = (curr_logic_shift == "C")
-    status_msg = ""; highlight_idx = -1
+    
+    # [수정] 실시간 인덱스 계산 로직 추가
+    def find_idx(dt):
+        m = dt.hour * 60 + dt.minute
+        if dt.hour < 7: m += 1440
+        for i, r in enumerate(data_list):
+            sh, sm = map(int, r[0].split(':')); eh, em = map(int, r[1].split(':'))
+            s_min = (sh+24 if sh<7 else sh)*60+sm
+            e_min = (eh+24 if (eh<7 or (eh==7 and em==0)) and sh!=7 else eh)*60+em
+            if s_min <= m < e_min: return i
+        return -1
 
-    if is_c_day and 6 <= hr < 7:
-        status_msg = "수고하셨습니다. 잘 마무리 하시고 A조와 근무 교대를 준비하십시오." if mn < 40 else "고생하셨습니다. 근무교대 시간입니다."
-        highlight_idx = 24
-    elif is_c_day and hr == 7:
-        status_msg = "✨ 밤새 고생 많으셨습니다. 안전하게 퇴근하십시오!"
+    highlight_idx = find_idx(now_kst) if is_c_day else -1
+    
+    # [수정] 카드 섹션 추가 (근무 중일 때만 표시)
+    if is_c_day and highlight_idx != -1:
+        names = get_workers(logic_date)
+        st.markdown(f'''<div class="status-container">
+            <div class="status-card"><div class="worker-name">{names[0]}</div><div class="status-val">{data_list[highlight_idx][2]}</div></div>
+            <div class="status-card"><div class="worker-name">{names[1]}</div><div class="status-val">{data_list[highlight_idx][3]}</div></div>
+            <div class="status-card"><div class="worker-name">{names[2]}</div><div class="status-val">{data_list[highlight_idx][4]}</div></div>
+            <div class="status-card"><div class="worker-name">{names[3]}</div><div class="status-val">{data_list[highlight_idx][5]}</div></div>
+        </div>''', unsafe_allow_html=True)
+    
+    # 메시지 로직
+    if is_c_day:
+        status_msg = "📢 현재 C조 근무 운용 중입니다."
     elif today_kst >= NEXT_WORK_DATE and hr < 7:
-        status_msg = "🗓️ 오늘은 C조 근무일입니다. 즐겁고 보람 된 하루를 준비하십시오. 07시 투입 예정입니다." if mn < 40 else "근무 교대 및 근무 준비 중(인수인계 사항을 잘 확인하시기 바랍니다.)"
+        status_msg = "🗓️ 곧 근무가 시작됩니다. 준비해 주세요."
     else:
         status_msg = "😴 오늘은 휴무일입니다. 편안한 휴식 되세요."
 
     st.markdown(f'<div class="status-msg-box">{status_msg}</div>', unsafe_allow_html=True)
     
-    if highlight_idx == -1:
+    if highlight_idx == -1 and not is_c_day:
         st.markdown(f'<div style="text-align:center; font-weight:700; margin-bottom:10px;">📍 다음 근무는 <b>2026년 03월 30일(월)</b>입니다.</div>', unsafe_allow_html=True)
 
-    h_date = today_kst if highlight_idx != -1 else NEXT_WORK_DATE
+    h_date = logic_date if is_c_day else NEXT_WORK_DATE
     names = get_workers(h_date)
     h_names = names if names else ["조장", "성희", "당직A", "당직B"]
+    
+    # [수정] 하이라이트 클래스 적용
     rows_html = "".join([f"<tr{' class=\"row-highlight\"' if i==highlight_idx else ''}><td class='time-col'>{r[0]} ~ {r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td></tr>" for i, r in enumerate(data_list)])
     st.markdown(f'<div class="table-container"><table class="custom-table"><tr><th class="time-col" rowspan="2">시간</th><th colspan="2">성의회관</th><th colspan="2">의과학산업연구원</th></tr><tr><th>{h_names[0]}</th><th>{h_names[1]}</th><th>{h_names[2]}</th><th>{h_names[3]}</th></tr>{rows_html}</table></div>', unsafe_allow_html=True)
 
@@ -130,7 +158,7 @@ with tab3:
     cal_html = ""; curr = today_kst.replace(day=1)
     for _ in range(12):
         y, m = curr.year, curr.month; cal = calendar.monthcalendar(y, m)
-        cal_html += f"<div class='month-title'>{y}년 {m}월</div>"
+        cal_html += f"<div style='text-align:center; font-weight:900; margin-bottom:8px;'>{y}년 {m}월</div>"
         cal_html += "<table class='cal-table'><tr><th class='sun'>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class='sat'>토</th></tr>"
         for week in cal:
             cal_html += "<tr>"
