@@ -2,34 +2,25 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-st.set_page_config(page_title="Gemini 표 변환기", layout="centered")
-st.title("📊 이미지 -> Markdown 변환기")
+st.title("🚀 제미나이 최종 테스트")
 
-# 1. API 키 설정 (사이드바 입력 혹은 Secrets)
-API_KEY = st.sidebar.text_input("새로 발급받은 API Key를 입력하세요", type="password")
+api_key = st.sidebar.text_input("API Key", type="password")
 
-if API_KEY:
+if api_key:
+    genai.configure(api_key=api_key)
+    
+    # 404 에러를 피하기 위해 가장 안정적인 모델명 사용
+    # 최신 SDK에서는 'gemini-1.5-flash'가 표준입니다.
+    model_name = 'gemini-1.5-flash' 
+    
     try:
-        genai.configure(api_key=API_KEY)
-        # 모델명을 'models/' 포함 혹은 '-latest'로 시도
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel(model_name)
         
-        uploaded_file = st.file_uploader("이미지 업로드", type=['png', 'jpg', 'jpeg'])
-        
-        if uploaded_file and st.button("변환 시작"):
-            img = Image.open(uploaded_file)
-            st.image(img, caption="대상 이미지", use_container_width=True)
+        # 테스트용 간단한 텍스트 생성 시도
+        if st.button("모델 연결 확인"):
+            response = model.generate_content("Hello, are you working?")
+            st.success(f"연결 성공! 응답: {response.text}")
             
-            with st.spinner("분석 중..."):
-                prompt = "이 이미지의 표를 Markdown 테이블로 변환해줘. 다른 설명은 하지마."
-                response = model.generate_content([prompt, img])
-                
-                st.success("변환 완료!")
-                st.markdown(response.text)
-                st.code(response.text, language="markdown")
-                
     except Exception as e:
-        st.error(f"에러 발생: {e}")
-        st.info("AI Studio에서 'New Project'로 키를 다시 생성했는지 확인해주세요.")
-else:
-    st.info("사이드바에 API 키를 입력해주세요.")
+        st.error(f"모델 호출 실패: {e}")
+        st.info("requirements.txt에서 google-generativeai 버전을 확인해주세요.")
