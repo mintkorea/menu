@@ -1,0 +1,4 @@
+.env
+db_images/
+db_texts/
+__pycache__/
