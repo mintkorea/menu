@@ -2,7 +2,7 @@ import google.generativeai as genai
 import PIL.Image
 
 # 1. API 키 설정
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyCXNQ3b9qcaJjQAGua3-vcgRZ2j0wASaXM")
 
 # 2. 모델 설정 (1.5 Flash가 이미지 처리에 효율적입니다)
 model = genai.GenerativeModel('gemini-1.5-flash')
