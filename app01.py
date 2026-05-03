@@ -11,7 +11,7 @@ st.title("📊 이미지 -> Markdown 표 변환기")
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
-    API_KEY = "AIzaSyCXNQ3b9qcaJjQAGua3-vcgRZ2j0wASaXM"
+    API_KEY = "AIzaSyCqsMS8czyIpn2pAMiTgScgdBhDHzyN860"
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
